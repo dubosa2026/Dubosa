@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Saidas geradas (contem dados de clientes - nao versionar)
+output/
+
+# Exportacoes do BI (contem dados de clientes - nao versionar)
+*.xlsx
+*.xlsm
+
+# Credenciais do Google
+service_account*.json
+credentials*.json
+*.pem

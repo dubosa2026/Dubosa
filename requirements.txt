@@ -1,0 +1,10 @@
+pandas>=2.0
+openpyxl>=3.1
+
+# Necessarios apenas para o comando `sync` (publicar no Google Drive)
+google-api-python-client>=2.100
+google-auth>=2.23
+google-auth-httplib2>=0.1
+
+# Para rodar os testes
+pytest>=7.4
