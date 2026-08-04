@@ -107,13 +107,31 @@ Isso já é nativo do Google Drive/Sheets, sem precisar de nada extra:
 - Clique no ícone **"i" (Detalhes) → aba Atividade** para ver quando cada
   pessoa abriu/editou.
 
+## Sobre as colunas da Base BI
+
+O script **não** presume quais colunas existem — ele lê a linha 1 da aba
+"Base BI" exatamente como ela estiver (mesmo nome, mesma ordem) e usa isso
+para montar as abas de resultado e os arquivos dos vendedores. Então
+funciona com qualquer conjunto de colunas que seu BI exportar (incluindo
+colunas extras como CNPJ/CPF), desde que:
+- A coluna com o estado do cliente se chame exatamente **"UF"**.
+- A coluna com a categoria de atividade se chame exatamente **"Categoria"**
+  (é nela que o filtro "Ativo 30 dias" procura).
+
+Se o nome de alguma dessas duas colunas for diferente na sua exportação,
+ajuste o cabeçalho da célula correspondente na aba "Base BI" para "UF" ou
+"Categoria" antes de rodar a distribuição.
+
 ## Se algo der errado
 
-- **"A aba Base BI está vazia"**: você ainda não colou os dados exportados,
-  ou colou fora da célula A1.
+- **"A aba Base BI está vazia"**: você ainda não colou os dados exportados
+  (com cabeçalho) a partir da célula A1.
 - **Vendedor aparece na mensagem final como "sem e-mail cadastrado"**: o
   arquivo dele foi criado normalmente na pasta, só não foi compartilhado —
   preencha o e-mail na aba "Vendedores" e rode de novo.
+- **Os dados saem faltando coluna ou fora de ordem**: confira se colou a
+  base a partir da célula **A1** (incluindo a linha de cabeçalho) — o
+  script usa esse cabeçalho para saber onde está cada coluna.
 - Quer atualizar a lista de vendedores/UFs depois (alguém saiu, mudou de
   estado)? Edite direto na aba **"Vendedores"** — não precisa rodar a
   "Configuração inicial" de novo, só a distribuição.

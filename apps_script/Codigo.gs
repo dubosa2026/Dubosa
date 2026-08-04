@@ -8,8 +8,15 @@
  * computador. Cole este arquivo em Extensoes > Apps Script da planilha
  * "painel" (a que voce administra) e siga o README da pasta apps_script/.
  *
+ * As colunas da aba "Base BI" NAO sao fixas no codigo: o script le o
+ * cabecalho (linha 1) da aba tal como ele estiver e usa exatamente esses
+ * nomes/ordem para gerar as abas de saida e os arquivos por vendedor --
+ * assim funciona com qualquer conjunto de colunas que o seu BI exportar,
+ * sem descartar nem embaralhar nenhuma coluna.
+ *
  * Regras (mesmas da versao Python em sales_assistant/distribute.py):
- *   1. Categoria == "Ativo 30 dias" -> ignorado, nao entra na distribuicao.
+ *   1. Categoria contendo "Ativo 30 dias" -> ignorado, nao entra na
+ *      distribuicao.
  *   2. UF mapeada com 2+ vendedores -> rodizio, mesma quantidade pra cada um
  *      (diferenca maxima de 1).
  *   3. UF mapeada com 1 vendedor -> tudo pra ele (mesmo mecanismo do item 2
@@ -33,13 +40,14 @@ var ABA_HISTORICO = 'Histórico';
 var NOME_PASTA_RAIZ = 'Distribuição Comercial - Vendedores';
 var ROTULO_ATIVO_30 = 'Ativo 30 dias';
 var MARCADORES_TODAS_UF = ['TODAS', 'TODOS', 'NACIONAL', 'BR', 'BRASIL'];
-var COLUNAS_BASE = [
-  'UF', 'Cidade', 'Integrador (CLI - Nome)', 'Telefone', 'E-mail',
+
+// Cabecalho usado so para criar a aba "Base BI" vazia da primeira vez.
+// Assim que voce colar a base exportada de verdade por cima, o cabecalho
+// real dela e que passa a valer -- o script sempre le a linha 1 da aba
+// "Base BI" dinamicamente, nunca essa lista fixa.
+var COLUNAS_BASE_MODELO = [
+  'UF', 'Cidade', 'Integrador', 'CNPJ/CPF', 'Telefone', 'E-mail',
   'Categoria', 'Última Nota', 'Vendedor', 'Gerente', 'Qtde. Pedidos', 'Valor Faturado'
-];
-var COLUNAS_ARQUIVO_VENDEDOR = [
-  'UF', 'Cidade', 'Integrador (CLI - Nome)', 'Telefone', 'E-mail',
-  'Categoria', 'Última Nota', 'Qtde. Pedidos', 'Valor Faturado', 'Gerente'
 ];
 
 function onOpen() {
@@ -89,13 +97,14 @@ function criarEstruturaInicial() {
 
   var abaB = ss.getSheetByName(ABA_BASE) || ss.insertSheet(ABA_BASE);
   abaB.clearContents();
-  abaB.getRange(1, 1, 1, COLUNAS_BASE.length).setValues([COLUNAS_BASE]);
+  abaB.getRange(1, 1, 1, COLUNAS_BASE_MODELO.length).setValues([COLUNAS_BASE_MODELO]);
   abaB.setFrozenRows(1);
 
   SpreadsheetApp.getUi().alert(
     'Estrutura criada!\n\n' +
     '1. Preencha o e-mail de cada vendedor na aba "' + ABA_VENDEDORES + '".\n' +
-    '2. Cole os dados exportados do BI na aba "' + ABA_BASE + '" (a partir da célula A2, mantendo as colunas do cabeçalho).\n' +
+    '2. Cole os dados exportados do BI na aba "' + ABA_BASE + '" a partir da célula A1 ' +
+    '(o cabeçalho de exemplo será substituído pelo cabeçalho real da sua exportação).\n' +
     '3. Use o menu "Assistente Comercial > 3) Distribuir agora".'
   );
 }
@@ -117,7 +126,7 @@ function limparBaseBI() {
   if (ultimaLinha > 1) {
     aba.getRange(2, 1, ultimaLinha - 1, aba.getMaxColumns()).clearContent();
   }
-  SpreadsheetApp.getUi().alert('Aba "' + ABA_BASE + '" limpa. Agora cole os dados novos a partir da célula A2.');
+  SpreadsheetApp.getUi().alert('Aba "' + ABA_BASE + '" limpa. Agora cole os dados novos a partir da célula A1 (incluindo o cabeçalho).');
 }
 
 /** Passo 2 (toda vez que atualizar a base): roda a distribuição. */
@@ -130,18 +139,20 @@ function distribuirAgora() {
       ui.alert('A aba "' + ABA_VENDEDORES + '" está vazia. Rode primeiro "1) Configurar planilha".');
       return;
     }
-    var base = lerBase(ss);
+    var headers = lerCabecalhoBase(ss);
+    var base = lerBase(ss, headers);
     if (!base.length) {
-      ui.alert('A aba "' + ABA_BASE + '" está vazia. Cole os dados exportados do BI antes de distribuir.');
+      ui.alert('A aba "' + ABA_BASE + '" está vazia. Cole os dados exportados do BI (com cabeçalho) antes de distribuir.');
       return;
     }
 
     var resultado = distribuir(base, vendedores);
-    escreverAbasAuditoria(ss, resultado);
+    escreverAbasAuditoria(ss, resultado, headers);
     registrarHistorico(ss, resultado);
-    var avisos = publicarArquivosPorVendedor(resultado, vendedores);
+    var avisos = publicarArquivosPorVendedor(resultado, vendedores, headers);
 
     var msg = 'Distribuição concluída!\n\n' +
+      'Colunas identificadas na Base BI: ' + headers.join(', ') + '\n\n' +
       'Distribuídos: ' + resultado.atribuidos.length + '\n' +
       'Sem UF: ' + resultado.semUf.length + '\n' +
       'Fora de escopo: ' + resultado.foraEscopo.length + '\n' +
@@ -189,19 +200,27 @@ function lerVendedores(ss) {
   return lista;
 }
 
-function lerBase(ss) {
+/** Le a linha 1 da aba "Base BI" tal como ela estiver, na ordem em que as colunas aparecem. */
+function lerCabecalhoBase(ss) {
   var aba = ss.getSheetByName(ABA_BASE);
   if (!aba) return [];
+  var ultimaColuna = aba.getLastColumn();
+  if (ultimaColuna === 0) return [];
+  var linha1 = aba.getRange(1, 1, 1, ultimaColuna).getValues()[0];
+  return linha1.map(normalizar).filter(function (h) { return h !== ''; });
+}
+
+function lerBase(ss, headers) {
+  var aba = ss.getSheetByName(ABA_BASE);
+  if (!aba || !headers.length) return [];
   var dados = aba.getDataRange().getValues();
-  var headers = dados[0].map(normalizar);
   var linhas = [];
   for (var i = 1; i < dados.length; i++) {
     var linha = {};
     var vazio = true;
     for (var j = 0; j < headers.length; j++) {
-      if (!headers[j]) continue;
       linha[headers[j]] = dados[i][j];
-      if (dados[i][j] !== '' && dados[i][j] !== null) vazio = false;
+      if (dados[i][j] !== '' && dados[i][j] !== null && dados[i][j] !== undefined) vazio = false;
     }
     if (!vazio) linhas.push(linha);
   }
@@ -222,12 +241,26 @@ function ehMarcadorTodasUf(ufRaw, todasUfsSet) {
   return true;
 }
 
+/**
+ * Chave de ordenacao estavel para o rodizio, construida a partir de todos
+ * os valores da propria linha (na ordem em que vieram da Base BI) -- nao
+ * depende do nome de nenhuma coluna especifica (tipo "Integrador"), entao
+ * continua funcionando mesmo que o layout da exportacao do BI mude.
+ */
+function chaveOrdenacao(row) {
+  return Object.keys(row).map(function (k) {
+    var v = row[k];
+    if (v instanceof Date) return v.getTime();
+    return normalizar(v).toLowerCase();
+  }).join('|');
+}
+
 function dividirRodizio(linhas, vendedoresList) {
   if (!linhas.length || !vendedoresList.length) return [];
   var ordenados = linhas.slice().sort(function (a, b) {
-    var na = normalizar(a['Integrador (CLI - Nome)']);
-    var nb = normalizar(b['Integrador (CLI - Nome)']);
-    return na < nb ? -1 : (na > nb ? 1 : 0);
+    var ca = chaveOrdenacao(a);
+    var cb = chaveOrdenacao(b);
+    return ca < cb ? -1 : (ca > cb ? 1 : 0);
   });
   var vends = vendedoresList.slice().sort();
   return ordenados.map(function (row, i) {
@@ -336,21 +369,21 @@ function escreverTabela(ss, nomeAba, colunas, linhasObjetos) {
   aba.setFrozenRows(1);
 }
 
-function escreverAbasAuditoria(ss, resultado) {
+function escreverAbasAuditoria(ss, resultado, headers) {
   escreverTabela(ss, ABA_RESUMO, ['Vendedor', 'UF', 'Qtde. Clientes', 'Valor Faturado Total'], resultado.resumo);
   escreverTabela(
     ss,
     ABA_DISTRIBUIDO,
-    COLUNAS_BASE.concat(['Vendedor Atribuído']),
+    headers.concat(['Vendedor Atribuído']),
     resultado.atribuidos.map(function (r) {
       var copia = Object.assign({}, r);
       copia['Vendedor Atribuído'] = r._vendedorAtribuido;
       return copia;
     })
   );
-  escreverTabela(ss, ABA_SEM_UF, COLUNAS_BASE, resultado.semUf);
-  escreverTabela(ss, ABA_FORA_ESCOPO, COLUNAS_BASE, resultado.foraEscopo);
-  escreverTabela(ss, ABA_EXCLUIDOS, COLUNAS_BASE, resultado.excluidos);
+  escreverTabela(ss, ABA_SEM_UF, headers, resultado.semUf);
+  escreverTabela(ss, ABA_FORA_ESCOPO, headers, resultado.foraEscopo);
+  escreverTabela(ss, ABA_EXCLUIDOS, headers, resultado.excluidos);
 }
 
 /**
@@ -395,15 +428,15 @@ function obterOuCriarPlanilha(nome, pasta) {
   return novaSs;
 }
 
-function escreverClientesDoVendedor(ss, linhas) {
+function escreverClientesDoVendedor(ss, linhas, headers) {
   var aba = ss.getSheets()[0];
   aba.setName('Clientes');
   aba.clearContents();
-  var dados = [COLUNAS_ARQUIVO_VENDEDOR];
+  var dados = [headers];
   linhas.forEach(function (r) {
-    dados.push(COLUNAS_ARQUIVO_VENDEDOR.map(function (c) { return r[c] !== undefined ? r[c] : ''; }));
+    dados.push(headers.map(function (c) { return r[c] !== undefined ? r[c] : ''; }));
   });
-  aba.getRange(1, 1, dados.length, COLUNAS_ARQUIVO_VENDEDOR.length).setValues(dados);
+  aba.getRange(1, 1, dados.length, headers.length).setValues(dados);
   aba.setFrozenRows(1);
 }
 
@@ -429,7 +462,7 @@ function compartilharComEmail(arquivo, email) {
   );
 }
 
-function publicarArquivosPorVendedor(resultado, vendedores) {
+function publicarArquivosPorVendedor(resultado, vendedores, headers) {
   var raiz = obterOuCriarPasta(NOME_PASTA_RAIZ, DriveApp.getRootFolder());
   var avisos = [];
 
@@ -437,7 +470,7 @@ function publicarArquivosPorVendedor(resultado, vendedores) {
     var pastaUf = obterOuCriarPasta(v.uf, raiz);
     var arquivo = obterOuCriarPlanilha(v.vendedor, pastaUf);
     var linhas = resultado.atribuidos.filter(function (r) { return r._vendedorAtribuido === v.vendedor; });
-    escreverClientesDoVendedor(arquivo, linhas);
+    escreverClientesDoVendedor(arquivo, linhas, headers);
 
     if (v.email) {
       try {
