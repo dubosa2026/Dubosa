@@ -37,9 +37,31 @@ Não precisa de Python, Git, PowerShell nem Terminal.
      nomes e UFs da sua foto) e **"Base BI"** (com o cabeçalho certo,
      esperando os dados).
 
-7. Na aba **"Vendedores"**, preencha a coluna **Email** com o e-mail (conta
+7. **Habilite o serviço que envia o e-mail de convite** (uma vez só): no
+   editor do Apps Script, no menu à esquerda clique no ícone **"+" ao lado
+   de Serviços**, procure **"Drive API"** e clique em **Adicionar**.
+   (Sem isso, o arquivo é criado e compartilhado normalmente, mas o
+   vendedor não recebe o e-mail avisando.)
+
+8. Na aba **"Vendedores"**, preencha a coluna **Email** com o e-mail (conta
    Google) de cada vendedor. É esse e-mail que vai receber o convite pro
    arquivo dele.
+
+## Testar antes de cadastrar os vendedores de verdade
+
+Antes de colocar o e-mail real de cada vendedor, teste com o seu próprio
+e-mail (ou de um Gmail pessoal seu):
+
+1. Na aba **"Vendedores"**, preencha a coluna **Email** de **um** vendedor
+   qualquer com o seu próprio e-mail Google.
+2. Rode **Assistente Comercial → "2) Distribuir agora"** (precisa já ter
+   dados na aba "Base BI" — se já rodou antes, pode rodar de novo).
+3. Confira sua caixa de entrada: deve chegar um e-mail do Google Drive tipo
+   "fulano compartilhou uma planilha com você", com o nome do vendedor.
+4. Se não chegar nada, confira se o passo 7 acima (habilitar "Drive API")
+   foi feito — sem isso o convite não é enviado.
+5. Depois do teste, apague esse e-mail de teste e coloque o e-mail
+   verdadeiro do vendedor.
 
 ## Uso (toda vez que exportar uma base nova do BI)
 

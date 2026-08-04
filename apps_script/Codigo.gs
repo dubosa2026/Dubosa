@@ -358,6 +358,28 @@ function escreverClientesDoVendedor(ss, linhas) {
   aba.setFrozenRows(1);
 }
 
+/**
+ * Compartilha o arquivo e manda o e-mail de convite de verdade.
+ * addEditor() do DriveApp da acesso mas NAO garante o envio do e-mail;
+ * o Drive Advanced Service (Drive.Permissions.create com
+ * sendNotificationEmail: true) e o que efetivamente dispara o convite,
+ * igual ao que acontece quando voce compartilha manualmente pela tela do
+ * Drive. Requer habilitar o servico "Drive API" uma vez (ver README).
+ */
+function compartilharComEmail(arquivo, email) {
+  if (typeof Drive === 'undefined') {
+    throw new Error(
+      'Servico "Drive API" nao habilitado. No editor do Apps Script, va em ' +
+      'Servicos (icone +) e adicione "Drive API".'
+    );
+  }
+  Drive.Permissions.create(
+    { role: 'writer', type: 'user', emailAddress: email },
+    arquivo.getId(),
+    { sendNotificationEmail: true }
+  );
+}
+
 function publicarArquivosPorVendedor(resultado, vendedores) {
   var raiz = obterOuCriarPasta(NOME_PASTA_RAIZ, DriveApp.getRootFolder());
   var avisos = [];
@@ -370,7 +392,7 @@ function publicarArquivosPorVendedor(resultado, vendedores) {
 
     if (v.email) {
       try {
-        arquivo.addEditor(v.email);
+        compartilharComEmail(arquivo, v.email);
       } catch (e) {
         avisos.push(v.vendedor + ' (falha ao compartilhar: ' + e.message + ')');
       }
