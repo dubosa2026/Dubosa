@@ -165,7 +165,7 @@ function normalizar(v) {
   // troca espaco invisivel (nao separavel, comum em exportacoes) por espaco
   // normal e colapsa espacos duplicados -- evita falha de comparacao por
   // causa de formatacao invisivel vinda do Excel/BI.
-  return String(v).replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  return String(v).replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function lerVendedores(ss) {
