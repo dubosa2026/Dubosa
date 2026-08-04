@@ -110,10 +110,14 @@ function criarEstruturaInicial() {
 }
 
 /**
- * Passo intermediário (toda vez, antes de colar uma base nova): apaga o
- * conteúdo antigo da aba "Base BI" (mantendo o cabeçalho). Evita que sobrem
- * linhas antigas quando a base nova tem menos linhas que a anterior -- essas
- * sobras seriam contadas como se fossem clientes da rodada atual.
+ * Passo intermediário (toda vez, antes de colar uma base nova): apaga TODO o
+ * conteúdo da aba "Base BI", inclusive o cabeçalho. Evita dois problemas:
+ * (1) sobrarem linhas antigas quando a base nova tem menos linhas que a
+ * anterior -- essas sobras seriam contadas como clientes da rodada atual;
+ * (2) o cabeçalho antigo ficar "desencontrado" das colunas da base nova
+ * (ex.: base nova com uma coluna a mais/menos que a anterior), causando
+ * dados fora de ordem. Por isso a base sempre precisa ser colada de novo a
+ * partir da célula A1, cabeçalho incluso, depois de rodar este passo.
  */
 function limparBaseBI() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -122,11 +126,11 @@ function limparBaseBI() {
     SpreadsheetApp.getUi().alert('A aba "' + ABA_BASE + '" não existe. Rode "1) Configurar planilha" primeiro.');
     return;
   }
-  var ultimaLinha = aba.getLastRow();
-  if (ultimaLinha > 1) {
-    aba.getRange(2, 1, ultimaLinha - 1, aba.getMaxColumns()).clearContent();
-  }
-  SpreadsheetApp.getUi().alert('Aba "' + ABA_BASE + '" limpa. Agora cole os dados novos a partir da célula A1 (incluindo o cabeçalho).');
+  aba.clearContents();
+  SpreadsheetApp.getUi().alert(
+    'Aba "' + ABA_BASE + '" totalmente limpa (cabeçalho incluso).\n\n' +
+    'Agora cole os dados novos a partir da célula A1, incluindo a linha de cabeçalho.'
+  );
 }
 
 /** Passo 2 (toda vez que atualizar a base): roda a distribuição. */
@@ -146,7 +150,7 @@ function distribuirAgora() {
       return;
     }
 
-    var resultado = distribuir(base, vendedores);
+    var resultado = distribuir(base, vendedores, headers);
     escreverAbasAuditoria(ss, resultado, headers);
     registrarHistorico(ss, resultado);
     var avisos = publicarArquivosPorVendedor(resultado, vendedores, headers);
@@ -242,6 +246,19 @@ function ehMarcadorTodasUf(ufRaw, todasUfsSet) {
 }
 
 /**
+ * Encontra o nome real da coluna em `headers` que corresponde a `nomeAlvo`,
+ * ignorando maiusculas/minusculas (ex.: acha "CATEGORIA" ou "categoria"
+ * quando procurando por "Categoria"). Retorna null se nao encontrar.
+ */
+function encontrarColuna(headers, nomeAlvo) {
+  var alvo = nomeAlvo.toLowerCase();
+  for (var i = 0; i < headers.length; i++) {
+    if (headers[i].toLowerCase() === alvo) return headers[i];
+  }
+  return null;
+}
+
+/**
  * Chave de ordenacao estavel para o rodizio, construida a partir de todos
  * os valores da propria linha (na ordem em que vieram da Base BI) -- nao
  * depende do nome de nenhuma coluna especifica (tipo "Integrador"), entao
@@ -270,11 +287,20 @@ function dividirRodizio(linhas, vendedoresList) {
   });
 }
 
-function distribuir(baseRows, vendedores) {
+function distribuir(baseRows, vendedores, headers) {
+  var chaveCategoria = encontrarColuna(headers, 'Categoria');
+  var chaveUf = encontrarColuna(headers, 'UF');
+  if (!chaveCategoria) {
+    throw new Error('Não encontrei nenhuma coluna chamada "Categoria" na Base BI. Colunas encontradas: ' + headers.join(', '));
+  }
+  if (!chaveUf) {
+    throw new Error('Não encontrei nenhuma coluna chamada "UF" na Base BI. Colunas encontradas: ' + headers.join(', '));
+  }
+
   var mantidos = [];
   var excluidos = [];
   baseRows.forEach(function (row) {
-    var cat = normalizar(row['Categoria']).toLowerCase();
+    var cat = normalizar(row[chaveCategoria]).toLowerCase();
     if (cat.indexOf(ROTULO_ATIVO_30.toLowerCase()) !== -1) {
       excluidos.push(row);
     } else {
@@ -297,7 +323,7 @@ function distribuir(baseRows, vendedores) {
   var paraDividirTodas = [];
 
   mantidos.forEach(function (row) {
-    var ufRaw = normalizar(row['UF']).toUpperCase();
+    var ufRaw = normalizar(row[chaveUf]).toUpperCase();
     if (!ufRaw) {
       semUf.push(row);
       return;

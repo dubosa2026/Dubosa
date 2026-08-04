@@ -68,13 +68,16 @@ e-mail (ou de um Gmail pessoal seu):
 1. Rode sua macro normalmente e abra o arquivo exportado no Excel (ou no
    próprio Google Sheets, se preferir).
 2. Na planilha painel, clique em **Assistente Comercial → "2) Limpar Base
-   BI (antes de colar nova base)"**. **Isso é importante**: se você só colar
-   por cima sem limpar, e a base nova tiver menos linhas que a anterior,
-   sobra lixo da base antiga nas linhas de baixo e o script conta esse lixo
-   como se fosse cliente da rodada atual.
-3. **Selecione todos os dados** da base exportada (incluindo o cabeçalho) e
-   copie (Ctrl+C).
-4. Na aba **"Base BI"**, clique na célula **A1** e cole (Ctrl+V).
+   BI (antes de colar nova base)"**. **Isso é importante e sempre
+   obrigatório**: esse passo apaga a aba inteira, cabeçalho incluso. Sem
+   isso, ou sobra lixo de linhas antigas (se a base nova tiver menos linhas
+   que a anterior), ou o cabeçalho antigo fica desencontrado das colunas da
+   base nova (se o número/ordem de colunas mudar) — as duas coisas fazem os
+   dados saírem errados ou fora de ordem.
+3. **Selecione todos os dados** da base exportada, **incluindo a linha de
+   cabeçalho**, e copie (Ctrl+C).
+4. Na aba **"Base BI"**, clique na célula **A1** e cole (Ctrl+V) — o
+   cabeçalho da sua exportação vai para a linha 1.
 5. Clique em **Assistente Comercial → "3) Distribuir agora"**.
 6. Pronto. Uma mensagem mostra quantos clientes foram distribuídos, quantos
    ficaram sem UF, fora de escopo, ou excluídos por "Ativo 30 dias". Os
@@ -110,17 +113,19 @@ Isso já é nativo do Google Drive/Sheets, sem precisar de nada extra:
 ## Sobre as colunas da Base BI
 
 O script **não** presume quais colunas existem — ele lê a linha 1 da aba
-"Base BI" exatamente como ela estiver (mesmo nome, mesma ordem) e usa isso
-para montar as abas de resultado e os arquivos dos vendedores. Então
-funciona com qualquer conjunto de colunas que seu BI exportar (incluindo
-colunas extras como CNPJ/CPF), desde que:
-- A coluna com o estado do cliente se chame exatamente **"UF"**.
-- A coluna com a categoria de atividade se chame exatamente **"Categoria"**
-  (é nela que o filtro "Ativo 30 dias" procura).
+"Base BI" exatamente como ela estiver (mesmo nome, mesma ordem, maiúsculas
+ou minúsculas tanto faz) e usa isso para montar as abas de resultado e os
+arquivos dos vendedores. Então funciona com qualquer conjunto de colunas
+que seu BI exportar (incluindo colunas extras como CNPJ), desde que exista:
+- Uma coluna com o estado do cliente chamada **"UF"** (maiúsc./minúsc. não
+  importa).
+- Uma coluna com a categoria de atividade chamada **"Categoria"**
+  (maiúsc./minúsc. não importa — é nela que o filtro "Ativo 30 dias"
+  procura).
 
-Se o nome de alguma dessas duas colunas for diferente na sua exportação,
-ajuste o cabeçalho da célula correspondente na aba "Base BI" para "UF" ou
-"Categoria" antes de rodar a distribuição.
+Se nenhuma coluna com esses nomes for encontrada, o "Distribuir agora" para
+com um aviso de erro dizendo quais colunas foram identificadas, em vez de
+rodar com o filtro quebrado silenciosamente.
 
 ## Se algo der errado
 
