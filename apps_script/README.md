@@ -67,15 +67,21 @@ e-mail (ou de um Gmail pessoal seu):
 
 1. Rode sua macro normalmente e abra o arquivo exportado no Excel (ou no
    próprio Google Sheets, se preferir).
-2. **Selecione todos os dados** (incluindo o cabeçalho) e copie (Ctrl+C).
-3. Na planilha painel, vá na aba **"Base BI"**, clique na célula **A1** e
-   cole (Ctrl+V) — isso substitui os dados antigos pelos novos.
-4. Clique em **Assistente Comercial → "2) Distribuir agora"**.
-5. Pronto. Uma mensagem mostra quantos clientes foram distribuídos, quantos
+2. Na planilha painel, clique em **Assistente Comercial → "2) Limpar Base
+   BI (antes de colar nova base)"**. **Isso é importante**: se você só colar
+   por cima sem limpar, e a base nova tiver menos linhas que a anterior,
+   sobra lixo da base antiga nas linhas de baixo e o script conta esse lixo
+   como se fosse cliente da rodada atual.
+3. **Selecione todos os dados** da base exportada (incluindo o cabeçalho) e
+   copie (Ctrl+C).
+4. Na aba **"Base BI"**, clique na célula **A1** e cole (Ctrl+V).
+5. Clique em **Assistente Comercial → "3) Distribuir agora"**.
+6. Pronto. Uma mensagem mostra quantos clientes foram distribuídos, quantos
    ficaram sem UF, fora de escopo, ou excluídos por "Ativo 30 dias". Os
    detalhes ficam nas abas **Resumo**, **Distribuído**, **Sem UF**, **Fora
    de Escopo** e **Excluídos (Ativo 30 dias)**, dentro da própria planilha
-   painel.
+   painel — essas abas sempre mostram só a **última** rodada (são
+   substituídas a cada execução).
 
 O script também cria, dentro do seu Google Drive, uma pasta chamada
 **"Distribuição Comercial - Vendedores"**, com uma subpasta por UF (AC, AM,
@@ -83,6 +89,15 @@ AP, PA, RO, RR, TO) e, dentro de cada uma, uma planilha por vendedor — essa
 é a planilha que fica compartilhada com o e-mail dele. Nas próximas rodadas,
 o mesmo arquivo é **atualizado** (não recriado), então o vendedor não
 precisa aceitar convite de novo — só abre o link que já tem.
+
+## Histórico (comparar rodadas ao longo do tempo)
+
+Diferente das abas acima, a aba **"Histórico"** nunca é apagada: a cada vez
+que você roda "3) Distribuir agora", uma linha é acrescentada por vendedor
+(Data/Hora, Vendedor, UF, Qtde. Clientes, Valor Faturado Total). Com isso dá
+pra ver a evolução — por exemplo, filtrando ou montando uma tabela dinâmica
+por vendedor para acompanhar se a carteira dele está crescendo/diminuindo ao
+longo das exportações.
 
 ## Controle de quem acessou
 

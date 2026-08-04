@@ -29,6 +29,7 @@ var ABA_DISTRIBUIDO = 'Distribuído';
 var ABA_SEM_UF = 'Sem UF';
 var ABA_FORA_ESCOPO = 'Fora de Escopo';
 var ABA_EXCLUIDOS = 'Excluídos (Ativo 30 dias)';
+var ABA_HISTORICO = 'Histórico';
 var NOME_PASTA_RAIZ = 'Distribuição Comercial - Vendedores';
 var ROTULO_ATIVO_30 = 'Ativo 30 dias';
 var MARCADORES_TODAS_UF = ['TODAS', 'TODOS', 'NACIONAL', 'BR', 'BRASIL'];
@@ -45,7 +46,8 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Assistente Comercial')
     .addItem('1) Configurar planilha (rodar uma vez)', 'criarEstruturaInicial')
-    .addItem('2) Distribuir agora', 'distribuirAgora')
+    .addItem('2) Limpar Base BI (antes de colar nova base)', 'limparBaseBI')
+    .addItem('3) Distribuir agora', 'distribuirAgora')
     .addToUi();
 }
 
@@ -94,8 +96,28 @@ function criarEstruturaInicial() {
     'Estrutura criada!\n\n' +
     '1. Preencha o e-mail de cada vendedor na aba "' + ABA_VENDEDORES + '".\n' +
     '2. Cole os dados exportados do BI na aba "' + ABA_BASE + '" (a partir da célula A2, mantendo as colunas do cabeçalho).\n' +
-    '3. Use o menu "Assistente Comercial > 2) Distribuir agora".'
+    '3. Use o menu "Assistente Comercial > 3) Distribuir agora".'
   );
+}
+
+/**
+ * Passo intermediário (toda vez, antes de colar uma base nova): apaga o
+ * conteúdo antigo da aba "Base BI" (mantendo o cabeçalho). Evita que sobrem
+ * linhas antigas quando a base nova tem menos linhas que a anterior -- essas
+ * sobras seriam contadas como se fossem clientes da rodada atual.
+ */
+function limparBaseBI() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var aba = ss.getSheetByName(ABA_BASE);
+  if (!aba) {
+    SpreadsheetApp.getUi().alert('A aba "' + ABA_BASE + '" não existe. Rode "1) Configurar planilha" primeiro.');
+    return;
+  }
+  var ultimaLinha = aba.getLastRow();
+  if (ultimaLinha > 1) {
+    aba.getRange(2, 1, ultimaLinha - 1, aba.getMaxColumns()).clearContent();
+  }
+  SpreadsheetApp.getUi().alert('Aba "' + ABA_BASE + '" limpa. Agora cole os dados novos a partir da célula A2.');
 }
 
 /** Passo 2 (toda vez que atualizar a base): roda a distribuição. */
@@ -116,6 +138,7 @@ function distribuirAgora() {
 
     var resultado = distribuir(base, vendedores);
     escreverAbasAuditoria(ss, resultado);
+    registrarHistorico(ss, resultado);
     var avisos = publicarArquivosPorVendedor(resultado, vendedores);
 
     var msg = 'Distribuição concluída!\n\n' +
@@ -123,7 +146,8 @@ function distribuirAgora() {
       'Sem UF: ' + resultado.semUf.length + '\n' +
       'Fora de escopo: ' + resultado.foraEscopo.length + '\n' +
       'Excluídos (Ativo 30 dias): ' + resultado.excluidos.length + '\n\n' +
-      'Veja a aba "' + ABA_RESUMO + '" e a pasta "' + NOME_PASTA_RAIZ + '" no seu Google Drive.';
+      'Veja a aba "' + ABA_RESUMO + '" (situação atual), a aba "' + ABA_HISTORICO + '" (evolução ao longo do tempo) ' +
+      'e a pasta "' + NOME_PASTA_RAIZ + '" no seu Google Drive.';
     if (avisos.length) {
       msg += '\n\nAtenção - sem e-mail cadastrado (arquivo criado mas não compartilhado): ' + avisos.join(', ');
     }
@@ -324,6 +348,28 @@ function escreverAbasAuditoria(ss, resultado) {
   escreverTabela(ss, ABA_SEM_UF, COLUNAS_BASE, resultado.semUf);
   escreverTabela(ss, ABA_FORA_ESCOPO, COLUNAS_BASE, resultado.foraEscopo);
   escreverTabela(ss, ABA_EXCLUIDOS, COLUNAS_BASE, resultado.excluidos);
+}
+
+/**
+ * Acrescenta uma linha por vendedor a cada rodada na aba "Histórico"
+ * (nunca apaga o que já tinha) -- dá pra ver como cada vendedor evoluiu ao
+ * longo das exportações, diferente das outras abas que sempre mostram só a
+ * última rodada.
+ */
+function registrarHistorico(ss, resultado) {
+  var aba = ss.getSheetByName(ABA_HISTORICO);
+  if (!aba) {
+    aba = ss.insertSheet(ABA_HISTORICO);
+    aba.appendRow(['Data/Hora', 'Vendedor', 'UF', 'Qtde. Clientes', 'Valor Faturado Total']);
+    aba.setFrozenRows(1);
+  }
+  var agora = new Date();
+  var linhas = resultado.resumo.map(function (r) {
+    return [agora, r.Vendedor, r.UF, r['Qtde. Clientes'], r['Valor Faturado Total']];
+  });
+  if (linhas.length) {
+    aba.getRange(aba.getLastRow() + 1, 1, linhas.length, 5).setValues(linhas);
+  }
 }
 
 // ---------- Saída: um Google Sheets por vendedor, no Drive ----------
