@@ -162,7 +162,10 @@ function distribuirAgora() {
 
 function normalizar(v) {
   if (v === null || v === undefined) return '';
-  return String(v).trim();
+  // troca espaco invisivel (nao separavel, comum em exportacoes) por espaco
+  // normal e colapsa espacos duplicados -- evita falha de comparacao por
+  // causa de formatacao invisivel vinda do Excel/BI.
+  return String(v).replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function lerVendedores(ss) {
@@ -239,7 +242,7 @@ function distribuir(baseRows, vendedores) {
   var excluidos = [];
   baseRows.forEach(function (row) {
     var cat = normalizar(row['Categoria']).toLowerCase();
-    if (cat === ROTULO_ATIVO_30.toLowerCase()) {
+    if (cat.indexOf(ROTULO_ATIVO_30.toLowerCase()) !== -1) {
       excluidos.push(row);
     } else {
       mantidos.push(row);
