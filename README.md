@@ -5,6 +5,17 @@ Pega a planilha que sua macro já exporta do BI, filtra os clientes ativos há
 vendedores de acordo com o estado (UF) de cada um, o mais justo possível.
 Gera uma planilha por vendedor, prontas para o Google Drive.
 
+Existem duas versões, com a mesma lógica:
+
+- **[`apps_script/`](apps_script/) — recomendada se você não pode instalar
+  programas no computador.** Roda 100% dentro do Google Sheets pelo
+  navegador: sem Python, sem Git, sem PowerShell/Terminal, sem download de
+  nada. Só copiar e colar um código dentro do próprio Google Sheets. Veja o
+  passo a passo em [`apps_script/README.md`](apps_script/README.md).
+- **Este diretório (Python)** — para quem pode instalar Python/Git
+  livremente e prefere rodar por linha de comando ou automatizar com
+  agendador de tarefas.
+
 ## Regras aplicadas
 
 1. **Filtro de atividade**: linhas com `Categoria == "Ativo 30 dias"` são
