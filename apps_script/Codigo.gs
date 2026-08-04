@@ -1,3 +1,6 @@
+// ======================================================================
+// INICIO DO CODIGO -- copie a partir desta linha
+// ======================================================================
 /**
  * Assistente Comercial - Google Apps Script
  *
@@ -378,3 +381,7 @@ function publicarArquivosPorVendedor(resultado, vendedores) {
 
   return avisos;
 }
+
+// ======================================================================
+// FIM DO CODIGO -- nao copie nada depois desta linha
+// ======================================================================
