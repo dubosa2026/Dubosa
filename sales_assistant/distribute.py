@@ -18,6 +18,10 @@ Regras (definidas junto com o usuario):
   5. UFs presentes no arquivo mas que nao aparecem no mapeamento (ex: outras
      regioes do Brasil fora da equipe Norte) ficam fora de escopo: nao sao
      tocadas/distribuidas por este processo.
+  6. Regra fixa de regiao: a equipe so prospecta a Regiao Norte (AC, AM, AP,
+     PA, RO, RR, TO). Cliente de qualquer outra UF NUNCA e redistribuido,
+     mesmo que alguem cadastre um vendedor para aquela UF -- ele permanece
+     com o vendedor que ja o atende na coluna "Vendedor" da base.
 """
 
 from __future__ import annotations
@@ -29,6 +33,7 @@ import pandas as pd
 
 ACTIVE_30_LABEL_DEFAULT = "Ativo 30 dias"
 ALL_UF_MARKERS = {"TODOS", "TODAS", "NACIONAL", "BR", "BRASIL"}
+REGIAO_NORTE = frozenset({"AC", "AM", "AP", "PA", "RO", "RR", "TO"})
 UF_SPLIT_RE = re.compile(r"[\/,;+]")
 
 COL_UF = "UF"
@@ -71,8 +76,12 @@ def load_vendor_map(path: str) -> pd.DataFrame:
 
 
 def uf_to_vendedores(vendor_map: pd.DataFrame) -> dict[str, list[str]]:
+    """UF -> vendedores. Linhas fora da Regiao Norte sao descartadas: a regra
+    de regiao vale mesmo que alguem cadastre um vendedor para outra UF."""
     mapping: dict[str, list[str]] = {}
     for _, row in vendor_map.iterrows():
+        if row["UF"] not in REGIAO_NORTE:
+            continue
         mapping.setdefault(row["UF"], []).append(row["Vendedor"])
     return mapping
 

@@ -1,20 +1,22 @@
 # Assistente Comercial — Distribuição de Clientes por UF
 
 Pega a planilha que sua macro já exporta do BI, filtra os clientes ativos há
-30 dias (não entram na distribuição) e divide o restante entre os 24
-vendedores de acordo com o estado (UF) de cada um, o mais justo possível.
-Gera uma planilha por vendedor, prontas para o Google Drive.
+30 dias (não entram na distribuição) e divide o restante entre os vendedores
+de acordo com o estado (UF) de cada um, o mais justo possível. Gera uma
+planilha por vendedor, prontas para o Google Drive.
 
-Existem duas versões, com a mesma lógica:
+Existem três versões, com a mesma lógica de distribuição:
 
-- **[`apps_script/`](apps_script/) — recomendada se você não pode instalar
-  programas no computador.** Roda 100% dentro do Google Sheets pelo
-  navegador: sem Python, sem Git, sem PowerShell/Terminal, sem download de
-  nada. Só copiar e colar um código dentro do próprio Google Sheets. Veja o
-  passo a passo em [`apps_script/README.md`](apps_script/README.md).
-- **Este diretório (Python)** — para quem pode instalar Python/Git
-  livremente e prefere rodar por linha de comando ou automatizar com
-  agendador de tarefas.
+- **[`app/`](app/) — recomendada.** Um único arquivo HTML que você abre com
+  dois cliques no navegador. Arrasta a planilha, confere a equipe e baixa as
+  carteiras. Não instala nada, não envia nada para lugar nenhum: tudo roda
+  dentro do seu navegador. É a única versão que traz o **funil de
+  aproveitamento entre rodadas**, as **análises diárias** e o **modo
+  ataque**. Veja [`app/README.md`](app/README.md).
+- **[`apps_script/`](apps_script/)** — roda dentro do Google Sheets, útil
+  se o resultado precisa nascer já no Drive compartilhado.
+- **Este diretório (Python)** — linha de comando, para automatizar com
+  agendador de tarefas e sincronizar com o Google Drive.
 
 ## Regras aplicadas
 
@@ -31,15 +33,17 @@ Existem duas versões, com a mesma lógica:
    para auditoria).
 5. **UF "todas de uma vez"** (célula com `TODAS`, `NACIONAL`, `BR`, ou todas
    as UFs do mapeamento juntas, ex. `AC/AM/AP/PA/RO/RR/TO`): esse cliente é
-   dividido **uma única vez** entre os 24 vendedores, sem repetir por UF.
-6. **UF presente no arquivo mas fora do mapeamento** (ex. clientes de SP,
-   BA, MG — outras equipes): não é tocado. Fica numa aba separada, fora de
-   escopo deste processo.
+   dividido **uma única vez** entre todos os vendedores, sem repetir por UF.
+6. **Só a Região Norte é distribuída** (AC, AM, AP, PA, RO, RR, TO). Cliente
+   de qualquer outro estado — SP, BA, MG, o que for — **nunca** é
+   redistribuído: permanece com o vendedor que já o atende, conforme a
+   coluna `Vendedor` da própria base. A regra é fixa no código: mesmo que
+   alguém cadastre um vendedor para SP no CSV, aquele cliente continua fora
+   da distribuição. Essas linhas ficam numa aba separada, para auditoria.
 
 O mapeamento vendedor → UF está em [`config/vendedores.csv`](config/vendedores.csv),
-já preenchido com os 24 vendedores da foto que você enviou. Se algum
-vendedor mudar de UF ou entrar/sair do time, edite esse CSV — o resto do
-processo se ajusta sozinho.
+já preenchido com os 22 vendedores do time. Se algum vendedor mudar de UF ou
+entrar/sair do time, edite esse CSV — o resto do processo se ajusta sozinho.
 
 ## Instalação
 
@@ -94,7 +98,7 @@ porque Google Sheets não conta na cota do Drive.
    dono/administrador.
 5. **Pegar o ID da pasta**: abra a pasta no navegador, copie o trecho da URL
    depois de `folders/` — é o `--drive-folder-id`.
-6. **Preencher os e-mails** dos 24 vendedores na coluna `Email` de
+6. **Preencher os e-mails** dos vendedores na coluna `Email` de
    `config/vendedores.csv` (o Google precisa do e-mail/conta Google de cada
    um pra convidar).
 

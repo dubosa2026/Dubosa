@@ -104,3 +104,28 @@ def test_resumo_inclui_todos_os_vendedores_mesmo_sem_cliente():
     assert set(resultado.resumo["Vendedor"]) == set(VENDOR_MAP["Vendedor"])
     zerados = resultado.resumo[resultado.resumo["Vendedor"] != "CARLOS"]
     assert (zerados["qtde_clientes"] == 0).all()
+
+
+def test_vendedor_cadastrado_fora_do_norte_nao_recebe_clientes():
+    """Regra fixa: mesmo com vendedor cadastrado para SP, cliente de SP nao
+    e redistribuido -- ele permanece com quem ja o atende."""
+    vendor_map = pd.concat(
+        [VENDOR_MAP, pd.DataFrame([{"Vendedor": "GABRIELA", "UF": "SP", "Email": ""}])],
+        ignore_index=True,
+    )
+    df = make_export([("SP", "Inativo", "CLI-1", 10), ("AC", "Inativo", "CLI-2", 10)])
+    resultado = distribute(df, vendor_map)
+
+    assert len(resultado.fora_do_escopo) == 1
+    assert resultado.fora_do_escopo.iloc[0]["UF"] == "SP"
+    assert len(resultado.atribuidos) == 1
+    assert "GABRIELA" not in set(resultado.atribuidos[COL_VENDEDOR_ATRIBUIDO])
+    assert "GABRIELA" not in set(resultado.resumo["Vendedor"])
+
+
+@pytest.mark.parametrize("uf_fora", ["SP", "MG", "BA", "RS", "MT", "DF"])
+def test_nenhuma_uf_fora_do_norte_e_distribuida(uf_fora):
+    df = make_export([(uf_fora, "Inativo", "CLI-1", 10)])
+    resultado = distribute(df, VENDOR_MAP)
+    assert resultado.atribuidos.empty
+    assert len(resultado.fora_do_escopo) == 1

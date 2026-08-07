@@ -39,6 +39,7 @@ var ABA_EXCLUIDOS = 'Excluídos (Ativo 30 dias)';
 var ABA_HISTORICO = 'Histórico';
 var NOME_PASTA_RAIZ = 'Distribuição Comercial - Vendedores';
 var ROTULO_ATIVO_30 = 'Ativo 30 dias';
+var REGIAO_NORTE = ['AC', 'AM', 'AP', 'PA', 'RO', 'RR', 'TO'];
 var MARCADORES_TODAS_UF = ['TODAS', 'TODOS', 'NACIONAL', 'BR', 'BRASIL'];
 
 // Cabecalho usado so para criar a aba "Base BI" vazia da primeira vez.
@@ -72,9 +73,7 @@ function criarEstruturaInicial() {
     ['ITALO CERQUEIA DOS SANTOS', 'AM', ''],
     ['MATHEUS SOUZA DE BARROS', 'AM', ''],
     ['DIEGO ADAN OHNUMA ANGELI', 'AP', ''],
-    ['CLARA VITORIA CARDOSO', 'PA', ''],
     ['GIOVANNA DO CARMO FUJIMOTO', 'PA', ''],
-    ['KETHILY KAREN SOUZA DA CRUZ', 'PA', ''],
     ['MUNARI ANGELA MARIANO', 'PA', ''],
     ['PAULO ROBERTO DA SILVA FILHO', 'PA', ''],
     ['RAYANE ALMEIDA DOS SANTOS', 'PA', ''],
@@ -308,12 +307,17 @@ function distribuir(baseRows, vendedores, headers) {
     }
   });
 
+  // Regra fixa: a equipe so prospecta a Regiao Norte. Vendedor cadastrado
+  // para outra UF e ignorado, e cliente de fora do Norte nunca e redistribuido.
   var ufParaVendedores = {};
   vendedores.forEach(function (v) {
+    if (REGIAO_NORTE.indexOf(v.uf) === -1) return;
     if (!ufParaVendedores[v.uf]) ufParaVendedores[v.uf] = [];
     ufParaVendedores[v.uf].push(v.vendedor);
   });
-  var todosVendedores = vendedores.map(function (v) { return v.vendedor; });
+  var todosVendedores = vendedores
+    .filter(function (v) { return REGIAO_NORTE.indexOf(v.uf) !== -1; })
+    .map(function (v) { return v.vendedor; });
   var todasUfsSet = {};
   Object.keys(ufParaVendedores).forEach(function (uf) { todasUfsSet[uf] = true; });
 

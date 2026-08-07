@@ -1,0 +1,628 @@
+/* ==================================================================
+   INTERFACE — liga o nucleo aos controles da tela.
+   ================================================================== */
+
+var EQUIPE_PADRAO = [
+  ['ALISSON DOS SANTOS RIBEIRO', 'AC'], ['ELANDIA CAMARGO RODRIGUES', 'AC'],
+  ['ITALO CERQUEIA DOS SANTOS', 'AM'], ['MATHEUS SOUZA DE BARROS', 'AM'],
+  ['DIEGO ADAN OHNUMA ANGELI', 'AP'],
+  ['GIOVANNA DO CARMO FUJIMOTO', 'PA'], ['MUNARI ANGELA MARIANO', 'PA'],
+  ['PAULO ROBERTO DA SILVA FILHO', 'PA'], ['RAYANE ALMEIDA DOS SANTOS', 'PA'],
+  ['CRISTIANE LUIS DOS SANTOS', 'RO'], ['GLEICY KELLY TOPPAN DE OLIVEIRA', 'RO'],
+  ['MARIA ELISABETE TONON', 'RO'], ['RAFAEL VANDERLEI LOPES', 'RO'],
+  ['ROSYRENE DE MEDEIROS CELESTINO', 'RO'], ['VICTOR VINICIUS RENNO', 'RO'],
+  ['LEONARDO COSTA OLIVEIRA', 'RR'],
+  ['ERICA OLIVEIRA', 'TO'], ['LUCAS DOS REIS BERNARDES DA SILVEIRA', 'TO'],
+  ['MARIA PAULA BERTAGLIA NESTOR', 'TO'], ['MURILO BEDANI ROGERIO', 'TO'],
+  ['NILTON RENATO VICENTE JUNIOR', 'TO'], ['RICARDO CARNIATO RODRIGUES', 'TO']
+].map(function (v) { return { vendedor: v[0], uf: v[1], email: '' }; });
+
+var STORE_KEY = 'belenergy-equipe-v2';
+var SNAP_KEY = 'belenergy-rodada-anterior-v1';
+var GERENTE_PADRAO = 'EDUARDO LUIZ DOS SANTOS';
+
+var state = {
+  headers: [], records: [], equipe: [], result: null, origem: '',
+  funil: null, insights: []
+};
+
+var $ = function (id) { return document.getElementById(id); };
+
+/* ---------- toast ---------- */
+var toastTimer = null;
+function toast(msg) {
+  var t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2400);
+}
+
+/* ---------- navegacao entre etapas ---------- */
+var STEPS = [['s1', 'p1'], ['s2', 'p2'], ['s3', 'p3'], ['s4', 'p4']];
+function goStep(i) {
+  STEPS.forEach(function (s, k) {
+    $(s[0]).setAttribute('aria-selected', k === i ? 'true' : 'false');
+    $(s[1]).hidden = k !== i;
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+STEPS.forEach(function (s, i) {
+  $(s[0]).addEventListener('click', function () { if (!$(s[0]).disabled) goStep(i); });
+});
+
+/* ---------- equipe ---------- */
+function loadEquipe() {
+  try {
+    var raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      var parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length) return parsed;
+    }
+  } catch (e) { /* armazenamento indisponivel */ }
+  return EQUIPE_PADRAO.map(function (v) { return Object.assign({}, v); });
+}
+function saveEquipe() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state.equipe)); } catch (e) { /* idem */ }
+}
+
+function renderEquipe() {
+  var body = $('equipeBody');
+  body.innerHTML = '';
+  state.equipe.forEach(function (v, i) {
+    var tr = document.createElement('tr');
+
+    var td1 = document.createElement('td');
+    var i1 = document.createElement('input');
+    i1.value = v.vendedor; i1.placeholder = 'Nome do vendedor';
+    i1.setAttribute('aria-label', 'Nome do vendedor');
+    i1.addEventListener('input', function () { state.equipe[i].vendedor = i1.value; saveEquipe(); });
+    td1.appendChild(i1);
+
+    var td2 = document.createElement('td');
+    var i2 = document.createElement('input');
+    i2.value = v.uf; i2.className = 'uf'; i2.maxLength = 12; i2.placeholder = 'UF';
+    i2.setAttribute('aria-label', 'UF de atuação');
+    i2.addEventListener('input', function () {
+      state.equipe[i].uf = i2.value.toUpperCase(); saveEquipe();
+    });
+    td2.appendChild(i2);
+
+    var td3 = document.createElement('td');
+    var i3 = document.createElement('input');
+    i3.value = v.email; i3.type = 'email'; i3.placeholder = 'opcional';
+    i3.setAttribute('aria-label', 'E-mail do vendedor');
+    i3.addEventListener('input', function () { state.equipe[i].email = i3.value; saveEquipe(); });
+    td3.appendChild(i3);
+
+    var td4 = document.createElement('td');
+    var rm = document.createElement('button');
+    rm.className = 'rm'; rm.innerHTML = '&times;';
+    rm.title = 'Remover ' + (v.vendedor || 'linha');
+    rm.setAttribute('aria-label', 'Remover ' + (v.vendedor || 'linha'));
+    rm.addEventListener('click', function () {
+      state.equipe.splice(i, 1); saveEquipe(); renderEquipe();
+    });
+    td4.appendChild(rm);
+
+    tr.append(td1, td2, td3, td4);
+    body.appendChild(tr);
+  });
+  $('equipeCount').textContent = state.equipe.filter(function (v) { return v.vendedor.trim(); }).length;
+}
+
+$('addVend').addEventListener('click', function () {
+  state.equipe.push({ vendedor: '', uf: '', email: '' });
+  saveEquipe(); renderEquipe();
+  var inputs = $('equipeBody').querySelectorAll('input');
+  if (inputs.length) inputs[inputs.length - 3].focus();
+});
+$('resetVend').addEventListener('click', function () {
+  state.equipe = EQUIPE_PADRAO.map(function (v) { return Object.assign({}, v); });
+  saveEquipe(); renderEquipe();
+  toast('Equipe restaurada (' + EQUIPE_PADRAO.length + ' vendedores)');
+});
+
+/* ---------- carregar base ---------- */
+function afterLoad(matrix, origem) {
+  var t = toTable(matrix);
+  if (!t.headers.length || !t.records.length) {
+    showBaseError('Não consegui ler nenhuma linha. Confira se a primeira linha é o cabeçalho.');
+    return;
+  }
+  state.headers = t.headers;
+  state.records = t.records;
+  state.origem = origem;
+
+  var colUf = findCol(t.headers, 'UF');
+  var colCat = findCol(t.headers, 'Categoria');
+
+  $('status').textContent = fmtInt(t.records.length) + ' linhas carregadas';
+  $('status').setAttribute('data-on', '1');
+  $('s1').setAttribute('data-done', '1');
+
+  var chips = t.headers.map(function (h) {
+    var key = (h === colUf || h === colCat) ? ' data-key="1"' : '';
+    return '<span class="chip"' + key + '>' + escapeHtml(h) + '</span>';
+  }).join('');
+
+  var missing = [];
+  if (!colUf) missing.push('UF');
+  if (!colCat) missing.push('Categoria');
+
+  var warn = '';
+  if (missing.length) {
+    warn = '<div class="alert">Não encontrei ' +
+      missing.map(function (m) { return '<strong>' + m + '</strong>'; }).join(' e ') +
+      ' entre as colunas. Renomeie o cabeçalho na origem e carregue de novo — ' +
+      'sem essas duas colunas não dá para decidir o estado nem o filtro de atividade.</div>';
+  }
+
+  $('baseInfo').innerHTML =
+    '<div class="panel" style="margin-top:22px;">' +
+      '<div class="panel-head"><h3>' + escapeHtml(origem) + '</h3>' +
+      '<span class="count-pill">' + fmtInt(t.records.length) + ' linhas &middot; ' + t.headers.length + ' colunas</span></div>' +
+      warn +
+      '<p class="kicker">Colunas identificadas</p>' +
+      '<div class="chips">' + chips + '</div>' +
+      '<div class="btn-row" style="margin-top:20px;">' +
+        '<button class="btn btn-primary" id="toEquipe"' + (missing.length ? ' disabled' : '') + '>Continuar para a equipe</button>' +
+      '</div>' +
+    '</div>';
+
+  var next = $('toEquipe');
+  if (next) next.addEventListener('click', function () { goStep(1); });
+  if (!missing.length) toast(fmtInt(t.records.length) + ' linhas carregadas');
+}
+
+function showBaseError(msg) {
+  $('baseInfo').innerHTML = '<div class="alert" style="margin-top:22px;">' + escapeHtml(msg) + '</div>';
+  $('status').textContent = 'nenhuma base carregada';
+  $('status').removeAttribute('data-on');
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+  });
+}
+
+async function handleFile(file) {
+  try {
+    if (/\.xlsx$/i.test(file.name)) {
+      var buf = await file.arrayBuffer();
+      afterLoad(await parseXlsx(buf), file.name);
+    } else {
+      var text = await file.text();
+      afterLoad(parseDelimited(text, detectDelimiter(text)), file.name);
+    }
+  } catch (err) {
+    showBaseError('Não consegui abrir "' + file.name + '": ' + err.message +
+      ' — se for um .xls antigo, salve como .xlsx ou copie e cole os dados.');
+  }
+}
+
+$('pick').addEventListener('click', function () { $('file').click(); });
+$('file').addEventListener('change', function (e) {
+  if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+var drop = $('drop');
+['dragenter', 'dragover'].forEach(function (ev) {
+  drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); });
+});
+['dragleave', 'drop'].forEach(function (ev) {
+  drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); });
+});
+drop.addEventListener('drop', function (e) {
+  if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+
+$('usePaste').addEventListener('click', function () {
+  var text = $('paste').value;
+  if (!norm(text)) { toast('Cole os dados no campo primeiro'); return; }
+  try {
+    afterLoad(parseDelimited(text, detectDelimiter(text)), 'dados colados');
+  } catch (err) {
+    showBaseError('Não consegui interpretar os dados colados: ' + err.message);
+  }
+});
+
+/* ---------- exemplo para conhecer o app ---------- */
+$('demo').addEventListener('click', function () {
+  var ufs = ['AC', 'AM', 'AP', 'PA', 'RO', 'RR', 'TO', 'SP', 'BA', ''];
+  var cats = ['Inativo', 'Sem Compras', 'Ativo 30 dias', 'Ativo 60 dias'];
+  var cidades = ['RIO BRANCO', 'MANAUS', 'MACAPA', 'BELEM', 'PORTO VELHO', 'BOA VISTA', 'PALMAS', 'SAO PAULO', 'SALVADOR'];
+  var linhas = [['UF', 'Cidade', 'Integrador', 'CNPJ', 'Telefone', 'E-mail', 'Categoria', 'Última Nota', 'Vendedor', 'Gerente', 'Qtde. Pedidos', 'Valor Faturado']];
+  for (var i = 1; i <= 420; i++) {
+    var uf = ufs[i % ufs.length];
+    linhas.push([
+      uf, cidades[i % cidades.length], 'INTEGRADOR SOLAR ' + String(i).padStart(3, '0') + ' LTDA',
+      String(10000000000000 + i * 7717), '(00)9' + String(1000000 + i * 13).slice(0, 7),
+      'contato' + i + '@exemplo.com.br', cats[i % cats.length],
+      '0' + ((i % 9) + 1) + '/07/2026', 'EQUIPE BI', 'GERENTE COMERCIAL',
+      (i % 40) + 1, ((i * 977) % 90000) + 1200
+    ]);
+  }
+  afterLoad(linhas, 'exemplo (420 linhas ficticias)');
+});
+
+/* ---------- configuracao da rodada ---------- */
+document.querySelectorAll('input[name="modo"]').forEach(function (r) {
+  r.addEventListener('change', function () {
+    $('ataqueBox').hidden = document.querySelector('input[name="modo"]:checked').value !== 'ataque';
+  });
+});
+
+function opcoesRodada() {
+  var modo = document.querySelector('input[name="modo"]:checked').value;
+  return {
+    gerente: $('gerente').value,
+    ataque: modo === 'ataque' ? $('ataqueUf').value : '',
+    equipeToda: $('equipeToda').checked
+  };
+}
+
+/* ---------- referencia da rodada anterior ---------- */
+function lerSnapshot() {
+  try {
+    var raw = localStorage.getItem(SNAP_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+function salvarSnapshot(snap) {
+  try { localStorage.setItem(SNAP_KEY, JSON.stringify(snap)); } catch (e) { /* sem espaco */ }
+}
+
+/* ---------- distribuir ---------- */
+$('run').addEventListener('click', function () {
+  var equipe = state.equipe
+    .map(function (v) {
+      return { vendedor: norm(v.vendedor), uf: norm(v.uf).toUpperCase(), email: norm(v.email) };
+    })
+    .filter(function (v) { return v.vendedor && v.uf; });
+
+  if (!equipe.length) { toast('Cadastre ao menos um vendedor com UF'); return; }
+  if (!state.records.length) { toast('Carregue a base na etapa 1'); goStep(0); return; }
+
+  try {
+    var opts = opcoesRodada();
+    var anterior = lerSnapshot();
+
+    state.result = distribuir(state.records, state.headers, equipe, opts);
+
+    // compara a base nova com a fotografia da rodada anterior ANTES de sobrescrever
+    state.funil = analisarFunil(state.records, state.headers, state.result, anterior);
+    state.insights = gerarInsights(state.result, state.funil);
+
+    salvarSnapshot(montarSnapshot(state.result, state.records, state.headers));
+
+    $('s2').setAttribute('data-done', '1');
+    $('s3').disabled = false;
+    $('s4').disabled = false;
+    renderResultado();
+    renderDesempenho();
+    goStep(2);
+  } catch (err) {
+    toast(err.message);
+  }
+});
+
+/* ---------- resultado ---------- */
+function renderResultado() {
+  var r = state.result;
+
+  $('resSub').innerHTML =
+    'Base de <strong>' + fmtInt(r.totalLido) + '</strong> linhas &mdash; ' +
+    escapeHtml(state.origem) + '. Cada rodada recalcula a divisão do zero.' +
+    (r.ataque ? ' <strong style="color:var(--y)">Rodada de ataque em ' + escapeHtml(r.ataque) + '.</strong>' : '');
+
+  $('stats').innerHTML =
+    stat('go', r.atribuidos.length, 'distribuídos') +
+    stat('out', r.excluidos.length, 'ativos 30 dias') +
+    stat('hold', r.foraNorte.length, 'fora do Norte') +
+    stat('hold', r.semUf.length + r.semVendedor.length + r.retidoAtaque.length + r.outraGerencia.length, 'retidos');
+
+  var maxQt = Math.max.apply(null, r.resumo.map(function (v) { return v.qtde; }).concat([1]));
+  var list = $('vendList');
+  list.innerHTML = '';
+
+  r.resumo.slice().sort(function (a, b) {
+    return a.uf === b.uf ? b.qtde - a.qtde : (a.uf < b.uf ? -1 : 1);
+  }).forEach(function (v) {
+    var row = document.createElement('div');
+    row.className = 'vrow';
+    row.innerHTML =
+      '<span class="vuf">' + escapeHtml(v.uf) + '</span>' +
+      '<span><span class="vname">' + escapeHtml(v.vendedor) + '</span>' +
+        (v.email ? '<br><span class="vmail">' + escapeHtml(v.email) + '</span>' : '') + '</span>' +
+      '<span class="vbar h-bar"><i style="width:' + Math.round(v.qtde / maxQt * 100) + '%"></i></span>' +
+      '<span class="vqt">' + fmtInt(v.qtde) + '</span>' +
+      '<span class="vval h-val">' + fmtMoney(v.valor) + '</span>';
+
+    var actions = document.createElement('span');
+    actions.className = 'btn-row';
+
+    var bCopy = document.createElement('button');
+    bCopy.className = 'btn btn-sm';
+    bCopy.textContent = 'Copiar';
+    bCopy.disabled = !v.qtde;
+    bCopy.addEventListener('click', function () {
+      copyText(toTSV(v.linhas, r.headers), bCopy, v.vendedor);
+    });
+
+    var bCsv = document.createElement('button');
+    bCsv.className = 'btn btn-sm btn-ghost';
+    bCsv.textContent = 'CSV';
+    bCsv.disabled = !v.qtde;
+    bCsv.addEventListener('click', function () {
+      download(new Blob([toCSV(v.linhas, r.headers)], { type: 'text/csv;charset=utf-8' }),
+        safeName(v.uf + ' - ' + v.vendedor) + '.csv');
+    });
+
+    actions.append(bCopy, bCsv);
+    row.appendChild(actions);
+    list.appendChild(row);
+  });
+
+  renderBuckets();
+}
+
+function stat(t, n, label) {
+  return '<div class="stat" data-t="' + t + '"><b>' + fmtInt(n) + '</b><span>' + label + '</span></div>';
+}
+
+function renderBuckets() {
+  var r = state.result;
+  var defs = [
+    ['Excluídos &mdash; ativos nos últimos 30 dias', r.excluidos,
+     'Compraram há pouco: não entram na distribuição.'],
+    ['Fora do Norte &mdash; mantidos com o vendedor atual', r.foraNorte,
+     'Regra fixa: a equipe só prospecta AC, AM, AP, PA, RO, RR e TO. ' +
+     'Estes clientes continuam na carteira de quem já os atende — a coluna Vendedor mostra com quem.'],
+    ['Sem UF &mdash; não foi possível rotear', r.semUf,
+     'A coluna UF está vazia nessas linhas. Complete na origem e rode de novo.'],
+    ['UF do Norte sem vendedor cadastrado', r.semVendedor,
+     'Clientes do Norte que não têm ninguém responsável na etapa 2.'],
+    ['Retidos pela rodada de ataque', r.retidoAtaque,
+     'Outras UFs do Norte, guardadas para a próxima rodada normal.'],
+    ['Carteira de outra gerência', r.outraGerencia,
+     'Gerente diferente do configurado na etapa 2: não são tocados.']
+  ].filter(function (d) { return d[1].length; });
+
+  var wrap = $('buckets');
+  wrap.innerHTML = '';
+
+  defs.forEach(function (d, i) {
+    var det = document.createElement('details');
+    var rows = d[1];
+    det.innerHTML =
+      '<summary>' + d[0] + '<span class="count-pill">' + fmtInt(rows.length) + '</span></summary>' +
+      '<div class="details-body">' +
+        '<p class="hint" style="margin:0 0 12px;">' + d[2] + '</p>' +
+        (rows.length
+          ? '<div class="btn-row" style="margin-bottom:12px;">' +
+              '<button class="btn btn-sm" data-copy="' + i + '">Copiar</button>' +
+              '<button class="btn btn-sm btn-ghost" data-csv="' + i + '">CSV</button>' +
+            '</div>' + previewTable(rows, r.headers)
+          : '<p class="empty" style="padding:22px;">Nenhuma linha nesta situação.</p>') +
+      '</div>';
+    wrap.appendChild(det);
+
+    var cp = det.querySelector('[data-copy]');
+    if (cp) cp.addEventListener('click', function () { copyText(toTSV(rows, r.headers), cp, d[0]); });
+    var cs = det.querySelector('[data-csv]');
+    if (cs) cs.addEventListener('click', function () {
+      download(new Blob([toCSV(rows, r.headers)], { type: 'text/csv;charset=utf-8' }),
+        safeName(d[0].replace(/&mdash;.*/, '').trim()) + '.csv');
+    });
+  });
+}
+
+function previewTable(rows, headers) {
+  var LIMIT = 60;
+  var head = '<tr>' + headers.map(function (h) { return '<th>' + escapeHtml(h) + '</th>'; }).join('') + '</tr>';
+  var body = rows.slice(0, LIMIT).map(function (r) {
+    return '<tr>' + headers.map(function (h) {
+      return '<td>' + escapeHtml(r[h] === undefined ? '' : r[h]) + '</td>';
+    }).join('') + '</tr>';
+  }).join('');
+  var more = rows.length > LIMIT
+    ? '<p class="hint">Mostrando as primeiras ' + LIMIT + ' de ' + fmtInt(rows.length) + ' linhas. Copiar / CSV levam todas.</p>'
+    : '';
+  return '<div class="tablewrap"><table><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>' + more;
+}
+
+/* ---------- ETAPA 4: funil de aproveitamento + analises ---------- */
+
+function nivelTaxa(t) { return t >= 0.12 ? 'bom' : (t >= 0.06 ? 'neutro' : 'ruim'); }
+
+function renderDesempenho() {
+  var f = state.funil;
+  var hoje = new Date();
+  $('dataHoje').textContent = hoje.toLocaleDateString('pt-BR');
+
+  if (!f) {
+    $('perfSub').innerHTML =
+      'Esta é a primeira rodada registrada, então ainda não há com o que comparar. ' +
+      'A carteira de agora ficou guardada como referência: <strong>na próxima base que você carregar</strong>, ' +
+      'o app mostra quem conseguiu transformar cliente parado em <strong>Ativo 30 dias</strong>.';
+    $('funil').innerHTML = '';
+  } else {
+    var desde = new Date(f.desde);
+    $('perfSub').innerHTML =
+      'Comparando a base de agora com a rodada de <strong>' +
+      desde.toLocaleDateString('pt-BR') + ' às ' +
+      desde.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) +
+      '</strong>. Cliente que estava parado e agora aparece como Ativo 30 dias conta como conversão ' +
+      'de quem o tinha na carteira.';
+
+    var cards =
+      '<div class="funil-grid">' +
+        '<div class="stat" data-t="go"><b>' + pct(f.taxaGeral) + '</b><span>aproveitamento</span></div>' +
+        '<div class="stat" data-t="go"><b>' + fmtInt(f.totalConversoes) + '</b><span>clientes reativados</span></div>' +
+        '<div class="stat" data-t="hold"><b>' + fmtInt(f.aindaAbertos) + '</b><span>ainda em aberto</span></div>' +
+        '<div class="stat" data-t="hold"><b>' + fmtMoney(f.totalValor) + '</b><span>faturamento reativado</span></div>' +
+      '</div>';
+
+    var maxTaxa = Math.max.apply(null, f.vendedores.map(function (v) { return v.taxa; }).concat([0.01]));
+    var linhas = f.vendedores.map(function (v) {
+      return '<div class="frow">' +
+        '<span class="vuf">' + escapeHtml(v.uf) + '</span>' +
+        '<span class="vname">' + escapeHtml(v.vendedor) + '</span>' +
+        '<span class="fbar"><i style="width:' + Math.round(v.taxa / maxTaxa * 100) + '%"></i></span>' +
+        '<span class="vqt">' + fmtInt(v.conversoes) + ' / ' + fmtInt(v.carteira) + '</span>' +
+        '<span class="taxa" data-lvl="' + nivelTaxa(v.taxa) + '">' + pct(v.taxa) + '</span>' +
+        '<span class="vval">' + fmtMoney(v.valor) + '</span>' +
+      '</div>';
+    }).join('');
+
+    var ufLinhas = f.ufs.map(function (u) {
+      return '<div class="frow">' +
+        '<span class="vuf">' + escapeHtml(u.uf) + '</span>' +
+        '<span class="vname">Região ' + escapeHtml(u.uf) + '</span>' +
+        '<span class="fbar"><i style="width:' + Math.round(u.taxa / maxTaxa * 100) + '%"></i></span>' +
+        '<span class="vqt">' + fmtInt(u.conversoes) + ' / ' + fmtInt(u.carteira) + '</span>' +
+        '<span class="taxa" data-lvl="' + nivelTaxa(u.taxa) + '">' + pct(u.taxa) + '</span>' +
+        '<span class="vval">' + fmtMoney(u.valor) + '</span>' +
+      '</div>';
+    }).join('');
+
+    var cabecalho =
+      '<div class="fhead"><span>UF</span><span>Vendedor</span><span class="h-bar">Aproveitamento</span>' +
+      '<span class="r">Reativados</span><span class="r">Taxa</span><span class="r h-val">Faturado</span></div>';
+
+    $('funil').innerHTML = cards +
+      '<div class="panel"><div class="panel-head"><h3>Quem conseguiu reativar</h3>' +
+        '<button class="btn btn-sm" id="copyFunil">Copiar ranking</button></div>' +
+        cabecalho + '<div class="vend">' + linhas + '</div>' +
+        '<p class="hint">Reativados = clientes que estavam parados na rodada anterior com esse vendedor ' +
+        'e que agora aparecem como Ativo 30 dias.</p>' +
+      '</div>' +
+      '<div class="panel"><div class="panel-head"><h3>Por região</h3></div>' +
+        cabecalho.replace('Vendedor', 'Estado') + '<div class="vend">' + ufLinhas + '</div>' +
+      '</div>';
+
+    var cf = $('copyFunil');
+    if (cf) cf.addEventListener('click', function () {
+      var rows = f.vendedores.map(function (v) {
+        return {
+          Vendedor: v.vendedor, UF: v.uf, 'Carteira anterior': v.carteira,
+          Reativados: v.conversoes, 'Taxa': pct(v.taxa), 'Faturamento reativado': v.valor
+        };
+      });
+      copyText(toTSV(rows, ['Vendedor', 'UF', 'Carteira anterior', 'Reativados', 'Taxa', 'Faturamento reativado']), cf, null);
+    });
+  }
+
+  renderInsights();
+}
+
+function renderInsights() {
+  var wrap = $('insights');
+  if (!state.insights.length) {
+    wrap.innerHTML = '<p class="empty">Nenhum alerta nesta rodada.</p>';
+    return;
+  }
+  wrap.innerHTML = state.insights.map(function (i) {
+    var extra = '';
+    if (i.lista && i.lista.length) {
+      var colI = findCol(state.result.headers, 'Integrador (CLI - Nome)') || findCol(state.result.headers, 'Integrador');
+      var colV = state.result.colValor;
+      extra = '<ol class="hint" style="margin:10px 0 0;padding-left:20px;line-height:1.8;">' +
+        i.lista.slice(0, 5).map(function (r) {
+          return '<li>' + escapeHtml(norm(r[colI]).slice(0, 52)) +
+            ' &mdash; <strong>' + fmtMoney(colV ? toNumber(r[colV]) : 0) + '</strong>' +
+            ' <span style="color:var(--y)">' + escapeHtml(r.__vendedor || '') + '</span></li>';
+        }).join('') + '</ol>';
+    }
+    var acaoUf = i.ufSugerida
+      ? ' <button class="btn btn-sm" data-uf="' + escapeHtml(i.ufSugerida) + '" style="margin-top:9px;">Preparar ataque em ' + escapeHtml(i.ufSugerida) + '</button>'
+      : '';
+    return '<div class="insight" data-n="' + i.nivel + '">' +
+      '<h4>' + escapeHtml(i.titulo) + '</h4>' +
+      '<p>' + escapeHtml(i.texto) + '</p>' + extra +
+      '<p class="acao"><b>O que fazer</b>' + escapeHtml(i.acao) + '</p>' + acaoUf +
+    '</div>';
+  }).join('');
+
+  wrap.querySelectorAll('[data-uf]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelector('input[name="modo"][value="ataque"]').checked = true;
+      $('ataqueBox').hidden = false;
+      $('ataqueUf').value = btn.getAttribute('data-uf');
+      goStep(1);
+      toast('Ataque em ' + btn.getAttribute('data-uf') + ' preparado — confira a equipe e distribua');
+    });
+  });
+}
+
+$('copyInsights').addEventListener('click', function () {
+  var hoje = new Date().toLocaleDateString('pt-BR');
+  var txt = 'ANALISE COMERCIAL - ' + hoje + '\n\n' + state.insights.map(function (i, n) {
+    return (n + 1) + '. ' + i.titulo + '\n   ' + i.texto + '\n   > ' + i.acao;
+  }).join('\n\n');
+  copyText(txt, $('copyInsights'), null);
+});
+
+/* ---------- copiar / exportar ---------- */
+function copyText(text, btn, label) {
+  var okMsg = label ? 'Carteira de ' + label + ' copiada' : 'Copiado';
+  function done() {
+    if (btn) {
+      var old = btn.textContent;
+      btn.textContent = 'Copiado';
+      btn.setAttribute('data-ok', '1');
+      setTimeout(function () { btn.textContent = old; btn.removeAttribute('data-ok'); }, 1700);
+    }
+    toast(okMsg + ' — cole no Sheets ou Excel');
+  }
+  function fallback() {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    if (ok) done(); else toast('O navegador bloqueou a cópia — use o botão CSV');
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, fallback);
+  } else fallback();
+}
+
+$('copyResumo').addEventListener('click', function () {
+  var r = state.result;
+  var rows = r.resumo.map(function (v) {
+    return { Vendedor: v.vendedor, UF: v.uf, 'E-mail': v.email, Clientes: v.qtde, 'Valor Faturado': v.valor };
+  });
+  copyText(toTSV(rows, ['Vendedor', 'UF', 'E-mail', 'Clientes', 'Valor Faturado']), $('copyResumo'), null);
+});
+
+$('zipAll').addEventListener('click', function () {
+  var r = state.result;
+  var entries = r.resumo.filter(function (v) { return v.qtde; }).map(function (v) {
+    return { name: safeName(v.uf) + '/' + safeName(v.vendedor) + '.csv', content: toCSV(v.linhas, r.headers) };
+  });
+  entries.push({
+    name: 'RESUMO.csv',
+    content: toCSV(r.resumo.map(function (v) {
+      return { Vendedor: v.vendedor, UF: v.uf, 'E-mail': v.email, Clientes: v.qtde, 'Valor Faturado': v.valor };
+    }), ['Vendedor', 'UF', 'E-mail', 'Clientes', 'Valor Faturado'])
+  });
+  if (r.semUf.length) entries.push({ name: 'NAO DISTRIBUIDO - sem UF.csv', content: toCSV(r.semUf, r.headers) });
+  if (r.foraEscopo.length) entries.push({ name: 'NAO DISTRIBUIDO - fora de escopo.csv', content: toCSV(r.foraEscopo, r.headers) });
+  if (r.excluidos.length) entries.push({ name: 'EXCLUIDOS - ativo 30 dias.csv', content: toCSV(r.excluidos, r.headers) });
+
+  var d = new Date();
+  var stamp = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+  download(buildZip(entries), 'carteira-' + stamp + '.zip');
+  toast('Arquivo .zip gerado com ' + entries.length + ' planilhas');
+});
+
+/* ---------- inicializacao ---------- */
+state.equipe = loadEquipe();
+renderEquipe();
+$('gerente').value = GERENTE_PADRAO;

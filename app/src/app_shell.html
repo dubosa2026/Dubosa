@@ -1,0 +1,560 @@
+<title>BelEnergy — Distribuição de Carteira</title>
+<style>
+@font-face{font-family:'Archivo';font-style:normal;font-weight:400 800;font-display:swap;
+src:url(data:font/woff2;base64,__ARCHIVO__) format('woff2');}
+@font-face{font-family:'PlexSans';font-style:normal;font-weight:400 600;font-display:swap;
+src:url(data:font/woff2;base64,__PLEXSANS__) format('woff2');}
+@font-face{font-family:'PlexMono';font-style:normal;font-weight:400;font-display:swap;
+src:url(data:font/woff2;base64,__PLEXMONO400__) format('woff2');}
+@font-face{font-family:'PlexMono';font-style:normal;font-weight:600;font-display:swap;
+src:url(data:font/woff2;base64,__PLEXMONO600__) format('woff2');}
+
+/* Identidade fixa: preto e amarelo BelEnergy, um unico mundo visual. */
+:root{
+  --bg:#0A0A0B; --panel:#131316; --panel-2:#1A1A1E; --panel-3:#232329;
+  --line:#2A2A31; --line-2:#3A3A43;
+  --text:#F4F4F1; --text-2:#9E9EA0; --text-3:#6B6B70;
+  --y:#FFC72C; --y-hi:#FFD966; --y-dim:#8A6A12; --y-wash:#241D07;
+  --ok:#42C98B; --ok-wash:#0F2A1E;
+  --no:#FF6B6B; --no-wash:#2C1414;
+  --neutral:#7E8794; --neutral-wash:#1B1F24;
+  --radius:10px;
+  --ui:'PlexSans',system-ui,-apple-system,sans-serif;
+  --dp:'Archivo',system-ui,sans-serif;
+  --mono:'PlexMono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:var(--ui);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;}
+::selection{background:var(--y);color:#000;}
+
+/* ---------------- top bar ---------------- */
+.topbar{
+  position:sticky;top:0;z-index:40;background:rgba(10,10,11,.92);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
+}
+.topbar-in{
+  max-width:1240px;margin:0 auto;padding:14px 22px;
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+}
+.brand{display:flex;align-items:center;gap:11px;}
+.brand svg{display:block;flex:none;}
+.wordmark{
+  font-family:var(--dp);font-weight:800;font-size:19px;letter-spacing:-.02em;
+  line-height:1;white-space:nowrap;
+}
+.wordmark .b{color:var(--text);}
+.wordmark .e{color:var(--y);}
+.brand-div{width:1px;height:26px;background:var(--line-2);}
+.appname{
+  font-family:var(--dp);font-weight:600;font-size:14px;letter-spacing:.01em;color:var(--text-2);
+}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.statuschip{
+  font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;padding:5px 11px;border-radius:99px;
+  border:1px solid var(--line-2);color:var(--text-3);white-space:nowrap;
+}
+.statuschip[data-on="1"]{border-color:var(--ok);color:var(--ok);background:var(--ok-wash);}
+
+/* ---------------- steps ---------------- */
+.steps{border-bottom:1px solid var(--line);background:var(--bg);position:sticky;top:57px;z-index:35;}
+.steps-in{max-width:1240px;margin:0 auto;padding:0 22px;display:flex;gap:2px;overflow-x:auto;}
+.step{
+  appearance:none;background:none;border:0;cursor:pointer;white-space:nowrap;
+  display:flex;align-items:center;gap:9px;padding:15px 16px;
+  border-bottom:2px solid transparent;margin-bottom:-1px;color:var(--text-3);
+  font-size:13.5px;font-weight:500;transition:color .15s,border-color .15s;
+}
+.step:hover:not(:disabled){color:var(--text);}
+.step:disabled{opacity:.4;cursor:not-allowed;}
+.step[aria-selected="true"]{color:var(--y);border-bottom-color:var(--y);}
+.step-n{
+  font-family:var(--mono);font-size:10.5px;font-weight:600;
+  width:20px;height:20px;border-radius:50%;display:grid;place-items:center;
+  border:1px solid currentColor;flex:none;
+}
+.step[aria-selected="true"] .step-n{background:var(--y);color:#000;border-color:var(--y);}
+.step[data-done="1"]:not([aria-selected="true"]) .step-n{background:var(--ok);color:#000;border-color:var(--ok);}
+
+main{max-width:1240px;margin:0 auto;padding:32px 22px 100px;}
+.pane[hidden]{display:none;}
+
+/* ---------------- typography ---------------- */
+h2{font-family:var(--dp);font-weight:700;font-size:1.5rem;letter-spacing:-.015em;margin:0 0 6px;}
+h3{font-family:var(--dp);font-weight:600;font-size:1.02rem;margin:0 0 4px;letter-spacing:-.005em;}
+.sub{color:var(--text-2);margin:0 0 22px;max-width:66ch;font-size:.95rem;}
+.kicker{
+  font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--y);margin:0 0 9px;
+}
+.mono{font-family:var(--mono);}
+.tnum{font-variant-numeric:tabular-nums;}
+
+/* ---------------- buttons ---------------- */
+.btn{
+  appearance:none;cursor:pointer;border-radius:7px;border:1px solid var(--line-2);
+  background:var(--panel-2);color:var(--text);
+  font-size:13.5px;font-weight:500;padding:9px 15px;
+  display:inline-flex;align-items:center;gap:7px;
+  transition:background .14s,border-color .14s,color .14s,transform .06s;
+}
+.btn:hover:not(:disabled){background:var(--panel-3);border-color:var(--line-2);}
+.btn:active:not(:disabled){transform:translateY(1px);}
+.btn:disabled{opacity:.42;cursor:not-allowed;}
+.btn:focus-visible{outline:2px solid var(--y);outline-offset:2px;}
+.btn-primary{
+  background:var(--y);color:#0A0A0B;border-color:var(--y);font-weight:600;
+}
+.btn-primary:hover:not(:disabled){background:var(--y-hi);border-color:var(--y-hi);}
+.btn-sm{font-size:12px;padding:6px 11px;border-radius:6px;}
+.btn-ghost{background:transparent;}
+.btn[data-ok="1"]{background:var(--ok);border-color:var(--ok);color:#0A0A0B;}
+.btn-row{display:flex;gap:9px;flex-wrap:wrap;align-items:center;}
+
+/* ---------------- panels ---------------- */
+.panel{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:22px;margin-bottom:18px;
+}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px;}
+.panel-head h3{margin:0;}
+
+/* ---------------- dropzone ---------------- */
+.drop{
+  border:1.5px dashed var(--line-2);border-radius:var(--radius);
+  padding:44px 24px;text-align:center;background:var(--panel);
+  transition:border-color .16s,background .16s;
+}
+.drop.over{border-color:var(--y);background:var(--y-wash);}
+.drop-icon{color:var(--y);margin-bottom:14px;}
+.drop h3{font-size:1.12rem;margin-bottom:5px;}
+.drop p{color:var(--text-2);margin:0 0 18px;font-size:.92rem;}
+.drop input[type=file]{display:none;}
+.or{
+  display:flex;align-items:center;gap:14px;margin:22px 0 16px;
+  color:var(--text-3);font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line);}
+textarea{
+  width:100%;min-height:130px;resize:vertical;
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  color:var(--text);font-family:var(--mono);font-size:12px;line-height:1.6;padding:13px;
+}
+textarea:focus{outline:2px solid var(--y);outline-offset:-1px;border-color:transparent;}
+textarea::placeholder{color:var(--text-3);}
+
+/* ---------------- column chips ---------------- */
+.chips{display:flex;flex-wrap:wrap;gap:7px;}
+.chip{
+  font-family:var(--mono);font-size:11.5px;padding:4px 10px;border-radius:5px;
+  background:var(--panel-2);border:1px solid var(--line);color:var(--text-2);
+}
+.chip[data-key="1"]{border-color:var(--ok);color:var(--ok);background:var(--ok-wash);font-weight:600;}
+.chip[data-miss="1"]{border-color:var(--no);color:var(--no);background:var(--no-wash);font-weight:600;}
+
+/* ---------------- tables ---------------- */
+.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel);max-height:420px;}
+table{border-collapse:collapse;width:100%;font-size:12.5px;}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap;}
+th{
+  font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--text-3);background:var(--panel-2);position:sticky;top:0;z-index:2;
+}
+tbody tr:hover{background:var(--panel-2);}
+tbody tr:last-child td{border-bottom:0;}
+td.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;}
+
+/* equipe (editavel) */
+.equipe input{
+  width:100%;background:transparent;border:1px solid transparent;border-radius:5px;
+  color:var(--text);font-family:inherit;font-size:12.5px;padding:5px 7px;
+}
+.equipe input:hover{border-color:var(--line);}
+.equipe input:focus{outline:none;border-color:var(--y);background:var(--panel-2);}
+.equipe input.uf{font-family:var(--mono);text-transform:uppercase;font-weight:600;color:var(--y);width:64px;}
+.equipe td{padding:3px 8px;}
+.rm{
+  appearance:none;background:none;border:0;cursor:pointer;color:var(--text-3);
+  font-size:15px;line-height:1;padding:4px 7px;border-radius:5px;
+}
+.rm:hover{color:var(--no);background:var(--no-wash);}
+
+/* ---------------- stats ---------------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;margin-bottom:22px;}
+.stat{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px 18px;border-left:3px solid var(--line-2);
+}
+.stat b{
+  display:block;font-family:var(--dp);font-weight:700;font-size:1.85rem;line-height:1.1;
+  letter-spacing:-.02em;font-variant-numeric:tabular-nums;
+}
+.stat span{
+  display:block;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--text-3);margin-top:6px;
+}
+.stat[data-t="go"]{border-left-color:var(--y);} .stat[data-t="go"] b{color:var(--y);}
+.stat[data-t="out"]{border-left-color:var(--no);} .stat[data-t="out"] b{color:var(--no);}
+.stat[data-t="hold"]{border-left-color:var(--neutral);} .stat[data-t="hold"] b{color:var(--neutral);}
+
+/* ---------------- vendedores / barras ---------------- */
+.vend{border-top:1px solid var(--line);}
+.vrow{
+  display:grid;grid-template-columns:34px minmax(0,1fr) 160px 92px 108px auto;
+  gap:12px;align-items:center;padding:11px 8px;border-bottom:1px solid var(--line);
+}
+/* sem isto a coluna flexivel nao encolhe abaixo do nome (nowrap) e a linha vaza */
+.vrow > *{min-width:0;}
+.vrow:hover{background:var(--panel-2);}
+.vuf{
+  font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--y);
+  background:var(--y-wash);border:1px solid var(--y-dim);border-radius:4px;
+  padding:2px 0;text-align:center;
+}
+.vname{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
+.vmail{font-family:var(--mono);font-size:10.5px;color:var(--text-3);}
+.vbar{height:6px;background:var(--panel-3);border-radius:99px;overflow:hidden;}
+.vbar i{display:block;height:100%;background:var(--y);border-radius:99px;}
+.vqt{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;text-align:right;}
+.vval{font-family:var(--mono);font-size:11.5px;color:var(--text-2);font-variant-numeric:tabular-nums;text-align:right;}
+.vhead{
+  display:grid;grid-template-columns:34px minmax(0,1fr) 160px 92px 108px auto;gap:12px;
+  padding:0 8px 8px;font-family:var(--mono);font-size:10px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);
+}
+.vhead .r{text-align:right;}
+
+/* ---------------- disclosure ---------------- */
+details{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  margin-bottom:12px;overflow:hidden;
+}
+summary{
+  cursor:pointer;padding:14px 18px;display:flex;align-items:center;gap:12px;
+  font-size:13.5px;font-weight:500;list-style:none;
+}
+summary::-webkit-details-marker{display:none;}
+summary::before{
+  content:"";width:0;height:0;border-left:5px solid var(--text-3);
+  border-top:4px solid transparent;border-bottom:4px solid transparent;
+  transition:transform .16s;flex:none;
+}
+details[open] summary::before{transform:rotate(90deg);}
+summary:hover{background:var(--panel-2);}
+.count-pill{
+  font-family:var(--mono);font-size:11px;font-weight:600;padding:2px 9px;border-radius:99px;
+  border:1px solid var(--line-2);color:var(--text-2);margin-left:auto;
+}
+.details-body{padding:0 18px 18px;}
+
+/* ---------------- formulario ---------------- */
+.field label,.lbl{
+  display:block;font-family:var(--mono);font-size:10.5px;font-weight:600;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--text-3);margin-bottom:7px;
+}
+.field input[type=text],select{
+  width:100%;max-width:420px;background:var(--panel-2);border:1px solid var(--line);
+  border-radius:7px;color:var(--text);font-family:inherit;font-size:13.5px;padding:9px 12px;
+}
+select{max-width:260px;}
+.field input:focus,select:focus{outline:2px solid var(--y);outline-offset:-1px;border-color:transparent;}
+.radios{display:grid;gap:9px;}
+.radio,.check,.field label.radio,.field label.check{
+  display:flex;align-items:flex-start;gap:11px;cursor:pointer;line-height:1.5;
+  font-family:inherit;font-size:13.5px;font-weight:400;letter-spacing:normal;
+  text-transform:none;color:var(--text-2);margin-bottom:0;
+}
+.radio input,.check input{
+  appearance:none;width:16px;height:16px;flex:none;margin-top:3px;cursor:pointer;
+  border:1.5px solid var(--line-2);background:var(--panel-2);position:relative;
+}
+.radio input{border-radius:50%;}
+.check input{border-radius:4px;}
+.radio input:checked,.check input:checked{border-color:var(--y);background:var(--y);}
+.radio input:checked::after{
+  content:"";position:absolute;inset:3.5px;border-radius:50%;background:#0A0A0B;
+}
+.check input:checked::after{
+  content:"";position:absolute;left:4.5px;top:1px;width:4px;height:8px;
+  border:solid #0A0A0B;border-width:0 2px 2px 0;transform:rotate(42deg);
+}
+.radio input:focus-visible,.check input:focus-visible{outline:2px solid var(--y);outline-offset:2px;}
+.radio strong,.check strong{font-weight:600;color:var(--text);}
+.inline-field{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.inline-field label{margin-bottom:0;}
+
+/* ---------------- funil ---------------- */
+.funil-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px;}
+.frow{
+  display:grid;grid-template-columns:34px minmax(0,1fr) 120px 92px 86px 108px;
+  gap:12px;align-items:center;padding:10px 8px;border-bottom:1px solid var(--line);
+}
+.frow > *{min-width:0;}
+.frow:hover{background:var(--panel-2);}
+.fhead{
+  display:grid;grid-template-columns:34px minmax(0,1fr) 120px 92px 86px 108px;gap:12px;
+  padding:0 8px 8px;font-family:var(--mono);font-size:10px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);
+}
+.fhead .r{text-align:right;}
+.taxa{
+  font-family:var(--mono);font-size:12.5px;font-weight:600;text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+.taxa[data-lvl="bom"]{color:var(--ok);}
+.taxa[data-lvl="neutro"]{color:var(--y);}
+.taxa[data-lvl="ruim"]{color:var(--no);}
+.fbar{height:6px;background:var(--panel-3);border-radius:99px;overflow:hidden;}
+.fbar i{display:block;height:100%;border-radius:99px;background:var(--ok);}
+
+/* ---------------- insights ---------------- */
+.insight{
+  border:1px solid var(--line);border-left:3px solid var(--line-2);border-radius:8px;
+  padding:16px 18px;margin-bottom:11px;background:var(--panel-2);
+}
+.insight[data-n="bom"]{border-left-color:var(--ok);}
+.insight[data-n="ruim"]{border-left-color:var(--no);}
+.insight[data-n="neutro"]{border-left-color:var(--y);}
+.insight h4{margin:0 0 6px;font-family:var(--dp);font-size:1rem;font-weight:600;letter-spacing:-.005em;}
+.insight p{margin:0 0 9px;color:var(--text-2);font-size:.93rem;}
+.insight .acao{
+  margin:0;color:var(--text);font-size:.92rem;padding-left:13px;border-left:2px solid var(--line-2);
+}
+.insight .acao b{color:var(--y);font-weight:600;font-size:10.5px;font-family:var(--mono);
+  letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:3px;}
+
+/* ---------------- misc ---------------- */
+.alert{
+  border-left:3px solid var(--no);background:var(--no-wash);color:var(--text);
+  padding:13px 16px;border-radius:0 7px 7px 0;margin-bottom:16px;font-size:.92rem;
+}
+.alert[data-t="info"]{border-left-color:var(--y);background:var(--y-wash);}
+.empty{color:var(--text-3);text-align:center;padding:44px 20px;font-size:.93rem;}
+.hint{color:var(--text-3);font-size:.85rem;margin:8px 0 0;}
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(90px);
+  background:var(--y);color:#0A0A0B;font-weight:600;font-size:13.5px;
+  padding:11px 20px;border-radius:99px;z-index:90;opacity:0;
+  transition:transform .24s cubic-bezier(.2,.8,.3,1),opacity .24s;pointer-events:none;
+}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+@media (prefers-reduced-motion:reduce){.toast{transition:none;}}
+
+@media (max-width:820px){
+  .vrow,.vhead{grid-template-columns:32px minmax(0,1fr) auto;gap:10px;}
+  .vrow .vbar,.vrow .vval,.vhead .h-bar,.vhead .h-val{display:none;}
+  .vrow .btn-row{grid-column:1 / -1;}
+  .frow,.fhead{grid-template-columns:32px minmax(0,1fr) 72px 62px;gap:10px;}
+  .frow .fbar,.fhead .h-bar,.frow .vval,.fhead .h-val{display:none;}
+  .funil-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .funil-grid .stat b{font-size:1.12rem;overflow-wrap:anywhere;}
+  main{padding:24px 16px 80px;}
+  .topbar-in,.steps-in{padding-left:16px;padding-right:16px;}
+}
+</style>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="6.4" fill="#FFC72C"/>
+        <g stroke="#FFC72C" stroke-width="2.4" stroke-linecap="round">
+          <line x1="16" y1="1.8" x2="16" y2="6"/><line x1="16" y1="26" x2="16" y2="30.2"/>
+          <line x1="1.8" y1="16" x2="6" y2="16"/><line x1="26" y1="16" x2="30.2" y2="16"/>
+          <line x1="5.9" y1="5.9" x2="8.9" y2="8.9"/><line x1="23.1" y1="23.1" x2="26.1" y2="26.1"/>
+          <line x1="5.9" y1="26.1" x2="8.9" y2="23.1"/><line x1="23.1" y1="8.9" x2="26.1" y2="5.9"/>
+        </g>
+      </svg>
+      <span class="wordmark"><span class="b">BEL</span><span class="e">ENERGY</span></span>
+    </div>
+    <div class="brand-div"></div>
+    <span class="appname">Distribuição de Carteira</span>
+    <div class="topbar-right">
+      <span class="statuschip" id="status">nenhuma base carregada</span>
+    </div>
+  </div>
+</header>
+
+<nav class="steps">
+  <div class="steps-in" role="tablist" aria-label="Etapas">
+    <button class="step" role="tab" id="s1" aria-controls="p1" aria-selected="true">
+      <span class="step-n">1</span> Base do BI
+    </button>
+    <button class="step" role="tab" id="s2" aria-controls="p2" aria-selected="false">
+      <span class="step-n">2</span> Equipe
+    </button>
+    <button class="step" role="tab" id="s3" aria-controls="p3" aria-selected="false" disabled>
+      <span class="step-n">3</span> Distribuição
+    </button>
+    <button class="step" role="tab" id="s4" aria-controls="p4" aria-selected="false" disabled>
+      <span class="step-n">4</span> Desempenho
+    </button>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ============ 1. BASE ============ -->
+  <section class="pane" id="p1" role="tabpanel" aria-labelledby="s1">
+    <p class="kicker">Etapa 1</p>
+    <h2>Carregue a base exportada do BI</h2>
+    <p class="sub">
+      Arraste o arquivo <strong>.xlsx</strong> ou <strong>.csv</strong> que a sua macro exporta, ou
+      copie os dados no Excel e cole no campo abaixo. Nada é enviado para fora: o processamento
+      acontece inteiramente neste navegador.
+    </p>
+
+    <div class="drop" id="drop">
+      <div class="drop-icon">
+        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5-5 5 5"/><path d="M12 5v13"/>
+        </svg>
+      </div>
+      <h3>Arraste o arquivo aqui</h3>
+      <p>.xlsx exportado do BI, ou .csv</p>
+      <button class="btn btn-primary" id="pick">Escolher arquivo</button>
+      <input type="file" id="file" accept=".xlsx,.csv,.txt,.tsv">
+    </div>
+
+    <div class="or">ou cole os dados</div>
+    <textarea id="paste" placeholder="Selecione tudo no Excel (Ctrl+A), copie (Ctrl+C) e cole aqui (Ctrl+V) — com a linha de cabeçalho."></textarea>
+    <div class="btn-row" style="margin-top:11px;">
+      <button class="btn" id="usePaste">Usar dados colados</button>
+      <button class="btn btn-ghost" id="demo">Carregar exemplo</button>
+    </div>
+
+    <div id="baseInfo"></div>
+  </section>
+
+  <!-- ============ 2. EQUIPE ============ -->
+  <section class="pane" id="p2" role="tabpanel" aria-labelledby="s2" hidden>
+    <p class="kicker">Etapa 2</p>
+    <h2>Equipe e estados de atuação</h2>
+    <p class="sub">
+      Quem recebe clientes de cada UF. O e-mail é opcional — serve para você saber
+      para quem enviar a carteira depois. As alterações ficam salvas neste navegador.
+    </p>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Vendedores <span class="count-pill" id="equipeCount">0</span></h3>
+        <div class="btn-row">
+          <button class="btn btn-sm" id="addVend">+ Adicionar vendedor</button>
+          <button class="btn btn-sm btn-ghost" id="resetVend">Restaurar padrão</button>
+        </div>
+      </div>
+      <div class="tablewrap equipe" style="max-height:none;">
+        <table>
+          <thead>
+            <tr><th style="width:44%;">Vendedor</th><th style="width:86px;">UF</th><th>E-mail</th><th style="width:40px;"></th></tr>
+          </thead>
+          <tbody id="equipeBody"></tbody>
+        </table>
+      </div>
+      <p class="hint">Uma UF com um único vendedor entrega toda a carteira daquele estado para ele.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>Configuração da rodada</h3></div>
+
+      <div class="field">
+        <label for="gerente">Gerente responsável pela operação</label>
+        <input type="text" id="gerente" placeholder="EDUARDO LUIZ DOS SANTOS">
+        <p class="hint">Clientes de outra gerência não são tocados. Deixe em branco para ignorar essa checagem.</p>
+      </div>
+
+      <div class="field" style="margin-top:20px;">
+        <span class="lbl">Tipo de rodada</span>
+        <div class="radios">
+          <label class="radio"><input type="radio" name="modo" value="normal" checked>
+            <span><strong>Normal</strong> — cada UF do Norte é dividida entre os vendedores dela</span></label>
+          <label class="radio"><input type="radio" name="modo" value="ataque">
+            <span><strong>Ataque a um estado</strong> — a rodada inteira foca numa UF só</span></label>
+        </div>
+      </div>
+
+      <div id="ataqueBox" hidden style="margin-top:14px;padding-left:26px;">
+        <div class="inline-field">
+          <label for="ataqueUf">Estado do ataque</label>
+          <select id="ataqueUf">
+            <option value="AC">AC — Acre</option>
+            <option value="AM">AM — Amazonas</option>
+            <option value="AP">AP — Amapá</option>
+            <option value="PA">PA — Pará</option>
+            <option value="RO">RO — Rondônia</option>
+            <option value="RR">RR — Roraima</option>
+            <option value="TO">TO — Tocantins</option>
+          </select>
+        </div>
+        <label class="check" style="margin-top:12px;">
+          <input type="checkbox" id="equipeToda" checked>
+          <span>Envolver a equipe toda — todos os vendedores recebem uma fatia desse estado</span>
+        </label>
+        <p class="hint">As outras UFs do Norte ficam retidas nesta rodada e voltam na próxima rodada normal.</p>
+      </div>
+
+      <div class="alert" data-t="info" style="margin:20px 0 0;">
+        <strong>Regra fixa:</strong> só a Região Norte (AC, AM, AP, PA, RO, RR, TO) é distribuída.
+        Clientes de qualquer outro estado nunca são redistribuídos — permanecem com o vendedor
+        que já os atende na carteira.
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="run">Distribuir carteira</button>
+    </div>
+  </section>
+
+  <!-- ============ 3. RESULTADO ============ -->
+  <section class="pane" id="p3" role="tabpanel" aria-labelledby="s3" hidden>
+    <p class="kicker">Etapa 3</p>
+    <h2>Carteira distribuída</h2>
+    <p class="sub" id="resSub"></p>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Por vendedor</h3>
+        <div class="btn-row">
+          <button class="btn btn-sm" id="copyResumo">Copiar resumo</button>
+          <button class="btn btn-sm btn-primary" id="zipAll">Baixar tudo (.zip)</button>
+        </div>
+      </div>
+      <div class="vhead">
+        <span>UF</span><span>Vendedor</span><span class="h-bar">Volume</span>
+        <span class="r">Clientes</span><span class="r h-val">Faturado</span><span></span>
+      </div>
+      <div class="vend" id="vendList"></div>
+      <p class="hint">
+        <strong>Copiar</strong> coloca a carteira na área de transferência já formatada em colunas —
+        basta colar direto no Google Sheets ou no Excel, sem baixar nada.
+      </p>
+    </div>
+
+    <div id="buckets"></div>
+  </section>
+
+  <!-- ============ 4. DESEMPENHO ============ -->
+  <section class="pane" id="p4" role="tabpanel" aria-labelledby="s4" hidden>
+    <p class="kicker">Etapa 4</p>
+    <h2>Desempenho e aproveitamento</h2>
+    <p class="sub" id="perfSub"></p>
+
+    <div id="funil"></div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Análises de hoje <span class="count-pill" id="dataHoje"></span></h3>
+        <button class="btn btn-sm" id="copyInsights">Copiar para a equipe</button>
+      </div>
+      <div id="insights"></div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
