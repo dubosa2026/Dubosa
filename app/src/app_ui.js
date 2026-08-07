@@ -117,6 +117,18 @@ $('addVend').addEventListener('click', function () {
   var inputs = $('equipeBody').querySelectorAll('input');
   if (inputs.length) inputs[inputs.length - 3].focus();
 });
+/* Copia a equipe no formato da aba "Vendedores" do Google Sheets, para quem
+   usa a versao Apps Script nao precisar redigitar nome, UF e e-mail. */
+$('copyEquipe').addEventListener('click', function () {
+  var linhas = state.equipe
+    .filter(function (v) { return norm(v.vendedor); })
+    .map(function (v) {
+      return { Vendedor: norm(v.vendedor), UF: norm(v.uf).toUpperCase(), Email: norm(v.email) };
+    });
+  if (!linhas.length) { toast('Nenhum vendedor para copiar'); return; }
+  copyText(toTSV(linhas, ['Vendedor', 'UF', 'Email']), $('copyEquipe'), null);
+});
+
 $('resetVend').addEventListener('click', function () {
   state.equipe = EQUIPE_PADRAO.map(function (v) { return Object.assign({}, v); });
   saveEquipe(); renderEquipe();

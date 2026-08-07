@@ -13,8 +13,10 @@ Existem três versões, com a mesma lógica de distribuição:
   dentro do seu navegador. É a única versão que traz o **funil de
   aproveitamento entre rodadas**, as **análises diárias** e o **modo
   ataque**. Veja [`app/README.md`](app/README.md).
-- **[`apps_script/`](apps_script/)** — roda dentro do Google Sheets, útil
-  se o resultado precisa nascer já no Drive compartilhado.
+- **[`apps_script/`](apps_script/)** — roda dentro do Google Sheets. É a
+  única versão que **envia a carteira por e-mail**: um botão distribui a
+  base, atualiza a planilha de cada vendedor no Drive e manda o link para o
+  e-mail cadastrado. Use esta se o time recebe o trabalho por e-mail.
 - **Este diretório (Python)** — linha de comando, para automatizar com
   agendador de tarefas e sincronizar com o Google Drive.
 

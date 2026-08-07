@@ -37,6 +37,7 @@ var ABA_SEM_UF = 'Sem UF';
 var ABA_FORA_ESCOPO = 'Fora de Escopo';
 var ABA_EXCLUIDOS = 'Excluídos (Ativo 30 dias)';
 var ABA_HISTORICO = 'Histórico';
+var ABA_ENVIOS = 'Envios';
 var NOME_PASTA_RAIZ = 'Distribuição Comercial - Vendedores';
 var ROTULO_ATIVO_30 = 'Ativo 30 dias';
 var REGIAO_NORTE = ['AC', 'AM', 'AP', 'PA', 'RO', 'RR', 'TO'];
@@ -56,7 +57,10 @@ function onOpen() {
     .createMenu('Assistente Comercial')
     .addItem('1) Configurar planilha (rodar uma vez)', 'criarEstruturaInicial')
     .addItem('2) Limpar Base BI (antes de colar nova base)', 'limparBaseBI')
-    .addItem('3) Distribuir agora', 'distribuirAgora')
+    .addItem('3) Distribuir agora (sem enviar)', 'distribuirAgora')
+    .addSeparator()
+    .addItem('4) Distribuir e enviar por e-mail', 'distribuirEEnviar')
+    .addItem('5) Reenviar e-mails da última distribuição', 'enviarCarteiras')
     .addToUi();
 }
 
@@ -132,21 +136,28 @@ function limparBaseBI() {
   );
 }
 
-/** Passo 2 (toda vez que atualizar a base): roda a distribuição. */
-function distribuirAgora() {
+/**
+ * Passo 2 (toda vez que atualizar a base): roda a distribuicao.
+ * Com opcoes.silencioso, nao mostra o alerta final -- e o que o botao
+ * "Distribuir e enviar" usa, para nao dar dois avisos seguidos.
+ * Retorna true se a distribuicao terminou; false se parou por falta de
+ * dados (para o botao unico nao seguir para o envio).
+ */
+function distribuirAgora(opcoes) {
+  var silencioso = !!(opcoes && opcoes.silencioso);
   var ui = SpreadsheetApp.getUi();
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var vendedores = lerVendedores(ss);
     if (!vendedores.length) {
       ui.alert('A aba "' + ABA_VENDEDORES + '" está vazia. Rode primeiro "1) Configurar planilha".');
-      return;
+      return false;
     }
     var headers = lerCabecalhoBase(ss);
     var base = lerBase(ss, headers);
     if (!base.length) {
       ui.alert('A aba "' + ABA_BASE + '" está vazia. Cole os dados exportados do BI (com cabeçalho) antes de distribuir.');
-      return;
+      return false;
     }
 
     var resultado = distribuir(base, vendedores, headers);
@@ -165,7 +176,8 @@ function distribuirAgora() {
     if (avisos.length) {
       msg += '\n\nAtenção - sem e-mail cadastrado (arquivo criado mas não compartilhado): ' + avisos.join(', ');
     }
-    ui.alert(msg);
+    if (!silencioso) ui.alert(msg);
+    return true;
   } catch (erro) {
     ui.alert('Deu erro: ' + erro.message);
     throw erro;
@@ -471,36 +483,34 @@ function escreverClientesDoVendedor(ss, linhas, headers) {
 }
 
 /**
- * Compartilha o arquivo e manda o e-mail de convite de verdade.
- * addEditor() do DriveApp da acesso mas NAO garante o envio do e-mail;
- * o Drive Advanced Service (Drive.Permissions.create com
- * sendNotificationEmail: true) e o que efetivamente dispara o convite,
- * igual ao que acontece quando voce compartilha manualmente pela tela do
- * Drive. Requer habilitar o servico "Drive API" uma vez (ver README).
+ * Da acesso de edicao ao vendedor, sem disparar o convite automatico do
+ * Drive: quem avisa o vendedor e o e-mail que o proprio script envia
+ * (funcao enviarCarteiras), com o resumo da carteira junto do link. Assim
+ * o vendedor recebe UMA mensagem, nao duas, e nao e preciso habilitar o
+ * servico "Drive API" no editor do Apps Script.
+ *
+ * E idempotente: rodar de novo para quem ja tem acesso nao faz nada.
  */
 function compartilharComEmail(arquivo, email) {
-  if (typeof Drive === 'undefined') {
-    throw new Error(
-      'Servico "Drive API" nao habilitado. No editor do Apps Script, va em ' +
-      'Servicos (icone +) e adicione "Drive API".'
-    );
-  }
-  Drive.Permissions.create(
-    { role: 'writer', type: 'user', emailAddress: email },
-    arquivo.getId(),
-    { sendNotificationEmail: true }
-  );
+  var atuais = arquivo.getEditors().map(function (u) { return String(u.getEmail()).toLowerCase(); });
+  if (atuais.indexOf(String(email).toLowerCase()) !== -1) return;
+  arquivo.addEditor(email);
 }
 
 function publicarArquivosPorVendedor(resultado, vendedores, headers) {
   var raiz = obterOuCriarPasta(NOME_PASTA_RAIZ, DriveApp.getRootFolder());
   var avisos = [];
 
+  var porVendedor = {};
+  resultado.atribuidos.forEach(function (r) {
+    (porVendedor[r._vendedorAtribuido] = porVendedor[r._vendedorAtribuido] || []).push(r);
+  });
+
   vendedores.forEach(function (v) {
+    if (REGIAO_NORTE.indexOf(v.uf) === -1) return;
     var pastaUf = obterOuCriarPasta(v.uf, raiz);
     var arquivo = obterOuCriarPlanilha(v.vendedor, pastaUf);
-    var linhas = resultado.atribuidos.filter(function (r) { return r._vendedorAtribuido === v.vendedor; });
-    escreverClientesDoVendedor(arquivo, linhas, headers);
+    escreverClientesDoVendedor(arquivo, porVendedor[v.vendedor] || [], headers);
 
     if (v.email) {
       try {
@@ -514,6 +524,209 @@ function publicarArquivosPorVendedor(resultado, vendedores, headers) {
   });
 
   return avisos;
+}
+
+// ======================================================================
+// ENVIO POR E-MAIL
+// ======================================================================
+
+/** O botao unico: distribui a base e ja manda a carteira de cada um. */
+function distribuirEEnviar() {
+  if (distribuirAgora({ silencioso: true })) enviarCarteiras();
+}
+
+function emailValido(email) {
+  return /^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(email);
+}
+
+/**
+ * "RAYANE ALMEIDA DOS SANTOS" -> "Rayane". Os nomes vem em caixa alta do
+ * cadastro; sem isso o e-mail comeca gritando com o vendedor.
+ */
+function primeiroNome(nomeCompleto) {
+  var primeiro = normalizar(nomeCompleto).split(' ')[0];
+  if (!primeiro) return '';
+  return primeiro.charAt(0).toUpperCase() + primeiro.slice(1).toLowerCase();
+}
+
+function formatarDinheiro(valor) {
+  return 'R$ ' + (Number(valor) || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+}
+
+/** Localiza a planilha do vendedor em "<pasta raiz>/<UF>/<nome>". */
+function localizarPlanilhaVendedor(v) {
+  var itRaiz = DriveApp.getRootFolder().getFoldersByName(NOME_PASTA_RAIZ);
+  if (!itRaiz.hasNext()) return null;
+  var itUf = itRaiz.next().getFoldersByName(v.uf);
+  if (!itUf.hasNext()) return null;
+  var itArq = itUf.next().getFilesByName(v.vendedor);
+  return itArq.hasNext() ? itArq.next() : null;
+}
+
+/** Le a aba "Resumo" da ultima distribuicao: vendedor -> {qtde, valor}. */
+function lerResumoAtual(ss) {
+  var aba = ss.getSheetByName(ABA_RESUMO);
+  if (!aba || aba.getLastRow() < 2) return null;
+  var dados = aba.getDataRange().getValues();
+  var cab = dados[0].map(normalizar);
+  var iNome = cab.indexOf('Vendedor');
+  var iQtde = cab.indexOf('Qtde. Clientes');
+  var iValor = cab.indexOf('Valor Faturado Total');
+  var mapa = {};
+  for (var i = 1; i < dados.length; i++) {
+    var nome = normalizar(dados[i][iNome]);
+    if (!nome) continue;
+    mapa[nome] = {
+      qtde: Number(dados[i][iQtde]) || 0,
+      valor: Number(dados[i][iValor]) || 0
+    };
+  }
+  return mapa;
+}
+
+function montarCorpoEmail(v, dados, url) {
+  var hoje = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy');
+  return '' +
+    '<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#1a1a1a;line-height:1.55;max-width:560px">' +
+      '<p>Olá, ' + primeiroNome(v.vendedor) + '!</p>' +
+      '<p>Sua carteira de prospecção de <strong>' + hoje + '</strong> está pronta. ' +
+      'São <strong>' + dados.qtde + ' clientes</strong> em ' + v.uf +
+      ', somando ' + formatarDinheiro(dados.valor) + ' de histórico de compras.</p>' +
+      '<p style="margin:26px 0">' +
+        '<a href="' + url + '" style="background:#FFC72C;color:#111;text-decoration:none;' +
+        'padding:13px 24px;border-radius:6px;font-weight:bold;display:inline-block">' +
+        'Abrir minha planilha</a>' +
+      '</p>' +
+      '<p style="font-size:13.5px;color:#555">' +
+        'A planilha é sua: pode anotar, marcar contato feito e filtrar à vontade. ' +
+        'Clientes que já compraram nos últimos 30 dias não entram nesta lista — ' +
+        'aqui está só quem precisa de contato.' +
+      '</p>' +
+      '<p style="font-size:12px;color:#888;border-top:1px solid #e3e3e3;padding-top:14px;margin-top:26px">' +
+        'Enviado automaticamente pelo Assistente Comercial.' +
+      '</p>' +
+    '</div>';
+}
+
+/**
+ * Manda para cada vendedor o link da propria planilha, com o resumo da
+ * carteira no corpo do e-mail. Funciona depois de qualquer distribuicao --
+ * le a aba "Resumo" e os arquivos ja publicados no Drive, entao serve tanto
+ * logo apos distribuir quanto para reenviar mais tarde.
+ */
+function enviarCarteiras() {
+  var ui = SpreadsheetApp.getUi();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  var vendedores = lerVendedores(ss);
+  if (!vendedores.length) {
+    ui.alert('A aba "' + ABA_VENDEDORES + '" está vazia. Rode primeiro "1) Configurar planilha".');
+    return;
+  }
+
+  var resumo = lerResumoAtual(ss);
+  if (!resumo) {
+    ui.alert('Não encontrei uma distribuição para enviar.\n\nRode "3) Distribuir agora" ou use direto "4) Distribuir e enviar por e-mail".');
+    return;
+  }
+
+  // Quem entra no envio e quem fica de fora, com o motivo.
+  var fila = [], semEmail = [], emailRuim = [], semClientes = [];
+  vendedores.forEach(function (v) {
+    var dados = resumo[v.vendedor];
+    if (!dados || !dados.qtde) { semClientes.push(v.vendedor); return; }
+    if (!v.email) { semEmail.push(v.vendedor); return; }
+    if (!emailValido(v.email)) { emailRuim.push(v.vendedor + ' (' + v.email + ')'); return; }
+    fila.push({ v: v, dados: dados });
+  });
+
+  if (!fila.length) {
+    ui.alert(
+      'Nenhum e-mail a enviar.\n\n' +
+      (semEmail.length ? 'Sem e-mail cadastrado: ' + semEmail.join(', ') + '\n' : '') +
+      (emailRuim.length ? 'E-mail inválido: ' + emailRuim.join(', ') + '\n' : '') +
+      (semClientes.length ? 'Sem clientes nesta rodada: ' + semClientes.join(', ') : '')
+    );
+    return;
+  }
+
+  var restante = MailApp.getRemainingDailyQuota();
+  if (restante < fila.length) {
+    ui.alert(
+      'Cota do Gmail insuficiente hoje.\n\n' +
+      'Precisa enviar ' + fila.length + ' e-mails e restam ' + restante + ' na cota diária desta conta. ' +
+      'A cota volta ao normal em 24 horas.'
+    );
+    return;
+  }
+
+  // Envio e acao externa e irreversivel: confirma antes.
+  var previa = fila.slice(0, 3).map(function (f) {
+    return '  • ' + f.v.vendedor + ' (' + f.v.email + ') — ' + f.dados.qtde + ' clientes';
+  }).join('\n');
+  var confirmacao = ui.alert(
+    'Enviar ' + fila.length + ' e-mails?',
+    'Cada vendedor recebe o link da própria planilha, com o resumo da carteira.\n\n' +
+    previa + (fila.length > 3 ? '\n  • ... e mais ' + (fila.length - 3) : '') + '\n\n' +
+    (semEmail.length ? 'Sem e-mail cadastrado (não recebem): ' + semEmail.join(', ') + '\n' : '') +
+    (emailRuim.length ? 'E-mail inválido (não recebem): ' + emailRuim.join(', ') + '\n' : '') +
+    (semClientes.length ? 'Sem clientes nesta rodada (não recebem): ' + semClientes.join(', ') : ''),
+    ui.ButtonSet.YES_NO
+  );
+  if (confirmacao !== ui.Button.YES) return;
+
+  var agora = new Date();
+  var registros = [], enviados = 0, falhas = [];
+
+  fila.forEach(function (f) {
+    var arquivo = localizarPlanilhaVendedor(f.v);
+    if (!arquivo) {
+      falhas.push(f.v.vendedor + ' (planilha não encontrada no Drive)');
+      registros.push([agora, f.v.vendedor, f.v.email, f.dados.qtde, f.dados.valor, '', 'FALHA: planilha não encontrada']);
+      return;
+    }
+    var url = arquivo.getUrl();
+    try {
+      MailApp.sendEmail({
+        to: f.v.email,
+        subject: 'Sua carteira de prospecção — ' +
+                 Utilities.formatDate(agora, Session.getScriptTimeZone(), 'dd/MM') +
+                 ' (' + f.dados.qtde + ' clientes)',
+        htmlBody: montarCorpoEmail(f.v, f.dados, url),
+        name: 'Assistente Comercial'
+      });
+      enviados++;
+      registros.push([agora, f.v.vendedor, f.v.email, f.dados.qtde, f.dados.valor, url, 'Enviado']);
+    } catch (e) {
+      falhas.push(f.v.vendedor + ' (' + e.message + ')');
+      registros.push([agora, f.v.vendedor, f.v.email, f.dados.qtde, f.dados.valor, url, 'FALHA: ' + e.message]);
+    }
+  });
+
+  registrarEnvios(ss, registros);
+
+  ui.alert(
+    'Envio concluído.\n\n' +
+    enviados + ' de ' + fila.length + ' e-mails enviados.\n' +
+    (falhas.length ? '\nFalharam: ' + falhas.join(', ') + '\n' : '') +
+    (semEmail.length ? '\nSem e-mail cadastrado: ' + semEmail.join(', ') + '\n' : '') +
+    (semClientes.length ? '\nSem clientes nesta rodada: ' + semClientes.join(', ') + '\n' : '') +
+    '\nO histórico de cada envio fica na aba "' + ABA_ENVIOS + '".'
+  );
+}
+
+/** Acrescenta as linhas do envio na aba "Envios" (log permanente). */
+function registrarEnvios(ss, registros) {
+  if (!registros.length) return;
+  var cab = ['Data/Hora', 'Vendedor', 'E-mail', 'Qtde. Clientes', 'Valor Faturado', 'Link da planilha', 'Status'];
+  var aba = ss.getSheetByName(ABA_ENVIOS);
+  if (!aba) {
+    aba = ss.insertSheet(ABA_ENVIOS);
+    aba.getRange(1, 1, 1, cab.length).setValues([cab]);
+    aba.setFrozenRows(1);
+  }
+  aba.getRange(aba.getLastRow() + 1, 1, registros.length, cab.length).setValues(registros);
+  aba.autoResizeColumns(1, cab.length);
 }
 
 // ======================================================================

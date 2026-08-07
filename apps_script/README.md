@@ -33,35 +33,35 @@ Não precisa de Python, Git, PowerShell nem Terminal.
      porque o script não foi publicado na loja do Google, mas ele só acessa
      a *sua própria* conta, com a *sua* autorização, nada é enviado pra
      fora). Clique em **Permitir**.
-   - Isso cria duas abas na sua planilha: **"Vendedores"** (já com os 24
-     nomes e UFs da sua foto) e **"Base BI"** (com o cabeçalho certo,
-     esperando os dados).
+   - Isso cria duas abas na sua planilha: **"Vendedores"** (já com os 22
+     nomes e UFs do time) e **"Base BI"** (com o cabeçalho certo, esperando
+     os dados).
 
-7. **Habilite o serviço que envia o e-mail de convite** (uma vez só): no
-   editor do Apps Script, no menu à esquerda clique no ícone **"+" ao lado
-   de Serviços**, procure **"Drive API"** e clique em **Adicionar**.
-   (Sem isso, o arquivo é criado e compartilhado normalmente, mas o
-   vendedor não recebe o e-mail avisando.)
+7. Na aba **"Vendedores"**, preencha a coluna **Email** com o e-mail (conta
+   Google) de cada vendedor. É esse e-mail que recebe a planilha.
 
-8. Na aba **"Vendedores"**, preencha a coluna **Email** com o e-mail (conta
-   Google) de cada vendedor. É esse e-mail que vai receber o convite pro
-   arquivo dele.
+   Se você já cadastrou a equipe no app HTML (`app/`), não precisa
+   redigitar: lá na etapa 2 existe o botão **"Copiar equipe"**. Clique nele,
+   volte aqui, clique na célula **A1** da aba "Vendedores" e cole — nome, UF
+   e e-mail entram já nas colunas certas.
 
-## Testar antes de cadastrar os vendedores de verdade
+## Testar antes de mandar para a equipe
 
-Antes de colocar o e-mail real de cada vendedor, teste com o seu próprio
-e-mail (ou de um Gmail pessoal seu):
+Antes de colocar o e-mail real de cada vendedor, faça um ensaio com o seu
+próprio e-mail:
 
-1. Na aba **"Vendedores"**, preencha a coluna **Email** de **um** vendedor
-   qualquer com o seu próprio e-mail Google.
-2. Rode **Assistente Comercial → "2) Distribuir agora"** (precisa já ter
-   dados na aba "Base BI" — se já rodou antes, pode rodar de novo).
-3. Confira sua caixa de entrada: deve chegar um e-mail do Google Drive tipo
-   "fulano compartilhou uma planilha com você", com o nome do vendedor.
-4. Se não chegar nada, confira se o passo 7 acima (habilitar "Drive API")
-   foi feito — sem isso o convite não é enviado.
-5. Depois do teste, apague esse e-mail de teste e coloque o e-mail
-   verdadeiro do vendedor.
+1. Na aba **"Vendedores"**, apague os e-mails de todos e deixe **só um**
+   vendedor preenchido, com o **seu** e-mail.
+2. Cole uma base na aba "Base BI" e rode **Assistente Comercial → "4)
+   Distribuir e enviar por e-mail"**.
+3. A confirmação vai dizer "Enviar 1 e-mail?" e listar quem ficou de fora.
+   Confirme.
+4. Confira sua caixa de entrada: deve chegar "Sua carteira de prospecção",
+   com a quantidade de clientes e um botão que abre a planilha.
+5. Gostou do resultado? Preencha os e-mails verdadeiros e rode de novo.
+
+Enquanto a coluna Email estiver vazia, ninguém recebe nada — o script avisa
+quem ficou sem e-mail e segue em frente.
 
 ## Uso (toda vez que exportar uma base nova do BI)
 
@@ -78,7 +78,11 @@ e-mail (ou de um Gmail pessoal seu):
    cabeçalho**, e copie (Ctrl+C).
 4. Na aba **"Base BI"**, clique na célula **A1** e cole (Ctrl+V) — o
    cabeçalho da sua exportação vai para a linha 1.
-5. Clique em **Assistente Comercial → "3) Distribuir agora"**.
+5. Clique em **Assistente Comercial → "4) Distribuir e enviar por
+   e-mail"** — é o botão que faz tudo: distribui, atualiza a planilha de
+   cada vendedor no Drive e manda o link para o e-mail cadastrado. (Se
+   quiser só distribuir e conferir antes de enviar, use "3) Distribuir agora
+   (sem enviar)".)
 6. Pronto. Uma mensagem mostra quantos clientes foram distribuídos, quantos
    ficaram sem UF, fora de escopo, ou excluídos por "Ativo 30 dias". Os
    detalhes ficam nas abas **Resumo**, **Distribuído**, **Sem UF**, **Fora
@@ -92,6 +96,38 @@ AP, PA, RO, RR, TO) e, dentro de cada uma, uma planilha por vendedor — essa
 é a planilha que fica compartilhada com o e-mail dele. Nas próximas rodadas,
 o mesmo arquivo é **atualizado** (não recriado), então o vendedor não
 precisa aceitar convite de novo — só abre o link que já tem.
+
+## Envio por e-mail
+
+**"4) Distribuir e enviar por e-mail"** faz a rodada inteira num clique:
+distribui a base, atualiza a planilha de cada vendedor no Drive e envia para
+o e-mail cadastrado na aba "Vendedores" uma mensagem com a quantidade de
+clientes, o valor de histórico da carteira e um botão que abre a planilha.
+
+Antes de disparar, aparece uma confirmação dizendo quantos e-mails serão
+enviados e **quem vai ficar de fora, com o motivo** — sem e-mail cadastrado,
+e-mail inválido ou nenhum cliente naquela rodada. Nada é enviado até você
+confirmar. E-mail enviado não volta atrás, então vale ler essa tela.
+
+**"5) Reenviar e-mails da última distribuição"** manda de novo sem
+redistribuir nada — útil quando alguém apagou a mensagem, quando você
+corrigiu um e-mail errado na aba "Vendedores", ou quando quer avisar a
+equipe outra vez sem mexer nas carteiras.
+
+Cada envio fica registrado na aba **"Envios"** (data/hora, vendedor,
+e-mail, quantidade, valor, link e status). Essa aba nunca é apagada: é o
+comprovante de o que foi mandado, para quem e quando — inclusive as falhas,
+com o motivo.
+
+Dois limites que valem conhecer:
+
+- **Cota do Gmail.** Uma conta comum envia cerca de 100 e-mails por dia; uma
+  conta Workspace, bem mais. Com 22 vendedores isso não chega perto do
+  limite, mas se você reenviar muitas vezes no mesmo dia o script avisa
+  antes e não envia pela metade.
+- **Acesso à planilha.** O vendedor recebe acesso de edição ao arquivo dele
+  automaticamente na primeira rodada. Se ele não conseguir abrir, confira se
+  o e-mail cadastrado é mesmo uma conta Google.
 
 ## Histórico (comparar rodadas ao longo do tempo)
 
@@ -123,7 +159,7 @@ que seu BI exportar (incluindo colunas extras como CNPJ), desde que exista:
   (maiúsc./minúsc. não importa — é nela que o filtro "Ativo 30 dias"
   procura).
 
-Se nenhuma coluna com esses nomes for encontrada, o "Distribuir agora" para
+Se nenhuma coluna com esses nomes for encontrada, a distribuição para
 com um aviso de erro dizendo quais colunas foram identificadas, em vez de
 rodar com o filtro quebrado silenciosamente.
 
@@ -131,9 +167,16 @@ rodar com o filtro quebrado silenciosamente.
 
 - **"A aba Base BI está vazia"**: você ainda não colou os dados exportados
   (com cabeçalho) a partir da célula A1.
-- **Vendedor aparece na mensagem final como "sem e-mail cadastrado"**: o
-  arquivo dele foi criado normalmente na pasta, só não foi compartilhado —
-  preencha o e-mail na aba "Vendedores" e rode de novo.
+- **Vendedor aparece como "sem e-mail cadastrado"**: o arquivo dele foi
+  criado normalmente na pasta, só não foi compartilhado nem enviado —
+  preencha o e-mail na aba "Vendedores" e use "5) Reenviar e-mails da última
+  distribuição".
+- **"Planilha não encontrada no Drive"** no resultado do envio: alguém
+  apagou ou renomeou o arquivo daquele vendedor. Rode "4) Distribuir e
+  enviar por e-mail" — o arquivo é recriado e o envio segue.
+- **O vendedor diz que não recebeu**: confira a aba "Envios" (mostra data,
+  hora e status de cada tentativa) e peça para ele olhar o spam. Se o status
+  estiver "Enviado", o Gmail aceitou a mensagem.
 - **Os dados saem faltando coluna ou fora de ordem**: confira se colou a
   base a partir da célula **A1** (incluindo a linha de cabeçalho) — o
   script usa esse cabeçalho para saber onde está cada coluna.

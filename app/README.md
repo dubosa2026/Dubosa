@@ -13,10 +13,11 @@ do Drive para o time todo usar.
 1. **Base do BI** — arraste o `.xlsx` que a macro exporta (ou cole os dados
    direto de uma planilha aberta). O app mostra quantas linhas leu e quais
    colunas encontrou.
-2. **Equipe** — a lista dos 22 vendedores já vem preenchida. Dá para
-   editar, adicionar, remover e informar e-mail. As mudanças ficam salvas no
+2. **Equipe** — a lista dos 22 vendedores já vem preenchida. Dá para editar,
+   adicionar, remover e informar e-mail; as mudanças ficam salvas no
    navegador para a próxima vez. É aqui também que se escolhe o tipo da
-   rodada (normal ou ataque).
+   rodada (normal ou ataque). O botão **"Copiar equipe"** exporta a lista no
+   formato da versão Google Sheets.
 3. **Distribuição** — a carteira de cada vendedor, com quantidade e valor.
    Baixe tudo de uma vez em `.xlsx`, ou copie a carteira de um vendedor
    específico para colar no WhatsApp/e-mail.
@@ -94,6 +95,18 @@ inteira foca ali:
 
 Quando uma análise sugere um estado, o botão **Preparar ataque em XX** já
 deixa a etapa 2 configurada.
+
+## Enviar as carteiras por e-mail
+
+Este app não envia e-mail — ele é um arquivo local no seu navegador, sem
+servidor por trás, então não tem como disparar mensagem nenhuma. Quem faz
+isso é a versão [`apps_script/`](../apps_script/), que roda dentro da sua
+conta Google e tem acesso ao Gmail e ao Drive: lá, um botão distribui a base
+e manda para cada vendedor o link da própria planilha.
+
+Para não redigitar a equipe toda lá, use o botão **"Copiar equipe"** na
+etapa 2: ele copia nome, UF e e-mail no formato da aba "Vendedores" do
+Google Sheets. É só colar na célula A1 de lá.
 
 ## Editar o app
 
