@@ -16,8 +16,8 @@ do Drive para o time todo usar.
 2. **Equipe** — a lista dos 22 vendedores já vem preenchida. Dá para editar,
    adicionar, remover e informar e-mail; as mudanças ficam salvas no
    navegador para a próxima vez. É aqui também que se escolhe o tipo da
-   rodada (normal ou ataque). O botão **"Copiar equipe"** exporta a lista no
-   formato da versão Google Sheets.
+   rodada: normal, ataque a um estado ou mutirão. O botão **"Copiar equipe"**
+   exporta a lista no formato da versão Google Sheets.
 3. **Distribuição** — a carteira de cada vendedor, com quantidade e valor.
    Baixe tudo de uma vez em `.xlsx`, ou copie a carteira de um vendedor
    específico para colar no WhatsApp/e-mail.
@@ -39,6 +39,13 @@ do Drive para o time todo usar.
    na origem.
 6. Cliente de outra gerência (campo configurável na etapa 2, por padrão
    `EDUARDO LUIZ DOS SANTOS`) não é tocado.
+7. O rodapé da exportação — a linha de totais e o texto "Filtros
+   aplicados:" que o BI escreve no fim do arquivo — é descartado. Um cliente
+   de verdade a quem falta a UF continua aparecendo como "sem UF", que é
+   problema de cadastro para corrigir na origem.
+
+A regra 1 vale nas duas exportações: "Ativo 30 dias" na base por atividade,
+"Comprador neste Mês" e "Comprador Habitual" na base mensal.
 
 Tudo que não foi distribuído aparece na etapa 3, em listas separadas por
 motivo, com opção de baixar.
@@ -68,6 +75,11 @@ O ponto de comparação é sempre a última rodada distribuída. Se você
 distribuir duas vezes a mesma base, o funil acusa zero conversões (correto:
 nada mudou entre uma leitura e outra).
 
+Rodada normal e mutirão saem de bases diferentes, com categorias diferentes.
+Comparar uma com a outra daria um número sem significado, então nesse caso o
+funil não é calculado e a etapa 4 explica o motivo — a rodada vira a nova
+referência e o aproveitamento volta quando você repetir o mesmo tipo.
+
 ## Análises do dia
 
 Abaixo do funil, o app lê os próprios números e escreve o que está
@@ -81,6 +93,33 @@ joga tudo em texto, pronto para colar no grupo.
 
 As análises são recalculadas a cada rodada — carregue a base atualizada e a
 leitura do dia vem junto.
+
+## Sem compras no mês (mutirão)
+
+A terceira modalidade da etapa 2, para a base mensal — a que usa
+"Sem Compras este Mês", "Comprador neste Mês" e "Comprador Habitual" em vez
+de "Ativo 30 dias" / "Inativo".
+
+Ela junta num bolo só os clientes parados dos estados escolhidos e reparte
+entre a **equipe inteira**, ignorando a UF de cada vendedor: um cliente do
+Pará pode cair para alguém de Rondônia. É essa a intenção — quando um estado
+acumula clientes parados, a equipe toda ajuda a limpar a fila, não só quem
+mora naquele estado.
+
+Dois filtros aparecem quando você escolhe essa modalidade, ambos montados a
+partir da base que você carregou (com a contagem de cada item):
+
+- **Estados** — marque os que entram na rodada. Só o Norte é oferecido.
+- **Categorias** — vem marcado quem ainda não comprou. Quem já comprou fica
+  de fora automaticamente: nesta base, "Comprador neste Mês" e "Comprador
+  Habitual".
+
+O filtro de categorias é montado a partir dos rótulos que existem na base,
+não de uma lista fixa. Se o BI mudar o nome de uma categoria, ela aparece
+aqui do mesmo jeito e você decide se entra ou não.
+
+Na etapa 3, a coluna UF é a **do vendedor**, não a do cliente — os clientes
+da rodada são todos dos estados que você marcou.
 
 ## Modo ataque
 

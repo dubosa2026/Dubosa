@@ -228,6 +228,12 @@ td.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-num
 }
 .vhead .r{text-align:right;}
 
+/* Nem toda exportacao do BI traz "Valor Faturado". Sem a coluna, mostrar
+   "R$ 0" para a equipe inteira seria so ruido: a coluna some. */
+body.sem-valor .vval,body.sem-valor .h-val{display:none;}
+body.sem-valor .vrow,body.sem-valor .vhead{grid-template-columns:34px minmax(0,1fr) 160px 92px auto;}
+body.sem-valor .frow,body.sem-valor .fhead{grid-template-columns:34px minmax(0,1fr) 120px 92px 86px;}
+
 /* ---------------- disclosure ---------------- */
 details{
   background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
@@ -286,6 +292,30 @@ select{max-width:260px;}
 .radio strong,.check strong{font-weight:600;color:var(--text);}
 .inline-field{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .inline-field label{margin-bottom:0;}
+
+.sub-block{margin-bottom:18px;}
+.pick{display:flex;flex-wrap:wrap;gap:8px;}
+.pick label{
+  display:inline-flex;align-items:center;gap:8px;cursor:pointer;
+  border:1px solid var(--line-2);border-radius:7px;padding:7px 12px;
+  background:var(--panel-2);font-size:13px;color:var(--text-2);
+  transition:border-color .14s,background .14s,color .14s;
+}
+.pick label:hover{border-color:var(--text-3);}
+.pick label:has(input:checked){border-color:var(--y);background:var(--y-wash);color:var(--text);}
+.pick input{
+  appearance:none;width:15px;height:15px;flex:none;border-radius:4px;cursor:pointer;
+  border:1.5px solid var(--line-2);background:var(--bg);position:relative;
+}
+.pick input:checked{background:var(--y);border-color:var(--y);}
+.pick input:checked::after{
+  content:"";position:absolute;left:4px;top:.5px;width:4px;height:8px;
+  border:solid #0A0A0B;border-width:0 2px 2px 0;transform:rotate(42deg);
+}
+.pick input:focus-visible{outline:2px solid var(--y);outline-offset:2px;}
+.pick .n{font-family:var(--mono);font-size:11px;color:var(--text-3);}
+.pick label:has(input:checked) .n{color:var(--y-hi);}
+.pick-empty{color:var(--text-3);font-size:13px;}
 
 /* ---------------- funil ---------------- */
 .funil-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px;}
@@ -475,7 +505,26 @@ select{max-width:260px;}
             <span><strong>Normal</strong> — cada UF do Norte é dividida entre os vendedores dela</span></label>
           <label class="radio"><input type="radio" name="modo" value="ataque">
             <span><strong>Ataque a um estado</strong> — a rodada inteira foca numa UF só</span></label>
+          <label class="radio"><input type="radio" name="modo" value="mutirao">
+            <span><strong>Sem compras no mês</strong> — junta os clientes parados dos estados
+            escolhidos e reparte entre a equipe toda, sem olhar a UF de cada vendedor</span></label>
         </div>
+      </div>
+
+      <div id="mutiraoBox" hidden style="margin-top:14px;padding-left:26px;">
+        <div class="sub-block">
+          <span class="lbl">Estados que entram no mutirão</span>
+          <div id="ufFiltro" class="pick"></div>
+        </div>
+        <div class="sub-block">
+          <span class="lbl">Categorias que entram na distribuição</span>
+          <div id="catFiltro" class="pick"></div>
+          <p class="hint">Vem marcado quem ainda não comprou. Quem já comprou fica de fora —
+          nesta base, "Comprador neste Mês" e "Comprador Habitual".</p>
+        </div>
+        <p class="hint">O bolo inteiro é repartido entre os
+        <strong id="mutiraoQtdVend">0</strong> vendedores cadastrados, na ordem da lista.
+        Um vendedor de RO pode receber cliente do PA — é essa a intenção do mutirão.</p>
       </div>
 
       <div id="ataqueBox" hidden style="margin-top:14px;padding-left:26px;">

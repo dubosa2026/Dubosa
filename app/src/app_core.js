@@ -112,6 +112,14 @@ function serialToDate(serial) {
   return dd + '/' + mm + '/' + d.getUTCFullYear();
 }
 
+/* Alguns exportadores escrevem as tags com prefixo de namespace
+   (<x:row>, <x:c>, <x:t>) em vez das tags simples (<row>, <c>, <t>).
+   getElementsByTagName compara o nome com prefixo e nao acha nada nesses
+   arquivos; buscar pelo nome local resolve os dois formatos de uma vez. */
+function els(node, nome) {
+  return node.getElementsByTagNameNS('*', nome);
+}
+
 async function parseXlsx(buffer) {
   var zip = await unzip(buffer);
 
@@ -120,9 +128,9 @@ async function parseXlsx(buffer) {
   var ssXml = await zip.read('xl/sharedStrings.xml');
   if (ssXml) {
     var doc = new DOMParser().parseFromString(ssXml, 'application/xml');
-    var sis = doc.getElementsByTagName('si');
+    var sis = els(doc, 'si');
     for (var i = 0; i < sis.length; i++) {
-      var ts = sis[i].getElementsByTagName('t');
+      var ts = els(sis[i], 't');
       var s = '';
       for (var j = 0; j < ts.length; j++) s += ts[j].textContent;
       shared.push(s);
@@ -135,15 +143,15 @@ async function parseXlsx(buffer) {
   if (stXml) {
     var sdoc = new DOMParser().parseFromString(stXml, 'application/xml');
     var custom = {};
-    var nfs = sdoc.getElementsByTagName('numFmt');
+    var nfs = els(sdoc, 'numFmt');
     for (var k = 0; k < nfs.length; k++) {
       var id = parseInt(nfs[k].getAttribute('numFmtId'), 10);
       var codeStr = nfs[k].getAttribute('formatCode') || '';
       if (/[dmyhs]/i.test(codeStr.replace(/\[[^\]]*\]/g, '').replace(/"[^"]*"/g, ''))) custom[id] = true;
     }
-    var xfsParent = sdoc.getElementsByTagName('cellXfs')[0];
+    var xfsParent = els(sdoc, 'cellXfs')[0];
     if (xfsParent) {
-      var xfs = xfsParent.getElementsByTagName('xf');
+      var xfs = els(xfsParent, 'xf');
       for (var x = 0; x < xfs.length; x++) {
         var fid = parseInt(xfs[x].getAttribute('numFmtId') || '0', 10);
         if (DATE_FMT_IDS.indexOf(fid) > -1 || custom[fid]) dateStyles[x] = true;
@@ -161,9 +169,9 @@ async function parseXlsx(buffer) {
   var sdocSheet = new DOMParser().parseFromString(shXml, 'application/xml');
 
   var rows = [];
-  var rowEls = sdocSheet.getElementsByTagName('row');
+  var rowEls = els(sdocSheet, 'row');
   for (var r = 0; r < rowEls.length; r++) {
-    var cells = rowEls[r].getElementsByTagName('c');
+    var cells = els(rowEls[r], 'c');
     var out = [];
     for (var c = 0; c < cells.length; c++) {
       var cell = cells[c];
@@ -174,10 +182,10 @@ async function parseXlsx(buffer) {
       var value = '';
 
       if (type === 'inlineStr') {
-        var its = cell.getElementsByTagName('t');
+        var its = els(cell, 't');
         for (var y = 0; y < its.length; y++) value += its[y].textContent;
       } else {
-        var vEl = cell.getElementsByTagName('v')[0];
+        var vEl = els(cell, 'v')[0];
         var raw = vEl ? vEl.textContent : '';
         if (type === 's') value = shared[parseInt(raw, 10)] || '';
         else if (type === 'b') value = raw === '1' ? 'VERDADEIRO' : 'FALSO';
@@ -284,8 +292,62 @@ function clientKey(row, headers) {
   return null;
 }
 
-function ehAtivo30(row, colCategoria) {
-  return norm(row[colCategoria]).toLowerCase().indexOf(ROTULO_ATIVO_30.toLowerCase()) > -1;
+/* Cada exportacao do BI usa um vocabulario proprio de categoria:
+     base por atividade  -> "Ativo 30 dias" / "Ativo 60 dias" / "Inativo"
+     base do mes         -> "Comprador neste Mes" / "Comprador Habitual" /
+                            "Sem Compras este Mes"
+   O que interessa nas duas e a mesma pergunta: esse cliente ja comprou
+   recentemente? Quem ja comprou nao e alvo de prospeccao. */
+function ehJaComprou(row, colCategoria) {
+  var c = norm(row[colCategoria]).toLowerCase();
+  return c.indexOf('ativo 30 dias') > -1 || c.indexOf('comprador') > -1;
+}
+
+/* Mesma regra, aplicada a um rotulo solto -- usada para pre-marcar as
+   caixinhas de categoria na tela. */
+function categoriaProspectavel(nome) {
+  var c = norm(nome).toLowerCase();
+  return !!c && c.indexOf('ativo 30 dias') === -1 && c.indexOf('comprador') === -1;
+}
+
+/* Categorias presentes na base, com a contagem de cada uma. */
+function categoriasDaBase(records, colCategoria) {
+  if (!colCategoria) return [];
+  var contagem = {};
+  records.forEach(function (row) {
+    var c = norm(row[colCategoria]);
+    if (c) contagem[c] = (contagem[c] || 0) + 1;
+  });
+  return Object.keys(contagem)
+    .map(function (nome) { return { nome: nome, qtde: contagem[nome] }; })
+    .sort(function (a, b) { return b.qtde - a.qtde; });
+}
+
+/* UFs do Norte presentes na base, com a contagem de cada uma. */
+function ufsDaBase(records, colUf) {
+  if (!colUf) return [];
+  var contagem = {};
+  records.forEach(function (row) {
+    var u = norm(row[colUf]).toUpperCase();
+    if (ehNorte(u)) contagem[u] = (contagem[u] || 0) + 1;
+  });
+  return REGIAO_NORTE
+    .filter(function (uf) { return contagem[uf]; })
+    .map(function (uf) { return { uf: uf, qtde: contagem[uf] }; });
+}
+
+/* As exportacoes trazem no fim uma linha com o texto dos filtros aplicados
+   ("Filtros aplicados: Gerente e ... / Estados e ..."). Nao e cliente. */
+function ehLinhaDeRodape(row, headers, colUf, colCategoria) {
+  if (headers.some(function (h) { return /^filtros aplicados/i.test(norm(row[h])); })) return true;
+
+  // Linha de totais ou separador em branco: nao tem UF, nem categoria, nem
+  // nome de cliente. A checagem do nome importa -- um cliente de verdade a
+  // quem falta a UF precisa continuar aparecendo como "sem UF", que e um
+  // problema de cadastro para corrigir, nao lixo para descartar.
+  if (norm(row[colUf]) || norm(row[colCategoria])) return false;
+  var colInteg = findCol(headers, 'Integrador (CLI - Nome)') || findCol(headers, 'Integrador');
+  return colInteg ? !norm(row[colInteg]) : true;
 }
 
 function ehMarcadorTodasUf(ufRaw, ufsMapeadas) {
@@ -327,7 +389,21 @@ function distribuir(records, headers, equipe, opts) {
   if (!colCategoria) throw new Error('Nao encontrei a coluna "Categoria" na base. Colunas lidas: ' + headers.join(', '));
 
   var gerenteAlvo = norm(opts.gerente || '').toUpperCase();
+  var modo = opts.modo || 'normal';
   var ataque = norm(opts.ataque || '').toUpperCase();
+
+  // Modo mutirao: o filtro e por categoria e por estado, escolhidos na tela.
+  // Sem escolha explicita, vale o padrao (fora quem ja comprou) e todo o Norte.
+  var catsAceitas = null;
+  if (modo === 'mutirao' && opts.categorias && opts.categorias.length) {
+    catsAceitas = {};
+    opts.categorias.forEach(function (c) { catsAceitas[norm(c).toLowerCase()] = true; });
+  }
+  var ufsAceitas = null;
+  if (modo === 'mutirao' && opts.ufs && opts.ufs.length) {
+    ufsAceitas = {};
+    opts.ufs.forEach(function (u) { ufsAceitas[norm(u).toUpperCase()] = true; });
+  }
 
   var porUf = {};
   equipe.forEach(function (v) {
@@ -341,11 +417,19 @@ function distribuir(records, headers, equipe, opts) {
     .map(function (v) { return v.vendedor; });
 
   var excluidos = [], semUf = [], foraNorte = [], outraGerencia = [],
-      semVendedor = [], retidoAtaque = [], grupos = {}, todasUf = [];
+      semVendedor = [], retidoAtaque = [], foraDoFiltro = [], rodape = [],
+      grupos = {}, todasUf = [], mutirao = [];
 
   records.forEach(function (row) {
-    // 1) ja comprou nos ultimos 30 dias -> fora da rodada
-    if (ehAtivo30(row, colCategoria)) { excluidos.push(row); return; }
+    // 0) rodape com o texto dos filtros da exportacao -- nao e cliente
+    if (ehLinhaDeRodape(row, headers, colUf, colCategoria)) { rodape.push(row); return; }
+
+    // 1) quem ja comprou recentemente nao e alvo de prospeccao
+    if (catsAceitas) {
+      if (!catsAceitas[norm(row[colCategoria]).toLowerCase()]) { excluidos.push(row); return; }
+    } else if (ehJaComprou(row, colCategoria)) {
+      excluidos.push(row); return;
+    }
 
     var uf = norm(row[colUf]).toUpperCase();
 
@@ -353,7 +437,7 @@ function distribuir(records, headers, equipe, opts) {
     if (!uf) { semUf.push(row); return; }
 
     // 3) conta nacional marcada explicitamente
-    if (ehMarcadorTodasUf(uf, ufsMapeadas)) { todasUf.push(row); return; }
+    if (modo !== 'mutirao' && ehMarcadorTodasUf(uf, ufsMapeadas)) { todasUf.push(row); return; }
 
     // 4) fora da Regiao Norte -> nunca redistribui, fica com quem ja atende
     if (!ehNorte(uf)) { foraNorte.push(row); return; }
@@ -363,10 +447,18 @@ function distribuir(records, headers, equipe, opts) {
       outraGerencia.push(row); return;
     }
 
-    // 6) rodada de ataque: as demais UFs do Norte ficam retidas
-    if (ataque && uf !== ataque) { retidoAtaque.push(row); return; }
+    // 6) mutirao: os estados escolhidos vao para um bolo unico, repartido
+    //    entre a equipe inteira -- inclusive quem nao atende aquela UF
+    if (modo === 'mutirao') {
+      if (ufsAceitas && !ufsAceitas[uf]) { foraDoFiltro.push(row); return; }
+      mutirao.push(row);
+      return;
+    }
 
-    // 7) UF do Norte sem nenhum vendedor cadastrado
+    // 7) rodada de ataque: as demais UFs do Norte ficam retidas
+    if (modo === 'ataque' && ataque && uf !== ataque) { retidoAtaque.push(row); return; }
+
+    // 8) UF do Norte sem nenhum vendedor cadastrado
     if (!porUf[uf]) { semVendedor.push(row); return; }
 
     if (!grupos[uf]) grupos[uf] = [];
@@ -374,10 +466,11 @@ function distribuir(records, headers, equipe, opts) {
   });
 
   var atribuidos = [];
+  if (mutirao.length) atribuidos = atribuidos.concat(dividirRodizio(mutirao, todosVendedores, headers));
   if (todasUf.length) atribuidos = atribuidos.concat(dividirRodizio(todasUf, todosVendedores, headers));
   Object.keys(grupos).forEach(function (uf) {
     // no ataque com a equipe toda, todos os vendedores entram no rateio da UF
-    var time = (ataque && uf === ataque && opts.equipeToda) ? todosVendedores : porUf[uf];
+    var time = (modo === 'ataque' && uf === ataque && opts.equipeToda) ? todosVendedores : porUf[uf];
     atribuidos = atribuidos.concat(dividirRodizio(grupos[uf], time, headers));
   });
 
@@ -415,8 +508,13 @@ function distribuir(records, headers, equipe, opts) {
     outraGerencia: outraGerencia,
     semVendedor: semVendedor,
     retidoAtaque: retidoAtaque,
+    foraDoFiltro: foraDoFiltro,
+    rodape: rodape,
     resumo: resumo,
+    modo: modo,
     ataque: ataque,
+    ufsMutirao: opts.ufs || [],
+    categoriasMutirao: opts.categorias || [],
     totalLido: records.length
   };
 }
@@ -437,7 +535,12 @@ function montarSnapshot(result, records, headers) {
       val: result.colValor ? toNumber(row[result.colValor]) : 0
     };
   });
-  return { ts: Date.now(), total: Object.keys(byKey).length, byKey: byKey };
+  return {
+    ts: Date.now(),
+    modo: result.modo || 'normal',
+    total: Object.keys(byKey).length,
+    byKey: byKey
+  };
 }
 
 /* Compara a base atual com a fotografia da rodada anterior. Um cliente que
@@ -445,6 +548,16 @@ function montarSnapshot(result, records, headers) {
    como "Ativo 30 dias", conta como conversao de X. */
 function analisarFunil(records, headers, result, snapshot) {
   if (!snapshot || !snapshot.byKey) return null;
+
+  // Rodada normal e mutirao saem de bases diferentes, com vocabulario de
+  // categoria diferente. Comparar uma com a outra daria um numero sem
+  // significado, entao aqui a comparacao para e explica o porque.
+  var modoAtual = result.modo || 'normal';
+  var modoAnterior = snapshot.modo || 'normal';
+  var comparaveis = (modoAtual === 'mutirao') === (modoAnterior === 'mutirao');
+  if (!comparaveis) {
+    return { incompativel: true, modoAnterior: modoAnterior, modoAtual: modoAtual, desde: snapshot.ts };
+  }
 
   var atual = {};
   records.forEach(function (row) {
@@ -473,7 +586,7 @@ function analisarFunil(records, headers, result, snapshot) {
     var row = atual[k];
     if (!row) { perdidosDeVista++; return; }   // cliente sumiu da base nova
 
-    if (ehAtivo30(row, result.colCategoria)) {
+    if (ehJaComprou(row, result.colCategoria)) {
       var valor = result.colValor ? toNumber(row[result.colValor]) : 0;
       sv.conversoes++; sv.valor += valor;
       su.conversoes++; su.valor += valor;
@@ -635,6 +748,7 @@ function pct(x) { return (x * 100).toFixed(1).replace('.', ',') + '%'; }
 
 function gerarInsights(result, funil) {
   var out = [];
+  if (funil && funil.incompativel) funil = null;   // rodadas nao comparaveis
   var colVal = result.colValor, colCat = result.colCategoria, colUf = result.colUf;
   var colInteg = findCol(result.headers, 'Integrador (CLI - Nome)') || findCol(result.headers, 'Integrador');
   var colCidade = findCol(result.headers, 'Cidade');
@@ -733,7 +847,7 @@ function gerarInsights(result, funil) {
     return o;
   }).sort(function (a, b) { return b.porVendedor - a.porVendedor; });
 
-  if (carga.length >= 2) {
+  if (carga.length >= 2 && result.modo !== 'mutirao') {
     var pesada = carga[0], leve = carga[carga.length - 1];
     if (pesada.porVendedor > leve.porVendedor * 1.6) {
       add('neutro', 'Carga desigual: ' + Math.round(pesada.porVendedor) + ' clientes por vendedor em ' + pesada.uf +
@@ -746,7 +860,7 @@ function gerarInsights(result, funil) {
   }
 
   /* --- 7. sugestao de qual estado atacar --- */
-  if (carga.length) {
+  if (carga.length && result.modo !== 'mutirao') {
     var alvo = carga.slice().sort(function (a, b) { return b.valor - a.valor; })[0];
     add('neutro', 'Se for atacar um estado agora, ataque ' + alvo.uf,
       alvo.uf + ' concentra ' + fmtInt(alvo.qtde) + ' clientes parados somando ' + fmtMoney(alvo.valor) +

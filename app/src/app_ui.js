@@ -182,6 +182,7 @@ function afterLoad(matrix, origem) {
       '</div>' +
     '</div>';
 
+  renderFiltrosMutirao();   // a base nova muda os estados e as categorias
   var next = $('toEquipe');
   if (next) next.addEventListener('click', function () { goStep(1); });
   if (!missing.length) toast(fmtInt(t.records.length) + ' linhas carregadas');
@@ -260,18 +261,69 @@ $('demo').addEventListener('click', function () {
 });
 
 /* ---------- configuracao da rodada ---------- */
+function modoAtual() {
+  return document.querySelector('input[name="modo"]:checked').value;
+}
+
 document.querySelectorAll('input[name="modo"]').forEach(function (r) {
   r.addEventListener('change', function () {
-    $('ataqueBox').hidden = document.querySelector('input[name="modo"]:checked').value !== 'ataque';
+    var m = modoAtual();
+    $('ataqueBox').hidden = m !== 'ataque';
+    $('mutiraoBox').hidden = m !== 'mutirao';
+    if (m === 'mutirao') renderFiltrosMutirao();
   });
 });
 
+/* Monta as caixinhas de estado e de categoria a partir da base carregada:
+   os rotulos mudam de uma exportacao para outra, entao nada aqui e fixo. */
+function renderFiltrosMutirao() {
+  var alvoUf = $('ufFiltro'), alvoCat = $('catFiltro');
+  $('mutiraoQtdVend').textContent = state.equipe.filter(function (v) {
+    return norm(v.vendedor) && REGIAO_NORTE.indexOf(norm(v.uf).toUpperCase()) > -1;
+  }).length;
+
+  if (!state.records.length) {
+    alvoUf.innerHTML = alvoCat.innerHTML =
+      '<span class="pick-empty">Carregue a base na etapa 1 para escolher.</span>';
+    return;
+  }
+
+  var colUf = findCol(state.headers, 'UF');
+  var colCat = findCol(state.headers, 'Categoria');
+
+  var ufs = ufsDaBase(state.records, colUf);
+  alvoUf.innerHTML = ufs.length
+    ? ufs.map(function (u) {
+        return '<label><input type="checkbox" data-uf="' + escapeHtml(u.uf) + '" checked>' +
+          '<span>' + escapeHtml(u.uf) + '</span><span class="n">' + fmtInt(u.qtde) + '</span></label>';
+      }).join('')
+    : '<span class="pick-empty">Nenhum estado do Norte nesta base.</span>';
+
+  var cats = categoriasDaBase(state.records, colCat);
+  alvoCat.innerHTML = cats.length
+    ? cats.map(function (c) {
+        var marcada = categoriaProspectavel(c.nome) ? ' checked' : '';
+        return '<label><input type="checkbox" data-cat="' + escapeHtml(c.nome) + '"' + marcada + '>' +
+          '<span>' + escapeHtml(c.nome) + '</span><span class="n">' + fmtInt(c.qtde) + '</span></label>';
+      }).join('')
+    : '<span class="pick-empty">Nenhuma categoria encontrada nesta base.</span>';
+}
+
+function marcados(container, attr) {
+  return Array.prototype.slice
+    .call($(container).querySelectorAll('input[' + attr + ']:checked'))
+    .map(function (i) { return i.getAttribute(attr); });
+}
+
 function opcoesRodada() {
-  var modo = document.querySelector('input[name="modo"]:checked').value;
+  var modo = modoAtual();
   return {
+    modo: modo,
     gerente: $('gerente').value,
     ataque: modo === 'ataque' ? $('ataqueUf').value : '',
-    equipeToda: $('equipeToda').checked
+    equipeToda: $('equipeToda').checked,
+    ufs: modo === 'mutirao' ? marcados('ufFiltro', 'data-uf') : [],
+    categorias: modo === 'mutirao' ? marcados('catFiltro', 'data-cat') : []
   };
 }
 
@@ -299,6 +351,10 @@ $('run').addEventListener('click', function () {
 
   try {
     var opts = opcoesRodada();
+    if (opts.modo === 'mutirao') {
+      if (!opts.ufs.length) { toast('Escolha ao menos um estado para o mutirão'); return; }
+      if (!opts.categorias.length) { toast('Escolha ao menos uma categoria para distribuir'); return; }
+    }
     var anterior = lerSnapshot();
 
     state.result = distribuir(state.records, state.headers, equipe, opts);
@@ -327,13 +383,23 @@ function renderResultado() {
   $('resSub').innerHTML =
     'Base de <strong>' + fmtInt(r.totalLido) + '</strong> linhas &mdash; ' +
     escapeHtml(state.origem) + '. Cada rodada recalcula a divisão do zero.' +
-    (r.ataque ? ' <strong style="color:var(--y)">Rodada de ataque em ' + escapeHtml(r.ataque) + '.</strong>' : '');
+    (r.modo === 'ataque' && r.ataque
+      ? ' <strong style="color:var(--y)">Rodada de ataque em ' + escapeHtml(r.ataque) + '.</strong>' : '') +
+    (r.modo === 'mutirao'
+      ? ' <strong style="color:var(--y)">Mutirão em ' + escapeHtml(r.ufsMutirao.join(', ')) +
+        ', repartido entre a equipe toda.</strong> A coluna UF abaixo é a do vendedor, ' +
+        'não a do cliente: os clientes desta rodada são todos de ' +
+        escapeHtml(r.ufsMutirao.join(', ')) + '.' : '');
 
+  var retidos = r.semUf.length + r.semVendedor.length + r.retidoAtaque.length +
+                r.outraGerencia.length + r.foraDoFiltro.length;
   $('stats').innerHTML =
     stat('go', r.atribuidos.length, 'distribuídos') +
-    stat('out', r.excluidos.length, 'ativos 30 dias') +
+    stat('out', r.excluidos.length, r.modo === 'mutirao' ? 'já compraram' : 'ativos 30 dias') +
     stat('hold', r.foraNorte.length, 'fora do Norte') +
-    stat('hold', r.semUf.length + r.semVendedor.length + r.retidoAtaque.length + r.outraGerencia.length, 'retidos');
+    stat('hold', retidos, 'retidos');
+
+  document.body.classList.toggle('sem-valor', !r.colValor);
 
   var maxQt = Math.max.apply(null, r.resumo.map(function (v) { return v.qtde; }).concat([1]));
   var list = $('vendList');
@@ -387,8 +453,15 @@ function stat(t, n, label) {
 function renderBuckets() {
   var r = state.result;
   var defs = [
-    ['Excluídos &mdash; ativos nos últimos 30 dias', r.excluidos,
-     'Compraram há pouco: não entram na distribuição.'],
+    [r.modo === 'mutirao' ? 'Fora do filtro de categoria' : 'Excluídos &mdash; ativos nos últimos 30 dias',
+     r.excluidos,
+     r.modo === 'mutirao'
+       ? 'Categorias que você deixou desmarcadas na etapa 2 — nesta base, quem já comprou.'
+       : 'Compraram há pouco: não entram na distribuição.'],
+    ['Estados fora do mutirão', r.foraDoFiltro,
+     'Clientes do Norte em estados que você não marcou nesta rodada.'],
+    ['Rodapé da exportação &mdash; descartado', r.rodape,
+     'Linha com o texto dos filtros aplicados, que o BI escreve no fim do arquivo. Não é cliente.'],
     ['Fora do Norte &mdash; mantidos com o vendedor atual', r.foraNorte,
      'Regra fixa: a equipe só prospecta AC, AM, AP, PA, RO, RR e TO. ' +
      'Estes clientes continuam na carteira de quem já os atende — a coluna Vendedor mostra com quem.'],
@@ -453,6 +526,19 @@ function renderDesempenho() {
   var f = state.funil;
   var hoje = new Date();
   $('dataHoje').textContent = hoje.toLocaleDateString('pt-BR');
+
+  if (f && f.incompativel) {
+    var nomes = { mutirao: 'sem compras no mês', normal: 'por atividade', ataque: 'por atividade' };
+    $('perfSub').innerHTML =
+      'A rodada guardada como referência era do tipo <strong>' + escapeHtml(nomes[f.modoAnterior]) +
+      '</strong> e esta é do tipo <strong>' + escapeHtml(nomes[f.modoAtual]) + '</strong>. ' +
+      'As duas saem de bases diferentes, com categorias diferentes, então comparar uma com a outra ' +
+      'daria um número sem significado — o funil fica de fora desta vez. ' +
+      'Esta rodada virou a nova referência: repita o mesmo tipo na próxima base para ver o aproveitamento.';
+    $('funil').innerHTML = '';
+    renderInsights();
+    return;
+  }
 
   if (!f) {
     $('perfSub').innerHTML =
