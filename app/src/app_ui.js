@@ -182,7 +182,7 @@ function afterLoad(matrix, origem) {
       '</div>' +
     '</div>';
 
-  renderFiltrosMutirao();   // a base nova muda os estados e as categorias
+  renderFiltrosCarteira();   // a base nova muda os estados e as categorias
   var next = $('toEquipe');
   if (next) next.addEventListener('click', function () { goStep(1); });
   if (!missing.length) toast(fmtInt(t.records.length) + ' linhas carregadas');
@@ -269,18 +269,16 @@ document.querySelectorAll('input[name="modo"]').forEach(function (r) {
   r.addEventListener('change', function () {
     var m = modoAtual();
     $('ataqueBox').hidden = m !== 'ataque';
-    $('mutiraoBox').hidden = m !== 'mutirao';
-    if (m === 'mutirao') renderFiltrosMutirao();
+    $('carteiraBox').hidden = m !== 'carteira';
+    $('run').textContent = m === 'carteira' ? 'Gerar lista por vendedor' : 'Distribuir carteira';
+    if (m === 'carteira') renderFiltrosCarteira();
   });
 });
 
 /* Monta as caixinhas de estado e de categoria a partir da base carregada:
    os rotulos mudam de uma exportacao para outra, entao nada aqui e fixo. */
-function renderFiltrosMutirao() {
+function renderFiltrosCarteira() {
   var alvoUf = $('ufFiltro'), alvoCat = $('catFiltro');
-  $('mutiraoQtdVend').textContent = state.equipe.filter(function (v) {
-    return norm(v.vendedor) && REGIAO_NORTE.indexOf(norm(v.uf).toUpperCase()) > -1;
-  }).length;
 
   if (!state.records.length) {
     alvoUf.innerHTML = alvoCat.innerHTML =
@@ -291,13 +289,13 @@ function renderFiltrosMutirao() {
   var colUf = findCol(state.headers, 'UF');
   var colCat = findCol(state.headers, 'Categoria');
 
-  var ufs = ufsDaBase(state.records, colUf);
+  var ufs = ufsDaBase(state.records, colUf);   // Brasil inteiro: nada e redistribuido
   alvoUf.innerHTML = ufs.length
     ? ufs.map(function (u) {
         return '<label><input type="checkbox" data-uf="' + escapeHtml(u.uf) + '" checked>' +
           '<span>' + escapeHtml(u.uf) + '</span><span class="n">' + fmtInt(u.qtde) + '</span></label>';
       }).join('')
-    : '<span class="pick-empty">Nenhum estado do Norte nesta base.</span>';
+    : '<span class="pick-empty">Nenhum estado encontrado nesta base.</span>';
 
   var cats = categoriasDaBase(state.records, colCat);
   alvoCat.innerHTML = cats.length
@@ -322,8 +320,8 @@ function opcoesRodada() {
     gerente: $('gerente').value,
     ataque: modo === 'ataque' ? $('ataqueUf').value : '',
     equipeToda: $('equipeToda').checked,
-    ufs: modo === 'mutirao' ? marcados('ufFiltro', 'data-uf') : [],
-    categorias: modo === 'mutirao' ? marcados('catFiltro', 'data-cat') : []
+    ufs: modo === 'carteira' ? marcados('ufFiltro', 'data-uf') : [],
+    categorias: modo === 'carteira' ? marcados('catFiltro', 'data-cat') : []
   };
 }
 
@@ -351,8 +349,8 @@ $('run').addEventListener('click', function () {
 
   try {
     var opts = opcoesRodada();
-    if (opts.modo === 'mutirao') {
-      if (!opts.ufs.length) { toast('Escolha ao menos um estado para o mutirão'); return; }
+    if (opts.modo === 'carteira') {
+      if (!opts.ufs.length) { toast('Escolha ao menos um estado'); return; }
       if (!opts.categorias.length) { toast('Escolha ao menos uma categoria para distribuir'); return; }
     }
     var anterior = lerSnapshot();
@@ -380,24 +378,34 @@ $('run').addEventListener('click', function () {
 function renderResultado() {
   var r = state.result;
 
-  $('resSub').innerHTML =
-    'Base de <strong>' + fmtInt(r.totalLido) + '</strong> linhas &mdash; ' +
-    escapeHtml(state.origem) + '. Cada rodada recalcula a divisão do zero.' +
-    (r.modo === 'ataque' && r.ataque
-      ? ' <strong style="color:var(--y)">Rodada de ataque em ' + escapeHtml(r.ataque) + '.</strong>' : '') +
-    (r.modo === 'mutirao'
-      ? ' <strong style="color:var(--y)">Mutirão em ' + escapeHtml(r.ufsMutirao.join(', ')) +
-        ', repartido entre a equipe toda.</strong> A coluna UF abaixo é a do vendedor, ' +
-        'não a do cliente: os clientes desta rodada são todos de ' +
-        escapeHtml(r.ufsMutirao.join(', ')) + '.' : '');
+  var ehCarteira = r.modo === 'carteira';
+
+  $('resTitulo').textContent = ehCarteira
+    ? 'Clientes sem compras no mês'
+    : 'Carteira distribuída';
+
+  $('resSub').innerHTML = ehCarteira
+    ? 'Base de <strong>' + fmtInt(r.totalLido) + '</strong> linhas &mdash; ' +
+      escapeHtml(state.origem) + '. Estados: <strong>' + escapeHtml(r.ufsFiltro.join(', ')) +
+      '</strong>. Nada foi redistribuído: cada cliente está na lista de quem já o atende, ' +
+      'para você avisar o vendedor de que há um cliente esperando contato.'
+    : 'Base de <strong>' + fmtInt(r.totalLido) + '</strong> linhas &mdash; ' +
+      escapeHtml(state.origem) + '. Cada rodada recalcula a divisão do zero.' +
+      (r.modo === 'ataque' && r.ataque
+        ? ' <strong style="color:var(--y)">Rodada de ataque em ' + escapeHtml(r.ataque) + '.</strong>'
+        : '');
 
   var retidos = r.semUf.length + r.semVendedor.length + r.retidoAtaque.length +
-                r.outraGerencia.length + r.foraDoFiltro.length;
-  $('stats').innerHTML =
-    stat('go', r.atribuidos.length, 'distribuídos') +
-    stat('out', r.excluidos.length, r.modo === 'mutirao' ? 'já compraram' : 'ativos 30 dias') +
-    stat('hold', r.foraNorte.length, 'fora do Norte') +
-    stat('hold', retidos, 'retidos');
+                r.outraGerencia.length + r.foraDoFiltro.length + r.semDono.length;
+  $('stats').innerHTML = ehCarteira
+    ? stat('go', r.atribuidos.length, 'clientes a cobrar') +
+      stat('out', r.excluidos.length, 'já compraram') +
+      stat('hold', r.resumo.length, 'vendedores a avisar') +
+      stat('hold', retidos, 'fora do filtro')
+    : stat('go', r.atribuidos.length, 'distribuídos') +
+      stat('out', r.excluidos.length, 'ativos 30 dias') +
+      stat('hold', r.foraNorte.length, 'fora do Norte') +
+      stat('hold', retidos, 'retidos');
 
   document.body.classList.toggle('sem-valor', !r.colValor);
 
@@ -405,15 +413,42 @@ function renderResultado() {
   var list = $('vendList');
   list.innerHTML = '';
 
+  var foraDoCadastro = r.resumo.filter(function (v) { return v.naEquipe === false; });
+  var avisoEquipe = $('avisoEquipe');
+  if (foraDoCadastro.length) {
+    avisoEquipe.hidden = false;
+    avisoEquipe.innerHTML =
+      '<strong>' + fmtInt(foraDoCadastro.length) +
+      (foraDoCadastro.length === 1 ? ' vendedor aparece' : ' vendedores aparecem') +
+      ' na base mas não estão na equipe da etapa 2:</strong> ' +
+      foraDoCadastro.map(function (v) {
+        return escapeHtml(v.vendedor) +
+          (v.sugestaoNome ? ' (grafia parecida com <em>' + escapeHtml(v.sugestaoNome) + '</em>)' : '');
+      }).join(' · ') +
+      '. A lista deles foi gerada assim mesmo, mas sem e-mail cadastrado. ' +
+      'Se for a mesma pessoa com o nome escrito de outro jeito, acerte a grafia na etapa 2.';
+  } else {
+    avisoEquipe.hidden = true;
+    avisoEquipe.innerHTML = '';
+  }
+
   r.resumo.slice().sort(function (a, b) {
     return a.uf === b.uf ? b.qtde - a.qtde : (a.uf < b.uf ? -1 : 1);
   }).forEach(function (v) {
     var row = document.createElement('div');
     row.className = 'vrow';
     row.innerHTML =
-      '<span class="vuf">' + escapeHtml(v.uf) + '</span>' +
+      '<span class="vuf"' +
+        (v.ufsAtendidas && v.ufsAtendidas.length > 1
+          ? ' title="' + escapeHtml(v.ufsAtendidas.join(', ')) + '"' : '') +
+        '>' + escapeHtml(v.uf) +
+        (v.ufsAtendidas && v.ufsAtendidas.length > 1 ? '+' + (v.ufsAtendidas.length - 1) : '') +
+      '</span>' +
       '<span><span class="vname">' + escapeHtml(v.vendedor) + '</span>' +
-        (v.email ? '<br><span class="vmail">' + escapeHtml(v.email) + '</span>' : '') + '</span>' +
+        (v.naEquipe === false
+          ? '<br><span class="vmail" data-alerta="1">fora do cadastro da etapa 2' +
+            (v.sugestaoNome ? ' &mdash; lá consta ' + escapeHtml(v.sugestaoNome) : '') + '</span>'
+          : (v.email ? '<br><span class="vmail">' + escapeHtml(v.email) + '</span>' : '')) + '</span>' +
       '<span class="vbar h-bar"><i style="width:' + Math.round(v.qtde / maxQt * 100) + '%"></i></span>' +
       '<span class="vqt">' + fmtInt(v.qtde) + '</span>' +
       '<span class="vval h-val">' + fmtMoney(v.valor) + '</span>';
@@ -453,13 +488,15 @@ function stat(t, n, label) {
 function renderBuckets() {
   var r = state.result;
   var defs = [
-    [r.modo === 'mutirao' ? 'Fora do filtro de categoria' : 'Excluídos &mdash; ativos nos últimos 30 dias',
+    [r.modo === 'carteira' ? 'Fora do filtro de categoria' : 'Excluídos &mdash; ativos nos últimos 30 dias',
      r.excluidos,
-     r.modo === 'mutirao'
+     r.modo === 'carteira'
        ? 'Categorias que você deixou desmarcadas na etapa 2 — nesta base, quem já comprou.'
        : 'Compraram há pouco: não entram na distribuição.'],
-    ['Estados fora do mutirão', r.foraDoFiltro,
-     'Clientes do Norte em estados que você não marcou nesta rodada.'],
+    ['Estados fora do filtro', r.foraDoFiltro,
+     'Clientes em estados que você não marcou nesta rodada.'],
+    ['Sem vendedor na base', r.semDono,
+     'A coluna Vendedor está vazia nessas linhas, então não há a quem avisar. Corrija na origem.'],
     ['Rodapé da exportação &mdash; descartado', r.rodape,
      'Linha com o texto dos filtros aplicados, que o BI escreve no fim do arquivo. Não é cliente.'],
     ['Fora do Norte &mdash; mantidos com o vendedor atual', r.foraNorte,
@@ -528,7 +565,7 @@ function renderDesempenho() {
   $('dataHoje').textContent = hoje.toLocaleDateString('pt-BR');
 
   if (f && f.incompativel) {
-    var nomes = { mutirao: 'sem compras no mês', normal: 'por atividade', ataque: 'por atividade' };
+    var nomes = { carteira: 'sem compras no mês', normal: 'distribuição', ataque: 'distribuição' };
     $('perfSub').innerHTML =
       'A rodada guardada como referência era do tipo <strong>' + escapeHtml(nomes[f.modoAnterior]) +
       '</strong> e esta é do tipo <strong>' + escapeHtml(nomes[f.modoAtual]) + '</strong>. ' +

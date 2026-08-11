@@ -217,6 +217,7 @@ td.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-num
 }
 .vname{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
 .vmail{font-family:var(--mono);font-size:10.5px;color:var(--text-3);}
+.vmail[data-alerta="1"]{color:var(--no);}
 .vbar{height:6px;background:var(--panel-3);border-radius:99px;overflow:hidden;}
 .vbar i{display:block;height:100%;background:var(--y);border-radius:99px;}
 .vqt{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;text-align:right;}
@@ -486,7 +487,7 @@ select{max-width:260px;}
           <tbody id="equipeBody"></tbody>
         </table>
       </div>
-      <p class="hint">Uma UF com um único vendedor entrega toda a carteira daquele estado para ele.</p>
+      <p class="hint">Um estado com um único vendedor entrega toda a carteira daquele estado para ele.</p>
     </div>
 
     <div class="panel">
@@ -502,29 +503,35 @@ select{max-width:260px;}
         <span class="lbl">Tipo de rodada</span>
         <div class="radios">
           <label class="radio"><input type="radio" name="modo" value="normal" checked>
-            <span><strong>Normal</strong> — cada UF do Norte é dividida entre os vendedores dela</span></label>
+            <span><strong>Normal</strong> — cada estado do Norte é dividido entre os vendedores dele</span></label>
           <label class="radio"><input type="radio" name="modo" value="ataque">
-            <span><strong>Ataque a um estado</strong> — a rodada inteira foca numa UF só</span></label>
-          <label class="radio"><input type="radio" name="modo" value="mutirao">
-            <span><strong>Sem compras no mês</strong> — junta os clientes parados dos estados
-            escolhidos e reparte entre a equipe toda, sem olhar a UF de cada vendedor</span></label>
+            <span><strong>Ataque a um estado</strong> — a rodada inteira se concentra em um estado</span></label>
+          <label class="radio"><input type="radio" name="modo" value="carteira">
+            <span><strong>Sem compras no mês</strong> — cada cliente continua com o vendedor
+            que já o atende. Serve para avisar cada um de quem ainda não comprou.</span></label>
         </div>
       </div>
 
-      <div id="mutiraoBox" hidden style="margin-top:14px;padding-left:26px;">
+      <div id="carteiraBox" hidden style="margin-top:14px;padding-left:26px;">
+        <div class="alert" data-t="info" style="margin:0 0 18px;">
+          Nesta modalidade <strong>nada é redistribuído</strong>. O cliente permanece na
+          carteira de quem já o atende, conforme a coluna <strong>Vendedor</strong> da base.
+          Se um cliente de Rondônia está com o Diego, ele continua com o Diego — a lista
+          existe para você avisar que há um cliente ali esperando contato.
+          Vale para <strong>todos os estados</strong>, não só a Região Norte.
+        </div>
+
         <div class="sub-block">
-          <span class="lbl">Estados que entram no mutirão</span>
+          <span class="lbl">Estados que entram nesta lista</span>
           <div id="ufFiltro" class="pick"></div>
         </div>
+
         <div class="sub-block">
-          <span class="lbl">Categorias que entram na distribuição</span>
+          <span class="lbl">Categorias que entram na lista</span>
           <div id="catFiltro" class="pick"></div>
-          <p class="hint">Vem marcado quem ainda não comprou. Quem já comprou fica de fora —
+          <p class="hint">Já vem marcado quem ainda não comprou. Quem comprou fica de fora —
           nesta base, "Comprador neste Mês" e "Comprador Habitual".</p>
         </div>
-        <p class="hint">O bolo inteiro é repartido entre os
-        <strong id="mutiraoQtdVend">0</strong> vendedores cadastrados, na ordem da lista.
-        Um vendedor de RO pode receber cliente do PA — é essa a intenção do mutirão.</p>
       </div>
 
       <div id="ataqueBox" hidden style="margin-top:14px;padding-left:26px;">
@@ -542,15 +549,16 @@ select{max-width:260px;}
         </div>
         <label class="check" style="margin-top:12px;">
           <input type="checkbox" id="equipeToda" checked>
-          <span>Envolver a equipe toda — todos os vendedores recebem uma fatia desse estado</span>
+          <span>Envolver a equipe toda — todos os vendedores recebem uma parte desse estado</span>
         </label>
-        <p class="hint">As outras UFs do Norte ficam retidas nesta rodada e voltam na próxima rodada normal.</p>
+        <p class="hint">Os demais estados do Norte ficam de fora desta rodada e voltam na próxima rodada normal.</p>
       </div>
 
       <div class="alert" data-t="info" style="margin:20px 0 0;">
-        <strong>Regra fixa:</strong> só a Região Norte (AC, AM, AP, PA, RO, RR, TO) é distribuída.
-        Clientes de qualquer outro estado nunca são redistribuídos — permanecem com o vendedor
-        que já os atende na carteira.
+        <strong>Regra fixa da distribuição:</strong> nas rodadas Normal e Ataque, só a Região
+        Norte (AC, AM, AP, PA, RO, RR, TO) é redistribuída. Clientes de qualquer outro estado
+        permanecem com o vendedor que já os atende. A modalidade "Sem compras no mês" não
+        redistribui ninguém, por isso atende o Brasil inteiro.
       </div>
     </div>
 
@@ -562,10 +570,11 @@ select{max-width:260px;}
   <!-- ============ 3. RESULTADO ============ -->
   <section class="pane" id="p3" role="tabpanel" aria-labelledby="s3" hidden>
     <p class="kicker">Etapa 3</p>
-    <h2>Carteira distribuída</h2>
+    <h2 id="resTitulo">Carteira distribuída</h2>
     <p class="sub" id="resSub"></p>
 
     <div class="stats" id="stats"></div>
+    <div id="avisoEquipe" class="alert" hidden></div>
 
     <div class="panel">
       <div class="panel-head">

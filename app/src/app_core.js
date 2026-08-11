@@ -323,17 +323,55 @@ function categoriasDaBase(records, colCategoria) {
     .sort(function (a, b) { return b.qtde - a.qtde; });
 }
 
-/* UFs do Norte presentes na base, com a contagem de cada uma. */
-function ufsDaBase(records, colUf) {
+/* UFs presentes na base, com a contagem de cada uma. Por padrao lista o
+   Brasil inteiro; com somenteNorte, apenas a regiao da equipe. */
+function ufsDaBase(records, colUf, somenteNorte) {
   if (!colUf) return [];
   var contagem = {};
   records.forEach(function (row) {
     var u = norm(row[colUf]).toUpperCase();
-    if (ehNorte(u)) contagem[u] = (contagem[u] || 0) + 1;
+    if (!u || u.length > 2) return;
+    if (somenteNorte && !ehNorte(u)) return;
+    contagem[u] = (contagem[u] || 0) + 1;
   });
-  return REGIAO_NORTE
-    .filter(function (uf) { return contagem[uf]; })
+  return Object.keys(contagem)
+    .sort(function (a, b) {
+      var na = ehNorte(a), nb = ehNorte(b);
+      if (na !== nb) return na ? -1 : 1;      // Norte primeiro
+      return a < b ? -1 : 1;
+    })
     .map(function (uf) { return { uf: uf, qtde: contagem[uf] }; });
+}
+
+/* Distancia de edicao, usada so para sugerir a grafia certa quando um nome
+   da base nao bate com nenhum da equipe (ex.: "LUIZ" x "LUIS"). */
+function distanciaTexto(a, b) {
+  a = a.toUpperCase(); b = b.toUpperCase();
+  var linha = [], i, j;
+  for (j = 0; j <= b.length; j++) linha[j] = j;
+  for (i = 1; i <= a.length; i++) {
+    var anterior = linha[0];
+    linha[0] = i;
+    for (j = 1; j <= b.length; j++) {
+      var temp = linha[j];
+      linha[j] = Math.min(
+        linha[j] + 1,
+        linha[j - 1] + 1,
+        anterior + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1)
+      );
+      anterior = temp;
+    }
+  }
+  return linha[b.length];
+}
+
+function nomeParecido(nome, candidatos) {
+  var melhor = null, menor = Infinity;
+  candidatos.forEach(function (c) {
+    var d = distanciaTexto(nome, c);
+    if (d < menor) { menor = d; melhor = c; }
+  });
+  return (menor > 0 && menor <= 3) ? melhor : null;
 }
 
 /* As exportacoes trazem no fim uma linha com o texto dos filtros aplicados
@@ -392,15 +430,15 @@ function distribuir(records, headers, equipe, opts) {
   var modo = opts.modo || 'normal';
   var ataque = norm(opts.ataque || '').toUpperCase();
 
-  // Modo mutirao: o filtro e por categoria e por estado, escolhidos na tela.
-  // Sem escolha explicita, vale o padrao (fora quem ja comprou) e todo o Norte.
+  // Modo carteira: o filtro e por categoria e por estado, escolhidos na tela.
+  // Sem escolha explicita, vale o padrao (fora quem ja comprou) e tudo.
   var catsAceitas = null;
-  if (modo === 'mutirao' && opts.categorias && opts.categorias.length) {
+  if (modo === 'carteira' && opts.categorias && opts.categorias.length) {
     catsAceitas = {};
     opts.categorias.forEach(function (c) { catsAceitas[norm(c).toLowerCase()] = true; });
   }
   var ufsAceitas = null;
-  if (modo === 'mutirao' && opts.ufs && opts.ufs.length) {
+  if (modo === 'carteira' && opts.ufs && opts.ufs.length) {
     ufsAceitas = {};
     opts.ufs.forEach(function (u) { ufsAceitas[norm(u).toUpperCase()] = true; });
   }
@@ -418,7 +456,7 @@ function distribuir(records, headers, equipe, opts) {
 
   var excluidos = [], semUf = [], foraNorte = [], outraGerencia = [],
       semVendedor = [], retidoAtaque = [], foraDoFiltro = [], rodape = [],
-      grupos = {}, todasUf = [], mutirao = [];
+      semDono = [], grupos = {}, todasUf = [], carteira = [];
 
   records.forEach(function (row) {
     // 0) rodape com o texto dos filtros da exportacao -- nao e cliente
@@ -436,24 +474,26 @@ function distribuir(records, headers, equipe, opts) {
     // 2) sem UF -> nao da para rotear
     if (!uf) { semUf.push(row); return; }
 
-    // 3) conta nacional marcada explicitamente
-    if (modo !== 'mutirao' && ehMarcadorTodasUf(uf, ufsMapeadas)) { todasUf.push(row); return; }
-
-    // 4) fora da Regiao Norte -> nunca redistribui, fica com quem ja atende
-    if (!ehNorte(uf)) { foraNorte.push(row); return; }
-
-    // 5) carteira de outra gerencia -> nao mexe
+    // 3) carteira de outra gerencia -> nao mexe, em qualquer modalidade
     if (gerenteAlvo && colGerente && norm(row[colGerente]).toUpperCase() !== gerenteAlvo) {
       outraGerencia.push(row); return;
     }
 
-    // 6) mutirao: os estados escolhidos vao para um bolo unico, repartido
-    //    entre a equipe inteira -- inclusive quem nao atende aquela UF
-    if (modo === 'mutirao') {
+    // 4) modo carteira: nada e redistribuido. O cliente continua com quem ja
+    //    o atende, e a lista serve para avisar cada vendedor de quem ainda
+    //    nao comprou. Vale para o Brasil inteiro, nao so para o Norte.
+    if (modo === 'carteira') {
       if (ufsAceitas && !ufsAceitas[uf]) { foraDoFiltro.push(row); return; }
-      mutirao.push(row);
+      if (!colVendedorBase || !norm(row[colVendedorBase])) { semDono.push(row); return; }
+      carteira.push(row);
       return;
     }
+
+    // 5) conta nacional marcada explicitamente
+    if (ehMarcadorTodasUf(uf, ufsMapeadas)) { todasUf.push(row); return; }
+
+    // 6) fora da Regiao Norte -> nunca redistribui, fica com quem ja atende
+    if (!ehNorte(uf)) { foraNorte.push(row); return; }
 
     // 7) rodada de ataque: as demais UFs do Norte ficam retidas
     if (modo === 'ataque' && ataque && uf !== ataque) { retidoAtaque.push(row); return; }
@@ -466,7 +506,12 @@ function distribuir(records, headers, equipe, opts) {
   });
 
   var atribuidos = [];
-  if (mutirao.length) atribuidos = atribuidos.concat(dividirRodizio(mutirao, todosVendedores, headers));
+  // No modo carteira nao ha rodizio: o dono e quem ja consta na base.
+  carteira.forEach(function (row) {
+    var copia = Object.assign({}, row);
+    copia.__vendedor = norm(row[colVendedorBase]);
+    atribuidos.push(copia);
+  });
   if (todasUf.length) atribuidos = atribuidos.concat(dividirRodizio(todasUf, todosVendedores, headers));
   Object.keys(grupos).forEach(function (uf) {
     // no ataque com a equipe toda, todos os vendedores entram no rateio da UF
@@ -486,16 +531,55 @@ function distribuir(records, headers, equipe, opts) {
     (porVendedor[row.__vendedor] = porVendedor[row.__vendedor] || []).push(row);
   });
 
-  var resumo = equipe.filter(function (v) { return v.vendedor && ehNorte(v.uf); }).map(function (v) {
-    return {
-      vendedor: v.vendedor,
-      uf: v.uf,
-      email: v.email,
-      qtde: contagem[v.vendedor] || 0,
-      valor: valores[v.vendedor] || 0,
-      linhas: porVendedor[v.vendedor] || []
-    };
-  });
+  var resumo;
+  if (modo === 'carteira') {
+    // A lista sai da propria base: quem aparece na coluna Vendedor. Assim
+    // um vendedor que nao esta no cadastro da etapa 2 nao some do relatorio.
+    var nomesCadastro = equipe
+      .map(function (v) { return norm(v.vendedor); })
+      .filter(Boolean);
+
+    resumo = Object.keys(porVendedor).sort().map(function (nome) {
+      var cadastrado = equipe.filter(function (v) { return norm(v.vendedor) === nome; })[0];
+      var linhas = porVendedor[nome];
+
+      // UF a mostrar: a do CLIENTE, nao a do cadastro do vendedor. O aviso e
+      // "voce tem cliente parado em tal estado", entao o estado que importa
+      // e o do cliente -- ainda mais quando o vendedor atende varios.
+      var porUfDoVendedor = {};
+      linhas.forEach(function (r) {
+        var u = norm(r[colUf]).toUpperCase();
+        porUfDoVendedor[u] = (porUfDoVendedor[u] || 0) + 1;
+      });
+      var ufs = Object.keys(porUfDoVendedor).sort(function (a, b) {
+        return porUfDoVendedor[b] - porUfDoVendedor[a];
+      });
+
+      return {
+        vendedor: nome,
+        uf: ufs[0] || '',
+        ufsAtendidas: ufs,
+        email: cadastrado ? cadastrado.email : '',
+        naEquipe: !!cadastrado,
+        sugestaoNome: cadastrado ? null : nomeParecido(nome, nomesCadastro),
+        qtde: linhas.length,
+        valor: valores[nome] || 0,
+        linhas: linhas
+      };
+    });
+  } else {
+    resumo = equipe.filter(function (v) { return v.vendedor && ehNorte(v.uf); }).map(function (v) {
+      return {
+        vendedor: v.vendedor,
+        uf: v.uf,
+        email: v.email,
+        naEquipe: true,
+        qtde: contagem[v.vendedor] || 0,
+        valor: valores[v.vendedor] || 0,
+        linhas: porVendedor[v.vendedor] || []
+      };
+    });
+  }
 
   return {
     headers: headers,
@@ -510,11 +594,12 @@ function distribuir(records, headers, equipe, opts) {
     retidoAtaque: retidoAtaque,
     foraDoFiltro: foraDoFiltro,
     rodape: rodape,
+    semDono: semDono,
     resumo: resumo,
     modo: modo,
     ataque: ataque,
-    ufsMutirao: opts.ufs || [],
-    categoriasMutirao: opts.categorias || [],
+    ufsFiltro: opts.ufs || [],
+    categoriasFiltro: opts.categorias || [],
     totalLido: records.length
   };
 }
@@ -549,12 +634,12 @@ function montarSnapshot(result, records, headers) {
 function analisarFunil(records, headers, result, snapshot) {
   if (!snapshot || !snapshot.byKey) return null;
 
-  // Rodada normal e mutirao saem de bases diferentes, com vocabulario de
-  // categoria diferente. Comparar uma com a outra daria um numero sem
-  // significado, entao aqui a comparacao para e explica o porque.
+  // A rodada de distribuicao e a de carteira saem de bases diferentes, com
+  // vocabulario de categoria diferente. Comparar uma com a outra daria um
+  // numero sem significado, entao aqui a comparacao para e explica o porque.
   var modoAtual = result.modo || 'normal';
   var modoAnterior = snapshot.modo || 'normal';
-  var comparaveis = (modoAtual === 'mutirao') === (modoAnterior === 'mutirao');
+  var comparaveis = (modoAtual === 'carteira') === (modoAnterior === 'carteira');
   if (!comparaveis) {
     return { incompativel: true, modoAnterior: modoAnterior, modoAtual: modoAtual, desde: snapshot.ts };
   }
@@ -847,7 +932,7 @@ function gerarInsights(result, funil) {
     return o;
   }).sort(function (a, b) { return b.porVendedor - a.porVendedor; });
 
-  if (carga.length >= 2 && result.modo !== 'mutirao') {
+  if (carga.length >= 2 && result.modo !== 'carteira') {
     var pesada = carga[0], leve = carga[carga.length - 1];
     if (pesada.porVendedor > leve.porVendedor * 1.6) {
       add('neutro', 'Carga desigual: ' + Math.round(pesada.porVendedor) + ' clientes por vendedor em ' + pesada.uf +
@@ -860,7 +945,7 @@ function gerarInsights(result, funil) {
   }
 
   /* --- 7. sugestao de qual estado atacar --- */
-  if (carga.length && result.modo !== 'mutirao') {
+  if (carga.length && result.modo !== 'carteira') {
     var alvo = carga.slice().sort(function (a, b) { return b.valor - a.valor; })[0];
     add('neutro', 'Se for atacar um estado agora, ataque ' + alvo.uf,
       alvo.uf + ' concentra ' + fmtInt(alvo.qtde) + ' clientes parados somando ' + fmtMoney(alvo.valor) +

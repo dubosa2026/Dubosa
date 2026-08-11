@@ -16,11 +16,11 @@ do Drive para o time todo usar.
 2. **Equipe** — a lista dos 22 vendedores já vem preenchida. Dá para editar,
    adicionar, remover e informar e-mail; as mudanças ficam salvas no
    navegador para a próxima vez. É aqui também que se escolhe o tipo da
-   rodada: normal, ataque a um estado ou mutirão. O botão **"Copiar equipe"**
-   exporta a lista no formato da versão Google Sheets.
-3. **Distribuição** — a carteira de cada vendedor, com quantidade e valor.
-   Baixe tudo de uma vez em `.xlsx`, ou copie a carteira de um vendedor
-   específico para colar no WhatsApp/e-mail.
+   rodada: normal, ataque a um estado ou sem compras no mês. O botão
+   **"Copiar equipe"** exporta a lista no formato da versão Google Sheets.
+3. **Distribuição** — a lista de cada vendedor, com quantidade e valor.
+   Baixe tudo de uma vez em `.xlsx`, ou copie a lista de um vendedor
+   específico para colar no WhatsApp ou no e-mail.
 4. **Desempenho** — o funil de aproveitamento e as análises do dia.
 
 ## Regras de distribuição
@@ -30,7 +30,9 @@ do Drive para o time todo usar.
 2. **Só a Região Norte é distribuída** — AC, AM, AP, PA, RO, RR e TO.
    Cliente de qualquer outro estado nunca é redistribuído: continua com o
    vendedor que já o atende na base. A regra é fixa; não depende de quem
-   está cadastrado na etapa 2.
+   está cadastrado na etapa 2. Ela vale para as rodadas Normal e Ataque; a
+   modalidade "Sem compras no mês" não redistribui ninguém, por isso atende
+   o Brasil inteiro.
 3. Dentro de cada UF, os clientes são divididos igualmente entre os
    vendedores daquele estado (diferença máxima de 1 cliente). A ordem é
    determinística: rodar duas vezes na mesma base dá o mesmo resultado.
@@ -75,10 +77,11 @@ O ponto de comparação é sempre a última rodada distribuída. Se você
 distribuir duas vezes a mesma base, o funil acusa zero conversões (correto:
 nada mudou entre uma leitura e outra).
 
-Rodada normal e mutirão saem de bases diferentes, com categorias diferentes.
-Comparar uma com a outra daria um número sem significado, então nesse caso o
-funil não é calculado e a etapa 4 explica o motivo — a rodada vira a nova
-referência e o aproveitamento volta quando você repetir o mesmo tipo.
+A rodada de distribuição e a de "sem compras no mês" saem de bases
+diferentes, com categorias diferentes. Comparar uma com a outra daria um
+número sem significado, então nesse caso o funil não é calculado e a etapa 4
+explica o motivo — a rodada vira a nova referência e o aproveitamento volta
+quando você repetir o mesmo tipo.
 
 ## Análises do dia
 
@@ -94,32 +97,41 @@ joga tudo em texto, pronto para colar no grupo.
 As análises são recalculadas a cada rodada — carregue a base atualizada e a
 leitura do dia vem junto.
 
-## Sem compras no mês (mutirão)
+## Sem compras no mês
 
 A terceira modalidade da etapa 2, para a base mensal — a que usa
 "Sem Compras este Mês", "Comprador neste Mês" e "Comprador Habitual" em vez
-de "Ativo 30 dias" / "Inativo".
+de "Ativo 30 dias" e "Inativo".
 
-Ela junta num bolo só os clientes parados dos estados escolhidos e reparte
-entre a **equipe inteira**, ignorando a UF de cada vendedor: um cliente do
-Pará pode cair para alguém de Rondônia. É essa a intenção — quando um estado
-acumula clientes parados, a equipe toda ajuda a limpar a fila, não só quem
-mora naquele estado.
+**Nada é redistribuído aqui.** Cada cliente permanece na carteira de quem já
+o atende, conforme a coluna `Vendedor` da própria base. A lista existe para
+você avisar cada vendedor de que há um cliente dele parado no mês: se um
+cliente de Rondônia está com o Diego, ele continua com o Diego, e o Diego é
+quem recebe o aviso. O mesmo vale para todos os vendedores e todos os
+estados.
+
+Por isso esta modalidade **atende o Brasil inteiro**, não só a Região Norte:
+como ninguém é redistribuído, a regra de região não se aplica.
 
 Dois filtros aparecem quando você escolhe essa modalidade, ambos montados a
-partir da base que você carregou (com a contagem de cada item):
+partir da base carregada, com a contagem de cada item:
 
-- **Estados** — marque os que entram na rodada. Só o Norte é oferecido.
-- **Categorias** — vem marcado quem ainda não comprou. Quem já comprou fica
-  de fora automaticamente: nesta base, "Comprador neste Mês" e "Comprador
-  Habitual".
+- **Estados** — todos os que existem na base, com os do Norte primeiro.
+- **Categorias** — já vem marcado quem ainda não comprou. Quem comprou fica
+  de fora: nesta base, "Comprador neste Mês" e "Comprador Habitual".
 
-O filtro de categorias é montado a partir dos rótulos que existem na base,
-não de uma lista fixa. Se o BI mudar o nome de uma categoria, ela aparece
-aqui do mesmo jeito e você decide se entra ou não.
+O filtro de categorias sai dos rótulos que existem na base, não de uma lista
+fixa. Se o BI mudar o nome de uma categoria, ela aparece aqui do mesmo jeito
+e você decide se entra.
 
-Na etapa 3, a coluna UF é a **do vendedor**, não a do cliente — os clientes
-da rodada são todos dos estados que você marcou.
+A coluna UF do resultado mostra o estado onde estão os clientes pendentes
+daquele vendedor, não o estado em que ele é cadastrado. Quando há clientes em
+mais de um estado, aparece o principal com um `+N` ao lado.
+
+Se algum nome da coluna `Vendedor` não existir na equipe da etapa 2, a lista
+dele é gerada mesmo assim e um aviso aparece acima do resultado — inclusive
+sugerindo a grafia parecida, quando é só diferença de escrita (por exemplo
+"CRISTIANE LUIZ" contra "CRISTIANE LUIS").
 
 ## Modo ataque
 
@@ -130,7 +142,8 @@ inteira foca ali:
 - com **envolver a equipe toda** marcado, todos os vendedores recebem uma
   fatia — 22 pessoas ligando para o mesmo estado, cada uma com uma lista
   curta o suficiente para vencer em poucos dias;
-- as outras UFs do Norte ficam retidas e voltam na próxima rodada normal.
+- os demais estados do Norte ficam de fora e voltam na próxima rodada
+  normal.
 
 Quando uma análise sugere um estado, o botão **Preparar ataque em XX** já
 deixa a etapa 2 configurada.
