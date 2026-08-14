@@ -365,6 +365,50 @@ select{max-width:260px;}
 .insight .acao b{color:var(--y);font-weight:600;font-size:10.5px;font-family:var(--mono);
   letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:3px;}
 
+/* ---------------- lista do vendedor no desktop ----------------
+   E onde a equipe vai usar. O nome do integrador e longo e empurrava as
+   colunas de Categoria e Valor para fora da tela: aqui ele encolhe com
+   reticencias (o nome inteiro fica no title) e o resto cabe sem rolagem
+   lateral. A altura maior mostra mais clientes de uma vez. */
+.cartoes{max-height:min(72vh, 900px);}
+.cartoes td:first-child{max-width:38ch;overflow:hidden;text-overflow:ellipsis;}
+.cartoes td[data-rotulo="E-mail"]{max-width:26ch;overflow:hidden;text-overflow:ellipsis;}
+.cartoes td[data-rotulo="Valor Faturado"],
+.cartoes td[data-rotulo="Qtde. Pedidos"]{
+  text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;
+}
+
+/* ---------------- lista do vendedor no celular ----------------
+   Tabela em tela pequena obriga a rolar para o lado e o vendedor perde de
+   vista de quem e cada linha. Abaixo de 640px cada cliente vira um cartao,
+   com o nome da coluna ao lado do valor. */
+.cartoes a{color:var(--y);text-decoration:none;border-bottom:1px solid var(--y-dim);}
+.cartoes a:hover{border-bottom-color:var(--y);}
+@media (max-width:640px){
+  .cartoes{max-height:none;border:0;background:none;overflow:visible;}
+  .cartoes table,.cartoes tbody,.cartoes tr,.cartoes td{display:block;width:100%;}
+  .cartoes thead{display:none;}
+  .cartoes tr{
+    border:1px solid var(--line);border-radius:9px;background:var(--panel);
+    padding:12px 14px;margin-bottom:10px;
+  }
+  .cartoes td{
+    border:0;padding:5px 0;white-space:normal;max-width:none;
+    display:grid;grid-template-columns:88px minmax(0,1fr);gap:10px;align-items:baseline;
+  }
+  .cartoes td:empty{display:none;}
+  .cartoes td::before{
+    content:attr(data-rotulo);
+    font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;
+  }
+  .cartoes td:first-child{
+    display:block;font-weight:600;font-size:14px;color:var(--text);
+    padding-bottom:9px;margin-bottom:5px;border-bottom:1px solid var(--line);
+  }
+  .cartoes td:first-child::before{display:none;}
+}
+
 /* ---------------- misc ---------------- */
 .alert{
   border-left:3px solid var(--no);background:var(--no-wash);color:var(--text);
@@ -603,6 +647,25 @@ select{max-width:260px;}
         <strong>Copiar</strong> coloca a carteira na área de transferência já formatada em colunas —
         basta colar direto no Google Sheets ou no Excel, sem baixar nada.
       </p>
+    </div>
+
+    <div class="panel" id="publicarPanel">
+      <div class="panel-head">
+        <h3>Links para a equipe</h3>
+        <button class="btn btn-sm btn-primary" id="publicar">Publicar links</button>
+      </div>
+      <p class="hint" style="margin-top:0;">
+        Publica a lista de cada vendedor no site e devolve um link secreto por pessoa.
+        Cada link abre só a carteira daquele vendedor. O link é fixo: nas próximas
+        rodadas continua o mesmo, com a lista atualizada.
+      </p>
+      <div class="field" style="margin-top:16px;">
+        <label for="senhaPub">Senha de publicação</label>
+        <input type="password" id="senhaPub" placeholder="definida no Netlify em ADMIN_TOKEN"
+               autocomplete="current-password">
+        <p class="hint">Fica guardada só neste navegador.</p>
+      </div>
+      <div id="publicarSaida"></div>
     </div>
 
     <div id="buckets"></div>
@@ -1972,6 +2035,8 @@ $('run').addEventListener('click', function () {
     $('s4').disabled = false;
     renderResultado();
     renderDesempenho();
+    $('publicarSaida').innerHTML = '';
+    ajustarPainelPublicar();
     goStep(2);
   } catch (err) {
     toast(err.message);
@@ -2365,6 +2430,120 @@ $('zipAll').addEventListener('click', function () {
 state.equipe = loadEquipe();
 renderEquipe();
 $('gerente').value = GERENTE_PADRAO;
+ajustarPainelPublicar();
+
+/* ---------- Publicar os links secretos da equipe ---------- */
+
+var SENHA_KEY = 'belenergy-senha-publicacao';
+
+try {
+  var senhaSalva = localStorage.getItem(SENHA_KEY);
+  if (senhaSalva) $('senhaPub').value = senhaSalva;
+} catch (e) { /* armazenamento indisponivel */ }
+
+$('senhaPub').addEventListener('input', function () {
+  try { localStorage.setItem(SENHA_KEY, $('senhaPub').value); } catch (e) { /* idem */ }
+});
+
+/* A publicacao so existe quando o app esta servido pelo site: aberto como
+   arquivo local nao ha /api para chamar. Nesse caso o painel some, em vez
+   de oferecer um botao que falharia. */
+function ajustarPainelPublicar() {
+  var naWeb = location.protocol === 'http:' || location.protocol === 'https:';
+  $('publicarPanel').hidden = !naWeb;
+}
+
+function linkDoVendedor(token) {
+  return location.origin + '/c/#' + token;
+}
+
+$('publicar').addEventListener('click', async function () {
+  var r = state.result;
+  if (!r) { toast('Rode a distribuição primeiro'); return; }
+
+  var senha = norm($('senhaPub').value);
+  if (!senha) { toast('Informe a senha de publicação'); $('senhaPub').focus(); return; }
+
+  var botao = $('publicar');
+  var saida = $('publicarSaida');
+  botao.disabled = true;
+
+  // Publica todos os vendedores do resumo, inclusive os que ficaram sem
+  // cliente: assim quem nao tem nada nesta rodada ve uma lista vazia e
+  // atual, em vez da lista antiga que continuaria no ar.
+  var fila = r.resumo;
+  var prontos = [], falhas = [];
+
+  for (var i = 0; i < fila.length; i++) {
+    var v = fila[i];
+    saida.innerHTML = '<p class="hint">Publicando ' + (i + 1) + ' de ' + fila.length +
+      ' — ' + escapeHtml(v.vendedor) + '…</p>';
+    try {
+      var resposta = await fetch('/api/publicar', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-admin-token': senha },
+        body: JSON.stringify({
+          vendedor: v.vendedor,
+          uf: v.uf,
+          modo: r.modo,
+          origem: state.origem,
+          colunas: r.headers,
+          linhas: v.linhas
+        })
+      });
+      var dados = await resposta.json();
+      if (!resposta.ok) { falhas.push(v.vendedor + ': ' + (dados.erro || resposta.status)); continue; }
+      prontos.push({ vendedor: v.vendedor, qtde: dados.qtde, url: linkDoVendedor(dados.token) });
+    } catch (e) {
+      falhas.push(v.vendedor + ': ' + e.message);
+    }
+  }
+
+  botao.disabled = false;
+  renderLinks(prontos, falhas);
+});
+
+function renderLinks(prontos, falhas) {
+  var saida = $('publicarSaida');
+  if (!prontos.length) {
+    saida.innerHTML = '<div class="alert">Nada foi publicado.' +
+      (falhas.length ? '<br>' + escapeHtml(falhas.join(' · ')) : '') + '</div>';
+    return;
+  }
+
+  saida.innerHTML =
+    (falhas.length
+      ? '<div class="alert">Falharam: ' + escapeHtml(falhas.join(' · ')) + '</div>'
+      : '') +
+    '<div class="btn-row" style="margin:14px 0;">' +
+      '<button class="btn btn-sm" id="copiarLinks">Copiar todos os links</button>' +
+      '<span class="hint">' + fmtInt(prontos.length) + ' publicados</span>' +
+    '</div>' +
+    '<div class="vend">' + prontos.map(function (p) {
+      return '<div class="vrow">' +
+        '<span class="vuf">' + escapeHtml(String(p.qtde)) + '</span>' +
+        '<span><span class="vname">' + escapeHtml(p.vendedor) + '</span>' +
+          '<br><span class="vmail">' + escapeHtml(p.url) + '</span></span>' +
+        '<span></span><span></span><span></span>' +
+        '<span class="btn-row">' +
+          '<button class="btn btn-sm" data-link="' + escapeHtml(p.url) + '">Copiar</button>' +
+        '</span>' +
+      '</div>';
+    }).join('') + '</div>';
+
+  saida.querySelectorAll('[data-link]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      copyText(b.getAttribute('data-link'), b, null);
+    });
+  });
+
+  var todos = $('copiarLinks');
+  if (todos) todos.addEventListener('click', function () {
+    copyText(toTSV(prontos.map(function (p) {
+      return { Vendedor: p.vendedor, Clientes: p.qtde, Link: p.url };
+    }), ['Vendedor', 'Clientes', 'Link']), todos, null);
+  });
+}
 
 </script>
 </body>

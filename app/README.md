@@ -160,37 +160,82 @@ Para não redigitar a equipe toda lá, use o botão **"Copiar equipe"** na
 etapa 2: ele copia nome, UF e e-mail no formato da aba "Vendedores" do
 Google Sheets. É só colar na célula A1 de lá.
 
-## Publicar online (Netlify)
+## Publicar online e dar um link para cada vendedor (Netlify)
 
-O app é um HTML estático, então dá para deixá-lo numa URL fixa em vez de
-mandar o arquivo por WhatsApp. O repositório já vem preparado:
+O site tem duas partes:
+
+- **`/`** — o app do gestor, que você já conhece. Continua lendo a planilha
+  dentro do navegador.
+- **`/c/#…`** — a página do vendedor. Cada um recebe um endereço próprio,
+  com um código secreto no fim, e vê **apenas a carteira dele**.
+
+### Instalar (uma vez)
 
 1. Em [netlify.com](https://netlify.com), **Add new site → Import an
    existing project** e conecte este repositório do GitHub.
-2. Escolha a branch. O `netlify.toml` da raiz já define o resto (build e
-   pasta publicada) — não precisa preencher nada.
-3. **Deploy**. Em cerca de um minuto sai uma URL, que dá para trocar por um
-   nome próprio em Site settings → Domain.
+2. Escolha a branch. O `netlify.toml` da raiz já define build, pasta
+   publicada e funções — não precisa preencher nada.
+3. Em **Site settings → Environment variables**, crie a variável
+   **`ADMIN_TOKEN`** com uma senha forte, de sua escolha. É ela que autoriza
+   publicar; sem ela ninguém consegue gravar carteira no site.
+4. **Deploy**. Sai uma URL, que dá para trocar por um nome próprio em
+   Site settings → Domain.
 
-A partir daí, todo push na branch republica o site sozinho. Quem abrir a URL
-sempre pega a versão mais nova, sem baixar nada.
+A partir daí, todo push na branch republica o site sozinho.
 
-Duas coisas que continuam valendo depois de publicado:
+### Usar (toda rodada)
 
-- **Os dados continuam sem sair do computador de quem usa.** O site entrega
-  só o programa; a planilha é lida dentro do navegador e nada é enviado para
-  o servidor. O Netlify nunca vê a base.
-- **A referência do funil é por navegador.** Cada pessoa que abre a URL tem a
-  própria referência da rodada anterior, guardada no navegador dela. Duas
-  pessoas usando o mesmo site não compartilham esse histórico.
+1. Abra a URL do site, carregue a base e rode a distribuição como sempre.
+2. Na etapa 3, no painel **Links para a equipe**, digite a senha de
+   publicação (fica guardada nesse navegador) e clique em **Publicar links**.
+3. O app envia a lista de cada vendedor e devolve o link de cada um. Use
+   **Copiar todos os links** para levar a lista inteira ao WhatsApp, ao
+   e-mail ou a uma planilha.
 
-Um aviso importante: um site do Netlify no plano gratuito **fica acessível a
-qualquer pessoa que tenha a URL**. A página não contém dados de cliente, mas
-contém a lista de nomes da equipe. Proteção por senha é recurso de plano
-pago do Netlify. O `noindex` já configurado mantém a página fora dos
-buscadores, o que não é o mesmo que protegê-la.
+O link de cada vendedor é **fixo**: nas rodadas seguintes continua o mesmo
+endereço, já com a lista nova. Você manda uma vez e pronto — nas próximas
+vezes basta publicar, e o que ele já tem salvo passa a mostrar a lista
+atualizada.
 
-## Editar o app
+Vendedores que ficaram sem cliente na rodada também são publicados, com
+lista vazia. É proposital: assim ninguém fica vendo a lista do mês passado
+achando que ainda vale.
+
+### O que o vendedor vê
+
+Nome dele, quantos clientes tem, a data da lista e a tabela com os dados de
+contato. Telefone e e-mail são clicáveis, e há botões para copiar a lista ou
+baixá-la em CSV (que abre no Excel). O link não pede senha nem cadastro:
+abre direto.
+
+### Segurança — o que esse desenho garante e o que não garante
+
+**Garante:** cada código é sorteado com 192 bits de aleatoriedade, o que
+torna a adivinhação inviável. A carteira fica guardada sob o código, não sob
+o nome do vendedor, e não existe endereço no site que liste vendedores ou
+carteiras — um código só alcança a própria lista. O código fica depois do
+`#`, parte do endereço que o navegador nunca envia ao servidor, então ele
+não aparece em log de acesso. Publicar exige a senha, comparada em tempo
+constante.
+
+**Não garante:** quem repassar o link dá acesso junto. É a natureza do link
+secreto — foi a opção escolhida no lugar do login com senha. Se um link
+vazar, dá para trocar o código daquele vendedor (veja abaixo).
+
+**Uma mudança importante em relação a antes:** enquanto o app rodava só no
+seu computador, nenhum dado de cliente saía dali. Ao publicar os links, a
+lista de cada vendedor — com nome, telefone e e-mail dos integradores —
+passa a ficar guardada no servidor do Netlify. Vale conferir se isso atende
+à política da empresa antes de usar com a base real.
+
+### Se um link vazar
+
+Publique de novo com o campo `rotacionar` ligado para aquele vendedor: sai
+um código novo e o antigo para de funcionar na hora. Hoje isso é feito pela
+API (`POST /api/publicar` com `"rotacionar": true`); se virar rotina, vale
+um botão na tela.
+
+## Editar o app## Editar o app
 
 O arquivo publicado é gerado a partir de `src/`:
 

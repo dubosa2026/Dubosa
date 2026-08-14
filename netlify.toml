@@ -14,6 +14,12 @@
 [build.environment]
   PYTHON_VERSION = "3.11"
 
+# As funcoes que servem a carteira de cada vendedor por link secreto.
+# Precisam da variavel ADMIN_TOKEN (a senha de publicacao), definida em
+# Site settings -> Environment variables. Sem ela a publicacao e recusada.
+[functions]
+  directory = "netlify/functions"
+
 [[headers]]
   for = "/*"
   [headers.values]

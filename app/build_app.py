@@ -14,6 +14,7 @@ SRC = RAIZ / "src"
 FONTES = SRC / "fonts"
 SAIDA = RAIZ / "belenergy-distribuicao.html"
 SAIDA_WEB = RAIZ / "dist" / "index.html"
+SAIDA_CARTEIRA = RAIZ / "dist" / "c" / "index.html"
 
 # O conteudo de app_shell.html e so o corpo da pagina. Sem este esqueleto o
 # navegador cai em quirks mode e, pior, sem <meta charset> os acentos podem
@@ -69,6 +70,26 @@ def main() -> None:
     tamanho = len(html.encode()) / 1024
     print(f"gerado {SAIDA.relative_to(RAIZ.parent)} ({tamanho:.0f} KB)")
     print(f"gerado {SAIDA_WEB.relative_to(RAIZ.parent)} (mesmo conteudo, para o Netlify)")
+
+    # Pagina do vendedor: mesmo visual (reaproveita o <style> do app),
+    # corpo e script proprios.
+    corpo_vendedor = (SRC / "carteira_body.html").read_text(encoding="utf-8")
+    js_vendedor = (SRC / "carteira.js").read_text(encoding="utf-8")
+    cabeca_vendedor = cabeca.replace(
+        "<title>BelEnergy — Distribuição de Carteira</title>",
+        "<title>Minha carteira — BelEnergy</title>",
+        1,
+    )
+    html_vendedor = ESQUELETO.format(
+        cabeca=cabeca_vendedor,
+        corpo=corpo_vendedor + "\n<script>\n" + js_vendedor + "\n</script>",
+    )
+    SAIDA_CARTEIRA.parent.mkdir(parents=True, exist_ok=True)
+    SAIDA_CARTEIRA.write_text(html_vendedor, encoding="utf-8")
+    print(
+        f"gerado {SAIDA_CARTEIRA.relative_to(RAIZ.parent)} "
+        f"({len(html_vendedor.encode()) / 1024:.0f} KB, pagina do vendedor)"
+    )
 
 
 if __name__ == "__main__":

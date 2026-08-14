@@ -368,6 +368,8 @@ $('run').addEventListener('click', function () {
     $('s4').disabled = false;
     renderResultado();
     renderDesempenho();
+    $('publicarSaida').innerHTML = '';
+    ajustarPainelPublicar();
     goStep(2);
   } catch (err) {
     toast(err.message);
@@ -761,3 +763,117 @@ $('zipAll').addEventListener('click', function () {
 state.equipe = loadEquipe();
 renderEquipe();
 $('gerente').value = GERENTE_PADRAO;
+ajustarPainelPublicar();
+
+/* ---------- Publicar os links secretos da equipe ---------- */
+
+var SENHA_KEY = 'belenergy-senha-publicacao';
+
+try {
+  var senhaSalva = localStorage.getItem(SENHA_KEY);
+  if (senhaSalva) $('senhaPub').value = senhaSalva;
+} catch (e) { /* armazenamento indisponivel */ }
+
+$('senhaPub').addEventListener('input', function () {
+  try { localStorage.setItem(SENHA_KEY, $('senhaPub').value); } catch (e) { /* idem */ }
+});
+
+/* A publicacao so existe quando o app esta servido pelo site: aberto como
+   arquivo local nao ha /api para chamar. Nesse caso o painel some, em vez
+   de oferecer um botao que falharia. */
+function ajustarPainelPublicar() {
+  var naWeb = location.protocol === 'http:' || location.protocol === 'https:';
+  $('publicarPanel').hidden = !naWeb;
+}
+
+function linkDoVendedor(token) {
+  return location.origin + '/c/#' + token;
+}
+
+$('publicar').addEventListener('click', async function () {
+  var r = state.result;
+  if (!r) { toast('Rode a distribuição primeiro'); return; }
+
+  var senha = norm($('senhaPub').value);
+  if (!senha) { toast('Informe a senha de publicação'); $('senhaPub').focus(); return; }
+
+  var botao = $('publicar');
+  var saida = $('publicarSaida');
+  botao.disabled = true;
+
+  // Publica todos os vendedores do resumo, inclusive os que ficaram sem
+  // cliente: assim quem nao tem nada nesta rodada ve uma lista vazia e
+  // atual, em vez da lista antiga que continuaria no ar.
+  var fila = r.resumo;
+  var prontos = [], falhas = [];
+
+  for (var i = 0; i < fila.length; i++) {
+    var v = fila[i];
+    saida.innerHTML = '<p class="hint">Publicando ' + (i + 1) + ' de ' + fila.length +
+      ' — ' + escapeHtml(v.vendedor) + '…</p>';
+    try {
+      var resposta = await fetch('/api/publicar', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-admin-token': senha },
+        body: JSON.stringify({
+          vendedor: v.vendedor,
+          uf: v.uf,
+          modo: r.modo,
+          origem: state.origem,
+          colunas: r.headers,
+          linhas: v.linhas
+        })
+      });
+      var dados = await resposta.json();
+      if (!resposta.ok) { falhas.push(v.vendedor + ': ' + (dados.erro || resposta.status)); continue; }
+      prontos.push({ vendedor: v.vendedor, qtde: dados.qtde, url: linkDoVendedor(dados.token) });
+    } catch (e) {
+      falhas.push(v.vendedor + ': ' + e.message);
+    }
+  }
+
+  botao.disabled = false;
+  renderLinks(prontos, falhas);
+});
+
+function renderLinks(prontos, falhas) {
+  var saida = $('publicarSaida');
+  if (!prontos.length) {
+    saida.innerHTML = '<div class="alert">Nada foi publicado.' +
+      (falhas.length ? '<br>' + escapeHtml(falhas.join(' · ')) : '') + '</div>';
+    return;
+  }
+
+  saida.innerHTML =
+    (falhas.length
+      ? '<div class="alert">Falharam: ' + escapeHtml(falhas.join(' · ')) + '</div>'
+      : '') +
+    '<div class="btn-row" style="margin:14px 0;">' +
+      '<button class="btn btn-sm" id="copiarLinks">Copiar todos os links</button>' +
+      '<span class="hint">' + fmtInt(prontos.length) + ' publicados</span>' +
+    '</div>' +
+    '<div class="vend">' + prontos.map(function (p) {
+      return '<div class="vrow">' +
+        '<span class="vuf">' + escapeHtml(String(p.qtde)) + '</span>' +
+        '<span><span class="vname">' + escapeHtml(p.vendedor) + '</span>' +
+          '<br><span class="vmail">' + escapeHtml(p.url) + '</span></span>' +
+        '<span></span><span></span><span></span>' +
+        '<span class="btn-row">' +
+          '<button class="btn btn-sm" data-link="' + escapeHtml(p.url) + '">Copiar</button>' +
+        '</span>' +
+      '</div>';
+    }).join('') + '</div>';
+
+  saida.querySelectorAll('[data-link]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      copyText(b.getAttribute('data-link'), b, null);
+    });
+  });
+
+  var todos = $('copiarLinks');
+  if (todos) todos.addEventListener('click', function () {
+    copyText(toTSV(prontos.map(function (p) {
+      return { Vendedor: p.vendedor, Clientes: p.qtde, Link: p.url };
+    }), ['Vendedor', 'Clientes', 'Link']), todos, null);
+  });
+}
