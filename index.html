@@ -1,0 +1,2260 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rotina de Gestão Comercial — 3 Camadas</title>
+<style>
+:root{
+  color-scheme: light;
+  --bg:#f4f4f1; --surface:#fcfcfb; --surface-2:#f0efec; --surface-3:#e9e8e3;
+  --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+  --line:#e1e0d9; --line-strong:#c3c2b7;
+  --accent:#2a78d6; --accent-soft:#e7f0fd; --accent-ink:#184f95;
+  --good:#0ca30c; --good-soft:#e4f5e4;
+  --warn:#fab219; --warn-soft:#fdf3dd;
+  --serious:#ec835a;
+  --crit:#d03b3b; --crit-soft:#fbe6e6;
+  --shadow:0 1px 2px rgba(11,11,11,.06), 0 4px 16px rgba(11,11,11,.05);
+  --radius:12px;
+  --font:system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#0d0d0d; --surface:#1a1a19; --surface-2:#232322; --surface-3:#2c2c2a;
+    --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+    --line:#2c2c2a; --line-strong:#383835;
+    --accent:#3987e5; --accent-soft:#16283f; --accent-ink:#9ec5f4;
+    --good:#0ca30c; --good-soft:#122a12;
+    --warn:#fab219; --warn-soft:#2e2513;
+    --crit:#d03b3b; --crit-soft:#2e1414;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#0d0d0d; --surface:#1a1a19; --surface-2:#232322; --surface-3:#2c2c2a;
+  --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+  --line:#2c2c2a; --line-strong:#383835;
+  --accent:#3987e5; --accent-soft:#16283f; --accent-ink:#9ec5f4;
+  --good:#0ca30c; --good-soft:#122a12;
+  --warn:#fab219; --warn-soft:#2e2513;
+  --crit:#d03b3b; --crit-soft:#2e1414;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--font);
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3,h4{margin:0;line-height:1.25;font-weight:650;letter-spacing:-.01em}
+p{margin:0 0 .7em}
+a{color:var(--accent)}
+
+/* ---------- App shell ---------- */
+.app{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+.side{
+  background:var(--surface); border-right:1px solid var(--line);
+  display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto
+}
+.brand{padding:18px 16px 14px;border-bottom:1px solid var(--line)}
+.brand .logo{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px}
+.brand .mark{
+  width:26px;height:26px;border-radius:7px;background:var(--accent);color:#fff;
+  display:grid;place-items:center;font-size:14px;flex:none
+}
+.brand small{display:block;color:var(--muted);font-size:11.5px;margin-top:5px;letter-spacing:.02em}
+.nav{padding:10px 8px;flex:1}
+.nav-group{margin-bottom:14px}
+.nav-group>span{
+  display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--muted);padding:6px 10px 5px;font-weight:600
+}
+.nav button{
+  width:100%;display:flex;align-items:center;gap:10px;text-align:left;
+  background:none;border:0;padding:8px 10px;border-radius:8px;cursor:pointer;
+  color:var(--ink-2);font-size:14px;font-weight:500;margin-bottom:1px
+}
+.nav button:hover{background:var(--surface-2);color:var(--ink)}
+.nav button.on{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.nav button .ic{width:18px;text-align:center;font-size:14px;flex:none}
+.nav button .dot{margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--crit);flex:none}
+.side-foot{padding:12px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted)}
+.side-foot .row{display:flex;gap:6px;align-items:center;justify-content:space-between}
+
+.main{min-width:0;display:flex;flex-direction:column}
+.topbar{
+  position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
+  padding:12px 22px;display:flex;gap:14px;align-items:center;flex-wrap:wrap
+}
+.topbar h1{font-size:17px}
+.topbar .sub{color:var(--muted);font-size:12.5px}
+.topbar .spacer{flex:1}
+.content{padding:22px;max-width:1180px;width:100%}
+.view{display:none}
+.view.on{display:block;animation:fade .18s ease}
+@keyframes fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+
+/* ---------- Blocks ---------- */
+.card{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+  padding:18px;margin-bottom:16px;box-shadow:var(--shadow)
+}
+.card>h2{font-size:15.5px;margin-bottom:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card>h2 .num{
+  background:var(--accent);color:#fff;width:22px;height:22px;border-radius:6px;
+  display:grid;place-items:center;font-size:12px;flex:none
+}
+.card>.desc{color:var(--ink-2);font-size:13.5px;margin:0 0 14px}
+.card.flat{box-shadow:none}
+
+.guia{
+  background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);
+  border-radius:var(--radius);padding:15px 17px;margin-bottom:16px
+}
+.guia h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent-ink);margin-bottom:9px}
+.guia ol,.guia ul{margin:0;padding-left:20px}
+.guia li{margin-bottom:5px;font-size:13.5px;color:var(--ink-2)}
+.guia li b{color:var(--ink)}
+.guia p{font-size:13.5px;color:var(--ink-2);margin-bottom:0}
+
+.hint{
+  border-left:3px solid var(--line-strong);background:var(--surface-2);
+  padding:10px 13px;border-radius:0 8px 8px 0;font-size:13px;color:var(--ink-2);margin:12px 0
+}
+.hint b{color:var(--ink)}
+details.exp{border:1px solid var(--line);border-radius:9px;margin:12px 0;background:var(--surface-2)}
+details.exp>summary{
+  cursor:pointer;padding:9px 13px;font-size:13px;font-weight:600;color:var(--ink-2);
+  list-style:none;display:flex;align-items:center;gap:8px
+}
+details.exp>summary::-webkit-details-marker{display:none}
+details.exp>summary::before{content:"▸";color:var(--accent);font-size:12px}
+details.exp[open]>summary::before{content:"▾"}
+details.exp .body{padding:0 13px 13px;font-size:13.2px;color:var(--ink-2)}
+details.exp .body ul{padding-left:18px;margin:6px 0}
+
+/* ---------- Forms ---------- */
+label.f{display:block;margin-bottom:12px}
+label.f>span{display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:4px}
+label.f>span em{font-style:normal;color:var(--muted);font-weight:400}
+input[type=text],input[type=number],input[type=date],input[type=month],input[type=password],select,textarea{
+  width:100%;background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;
+  padding:8px 10px;font-size:13.5px;outline:none;transition:border-color .12s, box-shadow .12s
+}
+textarea{resize:vertical;min-height:62px;line-height:1.45}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+input::placeholder,textarea::placeholder{color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:0 14px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:0 14px}
+@media(max-width:860px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}
+
+.btn{
+  background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;
+  padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink-2);
+  display:inline-flex;align-items:center;gap:6px;transition:.12s
+}
+.btn:hover{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.08);color:#fff}
+.btn.ghost{border-style:dashed;color:var(--muted)}
+.btn.sm{padding:4px 9px;font-size:12px}
+.btn.danger:hover{border-color:var(--crit);color:var(--crit);background:var(--crit-soft)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* ---------- Tables ---------- */
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table.tbl{border-collapse:collapse;width:100%;min-width:760px;font-size:13px}
+table.tbl th{
+  background:var(--surface-2);text-align:left;padding:9px 10px;font-size:11px;
+  text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);font-weight:650;
+  border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0
+}
+table.tbl td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+table.tbl tr:last-child td{border-bottom:0}
+table.tbl tr:hover td{background:var(--surface-2)}
+table.tbl input,table.tbl select,table.tbl textarea{border-color:transparent;background:transparent;padding:5px 6px}
+table.tbl input:hover,table.tbl select:hover,table.tbl textarea:hover{border-color:var(--line-strong);background:var(--surface)}
+table.tbl input:focus,table.tbl select:focus,table.tbl textarea:focus{background:var(--surface)}
+table.tbl td.calc{font-variant-numeric:tabular-nums;color:var(--ink-2);padding-top:12px;white-space:nowrap}
+table.tbl td.act{width:34px;text-align:center}
+.iconbtn{background:none;border:0;cursor:pointer;color:var(--muted);font-size:14px;padding:4px;border-radius:6px}
+.iconbtn:hover{color:var(--crit);background:var(--crit-soft)}
+.empty{padding:22px;text-align:center;color:var(--muted);font-size:13px}
+
+/* ---------- Badges / faróis ---------- */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:20px;
+  font-size:11.5px;font-weight:650;white-space:nowrap;border:1px solid transparent
+}
+.badge .sig{width:8px;height:8px;border-radius:50%;flex:none}
+.b-verde{background:var(--good-soft);color:var(--good);border-color:color-mix(in srgb,var(--good) 30%,transparent)}
+.b-verde .sig{background:var(--good)}
+.b-amarelo{background:var(--warn-soft);color:#8a6100;border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
+:root[data-theme="dark"] .b-amarelo{color:var(--warn)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .b-amarelo{color:var(--warn)}}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .qbox.t>header{color:var(--warn)}}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tag.fro{color:var(--warn)}}
+.b-amarelo .sig{background:var(--warn)}
+.b-vermelho{background:var(--crit-soft);color:var(--crit);border-color:color-mix(in srgb,var(--crit) 35%,transparent)}
+.b-vermelho .sig{background:var(--crit)}
+.b-neutro{background:var(--surface-2);color:var(--muted);border-color:var(--line)}
+.b-neutro .sig{background:var(--muted)}
+.b-info{background:var(--accent-soft);color:var(--accent-ink);border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
+.b-info .sig{background:var(--accent)}
+
+/* ---------- KPIs ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 15px;box-shadow:var(--shadow)}
+.kpi .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:650;margin-bottom:7px}
+.kpi .val{font-size:27px;font-weight:680;letter-spacing:-.02em;line-height:1.05}
+.kpi .foot{font-size:12px;color:var(--ink-2);margin-top:6px}
+.kpi .val.good{color:var(--good)} .kpi .val.warn{color:var(--warn)} .kpi .val.crit{color:var(--crit)}
+
+.meter{height:7px;background:var(--surface-3);border-radius:4px;overflow:hidden;margin-top:9px}
+.meter>i{display:block;height:100%;border-radius:4px;background:var(--accent);transition:width .3s}
+.meter>i.good{background:var(--good)} .meter>i.warn{background:var(--warn)} .meter>i.crit{background:var(--crit)}
+
+/* ---------- SWOT quadrantes ---------- */
+.quad{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:860px){.quad{grid-template-columns:1fr}}
+.qbox{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.qbox>header{padding:9px 12px;font-size:12.5px;font-weight:650;display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--line)}
+.qbox>header small{font-weight:400;color:var(--ink-2);font-size:11.5px}
+.qbox.f>header{background:var(--good-soft);color:var(--good)}
+.qbox.w>header{background:var(--crit-soft);color:var(--crit)}
+.qbox.o>header{background:var(--accent-soft);color:var(--accent-ink)}
+.qbox.t>header{background:var(--warn-soft);color:#8a6100}
+:root[data-theme="dark"] .qbox.t>header{color:var(--warn)}
+.qbox .items{padding:9px}
+.itemrow{display:flex;gap:6px;align-items:flex-start;margin-bottom:6px}
+.itemrow textarea{min-height:38px;font-size:13px}
+
+/* ---------- Cruzada ---------- */
+.cross{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:860px){.cross{grid-template-columns:1fr}}
+.cbox{border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.cbox>header{padding:10px 12px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.cbox>header b{font-size:12.5px;display:block}
+.cbox>header small{font-size:11.5px;color:var(--ink-2);display:block;margin-top:2px}
+.cbox .items{padding:9px}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.05em;padding:1px 6px;border-radius:5px;margin-right:6px}
+.tag.fo{background:var(--good-soft);color:var(--good)}
+.tag.fa{background:var(--accent-soft);color:var(--accent-ink)}
+.tag.fro{background:var(--warn-soft);color:#8a6100}
+:root[data-theme="dark"] .tag.fro{color:var(--warn)}
+.tag.fra{background:var(--crit-soft);color:var(--crit)}
+
+/* ---------- Diagnóstico ---------- */
+.finding{
+  border:1px solid var(--line);border-left-width:4px;border-radius:0 10px 10px 0;
+  background:var(--surface);padding:13px 15px;margin-bottom:10px
+}
+.finding.crit{border-left-color:var(--crit)}
+.finding.warn{border-left-color:var(--warn)}
+.finding.info{border-left-color:var(--accent)}
+.finding.ok{border-left-color:var(--good)}
+.finding h4{font-size:13.5px;margin-bottom:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.finding p{font-size:13px;color:var(--ink-2);margin-bottom:6px}
+.finding .do{font-size:13px;background:var(--surface-2);border-radius:7px;padding:8px 11px;color:var(--ink)}
+.finding .do b{color:var(--accent-ink)}
+
+/* ---------- Bibliotecas / sugestões ---------- */
+.sugs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.sug{
+  border:1px dashed var(--line-strong);background:var(--surface-2);border-radius:20px;
+  padding:4px 11px;font-size:12px;cursor:pointer;color:var(--ink-2);text-align:left
+}
+.sug:hover{border-style:solid;border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
+
+/* ---------- Charts ---------- */
+.chart{width:100%;overflow-x:auto}
+.bars{display:flex;flex-direction:column;gap:7px;min-width:320px}
+.bars .row{display:grid;grid-template-columns:92px 1fr 62px;gap:9px;align-items:center;font-size:12px}
+.bars .track{height:15px;background:var(--surface-3);border-radius:4px;position:relative;overflow:hidden}
+.bars .fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+.bars .ref{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--line-strong)}
+.bars .lbl{color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bars .num{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+
+/* ---------- Misc ---------- */
+.toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:24px;font-size:13px;
+  font-weight:600;z-index:100;opacity:0;transition:.25s;pointer-events:none;box-shadow:var(--shadow)
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:900px){.split{grid-template-columns:1fr}}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+.aiout{
+  background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:15px 17px;
+  font-size:13.6px;line-height:1.62;white-space:normal
+}
+.aiout h3{font-size:14px;margin:15px 0 6px;color:var(--accent-ink)}
+.aiout h3:first-child{margin-top:0}
+.aiout ul{padding-left:19px;margin:6px 0}
+.aiout li{margin-bottom:4px}
+.aiout p{margin-bottom:9px}
+.aiout code{background:var(--surface-3);padding:1px 5px;border-radius:4px;font-size:12px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+@media(max-width:760px){
+  .app{grid-template-columns:1fr}
+  .side{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .nav{display:flex;overflow-x:auto;padding:8px}
+  .nav-group{margin:0;display:flex}
+  .nav-group>span{display:none}
+  .nav button{white-space:nowrap;width:auto}
+  .side-foot{display:none}
+  .content{padding:16px}
+}
+@media print{
+  .side,.topbar,.btnrow,.iconbtn,.sugs,.btn{display:none!important}
+  .view{display:block!important}
+  .app{grid-template-columns:1fr}
+  .card{break-inside:avoid;box-shadow:none}
+  body{background:#fff}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="side">
+    <div class="brand">
+      <div class="logo"><span class="mark">☀</span><span>Gestão Comercial</span></div>
+      <small id="brandSub">Distribuidora fotovoltaica · B2B</small>
+    </div>
+    <nav class="nav">
+      <div class="nav-group">
+        <span>Rotina</span>
+        <button data-go="painel" class="on"><span class="ic">◉</span>Painel de controle</button>
+        <button data-go="manual"><span class="ic">◇</span>Método (manual)</button>
+      </div>
+      <div class="nav-group">
+        <span>As 3 camadas</span>
+        <button data-go="estrategia"><span class="ic">1</span>Estratégia do trimestre</button>
+        <button data-go="diario"><span class="ic">2</span>Diário semanal</button>
+        <button data-go="report"><span class="ic">3</span>Report mensal</button>
+      </div>
+      <div class="nav-group">
+        <span>Apoio</span>
+        <button data-go="equipe"><span class="ic">◍</span>Equipe &amp; carteira</button>
+        <button data-go="analise"><span class="ic">✦</span>Analista virtual<span class="dot" id="navDot" hidden></span></button>
+        <button data-go="dados"><span class="ic">⛁</span>Dados &amp; backup</button>
+      </div>
+    </nav>
+    <div class="side-foot">
+      <div class="row">
+        <span id="savedAt">—</span>
+        <button class="btn sm" id="themeBtn" title="Alternar tema claro/escuro">◐</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN ================= -->
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <h1 id="viewTitle">Painel de controle</h1>
+        <div class="sub" id="viewSub">Onde a rotina começa toda segunda-feira</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="btnrow">
+        <span class="badge b-info" id="cicloBadge"><span class="sig"></span>—</span>
+        <button class="btn" id="btnSalvar">💾 Salvar</button>
+      </div>
+    </header>
+
+    <div class="content">
+
+    <!-- ========== PAINEL ========== -->
+    <section class="view on" id="v-painel">
+      <div class="guia">
+        <h3>Como este programa funciona</h3>
+        <ol>
+          <li><b>Camada 1 — Estratégia (a cada trimestre, 2h):</b> SWOT → cruzamento → priorização → OKR → plano 5W2H. É onde você decide <i>onde</i> a equipe vai atacar.</li>
+          <li><b>Camada 2 — Diário semanal (toda sexta, 15 min):</b> ciclo PDCA. Meta da semana, o que foi feito, o desvio e a ação corretiva. Sempre com número ao lado.</li>
+          <li><b>Camada 3 — Report mensal (última semana do mês):</b> o farol se monta sozinho a partir do diário. Você só escreve a leitura e o fechamento.</li>
+        </ol>
+        <p style="margin-top:9px"><b>As abas são conectadas:</b> as iniciativas que você cadastra no 5W2H viram as opções de "Frente" no diário e as linhas do farol no report. Cadastre a estratégia primeiro.</p>
+      </div>
+
+      <div class="card">
+        <h2>Identificação</h2>
+        <p class="desc">Preencha uma vez. Aparece nos relatórios impressos e ajuda o analista virtual a contextualizar a análise.</p>
+        <div class="grid4">
+          <label class="f"><span>Distribuidora</span><input type="text" id="m_empresa" placeholder="Ex.: Solar Norte Distribuidora"></label>
+          <label class="f"><span>Gestor responsável</span><input type="text" id="m_gestor" placeholder="Seu nome"></label>
+          <label class="f"><span>Trimestre</span>
+            <select id="m_trim"><option>Q1 (jan-mar)</option><option>Q2 (abr-jun)</option><option>Q3 (jul-set)</option><option>Q4 (out-dez)</option></select>
+          </label>
+          <label class="f"><span>Ano</span><input type="number" id="m_ano" min="2020" max="2100"></label>
+        </div>
+        <div class="grid3">
+          <label class="f"><span>Nº de vendedores</span><input type="number" id="m_vend" min="1" placeholder="20"></label>
+          <label class="f"><span>Região de atuação principal</span><input type="text" id="m_reg" placeholder="Norte do Brasil (AM, PA, RO, AC, RR, AP, TO)"></label>
+          <label class="f"><span>Perfil de cliente</span><input type="text" id="m_perfil" placeholder="Integradores fotovoltaicos (B2B)"></label>
+        </div>
+      </div>
+
+      <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 10px">Como está o trimestre</h2>
+      <div class="kpis" id="kpiRow"></div>
+
+      <div class="split">
+        <div class="card">
+          <h2>O que fazer agora</h2>
+          <p class="desc">Sugestão baseada na data de hoje e no que já está preenchido.</p>
+          <div id="agendaBox"></div>
+        </div>
+        <div class="card">
+          <h2>Farol das frentes — mês corrente</h2>
+          <p class="desc">Puxado automaticamente do Diário Semanal. Vermelho = decisão sua.</p>
+          <div id="farolResumo"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Alertas do analista</h2>
+        <p class="desc">Os 4 pontos mais críticos identificados na sua rotina agora. A análise completa fica em <b>Analista virtual</b>.</p>
+        <div id="alertasTopo"></div>
+      </div>
+
+      <div class="card flat">
+        <h2>As 4 regras que fazem isso funcionar</h2>
+        <ol style="font-size:13.5px;color:var(--ink-2);padding-left:20px;margin:8px 0 0">
+          <li style="margin-bottom:7px"><b>Toda linha do farol precisa de um número ao lado (Meta × Realizado).</b> Sem número vira percepção, não gestão. Os números saem do seu BI/ERP.</li>
+          <li style="margin-bottom:7px"><b>A "Ação corretiva" de uma semana vira a "Meta da semana" seguinte.</b> É isso que transforma o diário em PDCA em vez de bloco de notas.</li>
+          <li style="margin-bottom:7px"><b>Farol:</b> <span class="badge b-verde"><span class="sig"></span>VERDE no ritmo</span> · <span class="badge b-amarelo"><span class="sig"></span>AMARELO em evolução, com risco</span> · <span class="badge b-vermelho"><span class="sig"></span>VERMELHO travado, precisa de decisão sua</span></li>
+          <li><b>Preencha sempre no mesmo horário</b> (ex.: sexta, 16h). A rotina morre quando vira "quando der tempo".</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ========== MANUAL ========== -->
+    <section class="view" id="v-manual">
+      <div class="guia">
+        <h3>Leitura única — consulte sempre que for refazer a estratégia</h3>
+        <p>O SWOT sozinho é só uma lista. O valor está no cruzamento. Siga os 3 passos abaixo, na ordem. Este manual é a régua do método; a aba <b>Estratégia do trimestre</b> é onde você executa.</p>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">1</span> Passo 1 — Cruze a matriz</h2>
+        <p class="desc">Leia o Bloco 1 (SWOT) e responda as 4 perguntas abaixo. Cada resposta é uma estratégia candidata.</p>
+        <div class="tblwrap">
+          <table class="tbl" style="min-width:640px">
+            <thead><tr><th style="width:190px">Cruzamento</th><th>A pergunta que você responde</th><th>O que sai daí</th></tr></thead>
+            <tbody>
+              <tr><td><span class="tag fo">FO</span><b>Forças + Oportunidades</b></td><td>Como usar minhas forças para aproveitar estas oportunidades?</td><td><b>Estratégias ofensivas.</b> É onde estão os ganhos rápidos — sua aposta principal do trimestre.</td></tr>
+              <tr><td><span class="tag fa">FA</span><b>Forças + Ameaças</b></td><td>Como usar minhas forças para minimizar o impacto destas ameaças?</td><td><b>Estratégias de defesa.</b> Você se protege usando o que já tem, sem investir.</td></tr>
+              <tr><td><span class="tag fro">FrO</span><b>Fraquezas + Oportunidades</b></td><td>Como corrigir minhas fraquezas aproveitando estas oportunidades?</td><td><b>Melhorias e capacitação.</b> Corrija agora, senão perde a chance por causa de um problema interno.</td></tr>
+              <tr><td><span class="tag fra">FrA</span><b>Fraquezas + Ameaças</b></td><td>Como diminuir minhas fraquezas para evitar que as ameaças me destruam?</td><td><b>Gargalos críticos.</b> Maior risco de sobrevivência — é o que se ataca primeiro.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <details class="exp"><summary>Exemplo aplicado à distribuição fotovoltaica</summary>
+          <div class="body">
+            <ul>
+              <li><b>FO:</b> "Temos estoque local em Manaus (força) e há integradores novos entrando no mercado do AM (oportunidade)" → <i>oferecer entrega em 48h como argumento de conquista de integrador novo.</i></li>
+              <li><b>FA:</b> "Nosso vendedor tem relação direta com o dono do integrador (força) e o concorrente está entrando com preço agressivo (ameaça)" → <i>usar a proximidade para travar o cliente em programa de fidelidade antes da investida do concorrente.</i></li>
+              <li><b>FrO:</b> "Não temos apoio técnico de dimensionamento (fraqueza) e o integrador pequeno precisa de suporte (oportunidade)" → <i>criar rotina de suporte técnico como diferencial de venda.</i></li>
+              <li><b>FrA:</b> "Carteira parada há 90 dias (fraqueza) + concorrente com prazo de entrega menor (ameaça)" → <i>perda da base — ataque primeiro.</i></li>
+            </ul>
+          </div>
+        </details>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">2</span> Passo 2 — Defina as prioridades</h2>
+        <p class="desc">Nem toda estratégia vira iniciativa. A ordem abaixo não é opinião — é regra.</p>
+        <div class="tblwrap">
+          <table class="tbl" style="min-width:640px">
+            <thead><tr><th style="width:180px">Ordem</th><th>O que é</th><th>Por quê</th></tr></thead>
+            <tbody>
+              <tr><td><b>1º — Gargalos críticos</b></td><td>Combinação Fraquezas + Ameaças.</td><td>Representam o maior risco de sobrevivência. Entram no plano mesmo que dêem trabalho.</td></tr>
+              <tr><td><b>2º — Ganhos rápidos</b></td><td>Combinação Forças + Oportunidades com Índice ≥ 1.</td><td>Índice = Impacto ÷ Esforço (notas de 1 a 5). Índice ≥ 1 significa retorno alto com esforço baixo.</td></tr>
+              <tr><td><b>3º — Fila</b></td><td>Todo o resto.</td><td>Fica registrado, mas não vira iniciativa neste trimestre.</td></tr>
+              <tr><td><b>LIMITE</b></td><td>No máximo <b>3 estratégias</b> viram iniciativa no 5W2H.</td><td>Com uma equipe de 20 vendedores, mais de 3 frentes ao mesmo tempo vira nenhuma frente. O resto espera o próximo trimestre.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">3</span> Passo 3 — Monte o plano de ação 5W2H</h2>
+        <p class="desc">A estratégia vira tarefa com dono e prazo. Sem isso, nada acontece.</p>
+        <div class="tblwrap">
+          <table class="tbl" style="min-width:700px">
+            <thead><tr><th style="width:180px">A pergunta</th><th style="width:200px">Coluna no programa</th><th>Exemplo (distribuidora FV)</th></tr></thead>
+            <tbody>
+              <tr><td>O quê será feito?</td><td>Iniciativa / Frente (What)</td><td>Campanha de reativação de integradores parados</td></tr>
+              <tr><td>Por que será feito?</td><td>Por que (Why)</td><td>40% da carteira sem compra há 60+ dias</td></tr>
+              <tr><td>Quem fará?</td><td>Responsável (Who)</td><td>Coordenador de campo + os 6 vendedores das UFs afetadas</td></tr>
+              <tr><td>Onde será feito?</td><td>Onde / UF (Where)</td><td>AM, PA, RO</td></tr>
+              <tr><td>Quando será feito?</td><td>Prazo (When)</td><td>30/09 — com checkpoint semanal no diário</td></tr>
+              <tr><td>Como será feito?</td><td>Como (How)</td><td>Lista do BI dividida por vendedor + meta diária de 10 contatos</td></tr>
+              <tr><td>Quanto vai custar?</td><td>Quanto custa / esforço (How much)</td><td>Sem custo direto — 1h/dia de cada vendedor</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Regra final</h2>
+        <div class="hint" style="border-left-color:var(--crit)">
+          Todo ponto do SWOT que não vira uma linha do 5W2H — <b>ou uma decisão consciente de NÃO agir</b> — morre. SWOT sem cruzamento é lista de reclamação bonita. E quando um farol ficar vermelho no report, <b>volte ao SWOT</b>: se era uma fraqueza que você já conhecia, o plano estava errado desde o início; se é nova, atualize o SWOT.
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>O que compartilhar com a equipe</h2>
+        <div class="tblwrap">
+          <table class="tbl" style="min-width:640px">
+            <thead><tr><th style="width:110px">Peça</th><th style="width:190px">Compartilha?</th><th>Como fazer</th></tr></thead>
+            <tbody>
+              <tr><td><b>SWOT</b></td><td><span class="badge b-vermelho"><span class="sig"></span>Não — cru, nunca</span></td><td>Tem julgamento sobre a própria equipe. É seu documento de diagnóstico. Compartilhe só a conclusão, sem apontar dedo: "a carteira parada é nossa maior chance neste trimestre".</td></tr>
+              <tr><td><b>OKR</b></td><td><span class="badge b-verde"><span class="sig"></span>Sim — integralmente</span></td><td>É a única peça cujo propósito é ser pública. KR que só o gestor conhece não é meta, é número de controle particular. Atualize o realizado toda semana à vista de todos.</td></tr>
+              <tr><td><b>5W2H</b></td><td><span class="badge b-amarelo"><span class="sig"></span>Sim — cada um vê a linha dele</span></td><td>Sempre junto com a coluna "Por quê". Sem o porquê você recebe cumprimento de tarefa; com ele, o vendedor resolve o problema quando a realidade sai do roteiro.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="hint"><b>Resumo:</b> compartilhe o QUÊ e o PORQUÊ, delegue o COMO, guarde o diagnóstico.</div>
+      </div>
+
+      <div class="card">
+        <h2>Legenda — como ler as telas</h2>
+        <ul style="font-size:13.5px;color:var(--ink-2);padding-left:20px">
+          <li style="margin-bottom:5px"><b>Campo com borda</b> — você preenche.</li>
+          <li style="margin-bottom:5px"><b>Texto cinza alinhado à direita nas tabelas</b> — campo calculado sozinho, não dá para digitar por cima.</li>
+          <li style="margin-bottom:5px"><b>Bloco azul no topo da tela</b> — as coordenadas do que fazer ali.</li>
+          <li style="margin-bottom:5px"><b>Blocos "▸ Por que isso importa"</b> — clique para abrir a explicação do conceito.</li>
+          <li><b>Botões pontilhados</b> — biblioteca de exemplos do setor fotovoltaico. Clique para inserir e depois edite com a sua realidade.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ========== ESTRATÉGIA ========== -->
+    <section class="view" id="v-estrategia">
+      <div class="guia">
+        <h3>Coordenadas — preencha os 5 blocos na ordem</h3>
+        <ol>
+          <li><b>Bloco 1 — SWOT:</b> onde eu ganho e onde eu perco venda hoje. Mínimo 3 itens por quadrante.</li>
+          <li><b>Bloco 2 — SWOT cruzada:</b> o diagnóstico vira estratégia. Responda as 4 perguntas.</li>
+          <li><b>Bloco 3 — Priorização:</b> dê nota de Impacto e Esforço. O programa calcula o índice e a prioridade. No máximo 3 viram iniciativa.</li>
+          <li><b>Bloco 4 — OKR:</b> 1 objetivo + até 3 resultados-chave <i>numéricos</i>, com fonte do dado.</li>
+          <li><b>Bloco 5 — Plano 5W2H:</b> a estratégia vira tarefa com dono e prazo.</li>
+        </ol>
+        <p style="margin-top:9px">Cadência: <b>trimestral, ~2 horas</b>. Revise no fim de cada mês junto com o report.</p>
+      </div>
+
+      <!-- BLOCO 1 -->
+      <div class="card">
+        <h2><span class="num">1</span> SWOT comercial <small style="font-weight:400;color:var(--muted);font-size:12.5px">— diagnóstico</small></h2>
+        <p class="desc">Interno = o que está dentro da sua operação e você controla. Externo = mercado, concorrência, regulação, crédito — você não controla, mas sofre ou aproveita.</p>
+        <details class="exp"><summary>Por que isso importa — e como não errar</summary><div class="body">
+          <ul>
+            <li><b>Seja específico e mensurável.</b> "Equipe boa" não serve. "6 vendedores com mais de 3 anos de casa e relacionamento direto com os 20 maiores integradores do PA" serve.</li>
+            <li><b>Força e Fraqueza são internas</b> (estoque, prazo de faturamento, mix, suporte técnico, cobertura, crédito ao integrador, logística fluvial).</li>
+            <li><b>Oportunidade e Ameaça são externas</b> (novos integradores entrando, obras de GD, marco legal, câmbio do módulo, prazo de parecer de acesso da concessionária, marketplace, concorrente com CD mais próximo).</li>
+            <li><b>Não escreva desejo como oportunidade.</b> "Vender mais" não é oportunidade; "150 integradores homologados no AM sem fornecedor com estoque local" é.</li>
+          </ul>
+        </div></details>
+        <div class="quad">
+          <div class="qbox f"><header>▲ FORÇAS <small>interno — o que já funciona</small></header>
+            <div class="items" id="sw_forcas"></div>
+            <div style="padding:0 9px 10px"><button class="btn ghost sm" data-add-swot="forcas">+ Adicionar força</button>
+              <div class="sugs" data-sug="forcas"></div></div>
+          </div>
+          <div class="qbox w"><header>▼ FRAQUEZAS <small>interno — o que trava a venda</small></header>
+            <div class="items" id="sw_fraquezas"></div>
+            <div style="padding:0 9px 10px"><button class="btn ghost sm" data-add-swot="fraquezas">+ Adicionar fraqueza</button>
+              <div class="sugs" data-sug="fraquezas"></div></div>
+          </div>
+          <div class="qbox o"><header>◆ OPORTUNIDADES <small>externo — onde há mercado</small></header>
+            <div class="items" id="sw_oportunidades"></div>
+            <div style="padding:0 9px 10px"><button class="btn ghost sm" data-add-swot="oportunidades">+ Adicionar oportunidade</button>
+              <div class="sugs" data-sug="oportunidades"></div></div>
+          </div>
+          <div class="qbox t"><header>⚠ AMEAÇAS <small>externo — o que pode nos derrubar</small></header>
+            <div class="items" id="sw_ameacas"></div>
+            <div style="padding:0 9px 10px"><button class="btn ghost sm" data-add-swot="ameacas">+ Adicionar ameaça</button>
+              <div class="sugs" data-sug="ameacas"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BLOCO 2 -->
+      <div class="card">
+        <h2><span class="num">2</span> SWOT cruzada <small style="font-weight:400;color:var(--muted);font-size:12.5px">— aqui o diagnóstico vira estratégia</small></h2>
+        <p class="desc">Leia o bloco 1 acima e responda as 4 perguntas. Cada resposta é uma estratégia candidata — leve-as para o bloco 3.</p>
+
+        <div class="hint" style="background:var(--accent-soft);border-left-color:var(--accent)">
+          <b>Gerador de cruzamento.</b> Escolha um item de cada lado e o programa monta o rascunho da estratégia para você editar.
+        </div>
+        <div class="grid3">
+          <label class="f"><span>Item interno</span><select id="gx_int"></select></label>
+          <label class="f"><span>Item externo</span><select id="gx_ext"></select></label>
+          <label class="f"><span>&nbsp;</span><button class="btn primary" id="gx_go" style="width:100%">Gerar estratégia candidata</button></label>
+        </div>
+
+        <div class="cross">
+          <div class="cbox"><header><b><span class="tag fo">FO</span>Como usar minhas forças para aproveitar estas oportunidades?</b><small>Ganhos rápidos — sua aposta principal do trimestre</small></header>
+            <div class="items" id="cx_fo"></div>
+            <div style="padding:0 9px 10px"><button class="btn ghost sm" data-add-cross="fo">+ Adicionar</button></div></div>
+          <div class="cbox"><header><b><span class="tag fa">FA</span>Como usar minhas forças para minimizar o impacto destas ameaças?</b><small>Defesa — você se protege com o que já tem, sem investir</small></header>
+            <div class="items" id="cx_fa"></div>
+            <div style="padding:0 9px 10px"><button class="btn ghost sm" data-add-cross="fa">+ Adicionar</button></div></div>
+          <div class="cbox"><header><b><span class="tag fro">FrO</span>Como corrigir minhas fraquezas aproveitando estas oportunidades?</b><small>Melhorias e capacitação — corrija agora ou perde a chance</small></header>
+            <div class="items" id="cx_fro"></div>
+            <div style="padding:0 9px 10px"><button class="btn ghost sm" data-add-cross="fro">+ Adicionar</button></div></div>
+          <div class="cbox"><header><b><span class="tag fra">FrA</span>Como diminuir minhas fraquezas para as ameaças não me destruírem?</b><small>Gargalos críticos — ATAQUE PRIMEIRO</small></header>
+            <div class="items" id="cx_fra"></div>
+            <div style="padding:0 9px 10px"><button class="btn ghost sm" data-add-cross="fra">+ Adicionar</button></div></div>
+        </div>
+      </div>
+
+      <!-- BLOCO 3 -->
+      <div class="card">
+        <h2><span class="num">3</span> Priorização <small style="font-weight:400;color:var(--muted);font-size:12.5px">— no máximo 3 viram iniciativa</small></h2>
+        <p class="desc">Traga as estratégias do bloco 2. Dê nota de <b>Impacto</b> (quanto move o resultado) e <b>Esforço</b> (quanto custa em tempo, dinheiro e atrito) de 1 a 5. O índice e a prioridade se calculam sozinhos.</p>
+        <details class="exp"><summary>Como dar as notas sem enganar a si mesmo</summary><div class="body">
+          <p><b>Impacto 5</b> = muda o número do trimestre inteiro (ex.: reativar 40% da carteira parada). <b>Impacto 1</b> = melhora marginal.</p>
+          <p><b>Esforço 5</b> = precisa de investimento, contratação ou mudança de sistema. <b>Esforço 1</b> = a equipe atual faz na rotina de amanhã.</p>
+          <p><b>Índice = Impacto ÷ Esforço.</b> Acima de 1 significa retorno alto com esforço baixo. Mas atenção: gargalo crítico (Fraqueza + Ameaça) entra no plano <i>mesmo com índice ruim</i> — é risco de sobrevivência, não escolha de eficiência.</p>
+        </div></details>
+        <div class="tblwrap"><table class="tbl" id="tb_prior">
+          <thead><tr>
+            <th style="min-width:260px">Estratégia gerada no cruzamento</th>
+            <th style="width:170px">Cruzamento de origem</th>
+            <th style="width:88px">Impacto</th><th style="width:88px">Esforço</th>
+            <th style="width:70px">Índice</th><th style="width:150px">Prioridade sugerida</th>
+            <th style="width:120px">Vira iniciativa?</th><th></th>
+          </tr></thead><tbody></tbody>
+        </table></div>
+        <div class="btnrow" style="margin-top:10px">
+          <button class="btn" id="add_prior">+ Nova linha</button>
+          <button class="btn" id="imp_cross">↧ Trazer estratégias do bloco 2</button>
+          <span id="priorAviso"></span>
+        </div>
+      </div>
+
+      <!-- BLOCO 4 -->
+      <div class="card">
+        <h2><span class="num">4</span> OKR do trimestre <small style="font-weight:400;color:var(--muted);font-size:12.5px">— 1 objetivo + até 3 resultados-chave</small></h2>
+        <p class="desc">O objetivo é qualitativo e inspirador. Os KRs são numéricos, com linha de base, meta e fonte do dado. Esta é a única peça que se compartilha integralmente com a equipe.</p>
+        <label class="f"><span>Objetivo do trimestre <em>— qualitativo, uma frase</em></span>
+          <input type="text" id="okr_obj" placeholder="Ex.: Retomar a liderança de share entre os integradores do Norte"></label>
+        <div class="tblwrap"><table class="tbl" id="tb_okr">
+          <thead><tr>
+            <th style="min-width:200px">Resultado-chave (KR)</th><th style="min-width:170px">Indicador</th>
+            <th style="width:100px">Linha de base</th><th style="width:90px">Meta</th><th style="width:100px">Realizado</th>
+            <th style="width:90px">% atingido</th><th style="min-width:160px">Fonte do dado</th><th></th>
+          </tr></thead><tbody></tbody>
+        </table></div>
+        <div class="btnrow" style="margin-top:10px">
+          <button class="btn" id="add_okr">+ Novo KR</button>
+          <span class="badge b-neutro" id="okrCount"><span class="sig"></span>0 de 3</span>
+        </div>
+        <div class="sugs" data-sug="kr"></div>
+        <div class="hint"><b>Sem fonte do dado, o KR não existe.</b> Se você não sabe de onde o número sai (Power BI, ERP, planilha de faturamento), na semana 3 ninguém vai atualizar e o OKR morre.</div>
+      </div>
+
+      <!-- BLOCO 5 -->
+      <div class="card">
+        <h2><span class="num">5</span> Plano de ação 5W2H <small style="font-weight:400;color:var(--muted);font-size:12.5px">— a estratégia vira tarefa com dono e prazo</small></h2>
+        <p class="desc">As iniciativas da primeira coluna viram automaticamente as opções de "Frente" no Diário Semanal e as linhas do farol no Report Mensal.</p>
+        <div class="tblwrap"><table class="tbl" id="tb_plano" style="min-width:1150px">
+          <thead><tr>
+            <th style="min-width:190px">Iniciativa / Frente (What)</th><th style="min-width:170px">Por que (Why)</th>
+            <th style="min-width:130px">Responsável (Who)</th><th style="width:110px">Prazo (When)</th>
+            <th style="min-width:110px">Onde / UF (Where)</th><th style="min-width:190px">Como (How)</th>
+            <th style="min-width:150px">Quanto custa / esforço</th><th style="width:90px">KR vinculado</th>
+            <th style="width:130px">Situação</th><th></th>
+          </tr></thead><tbody></tbody>
+        </table></div>
+        <div class="btnrow" style="margin-top:10px">
+          <button class="btn" id="add_plano">+ Nova iniciativa</button>
+          <button class="btn" id="imp_prior">↧ Trazer as marcadas como "Sim" no bloco 3</button>
+        </div>
+        <div class="sugs" data-sug="iniciativa"></div>
+      </div>
+    </section>
+
+    <!-- ========== DIÁRIO ========== -->
+    <section class="view" id="v-diario">
+      <div class="guia">
+        <h3>Coordenadas — toda sexta, 15 minutos</h3>
+        <ol>
+          <li>Clique em <b>+ Nova semana</b>. A data da sexta vem preenchida; mês e ano se calculam sozinhos.</li>
+          <li>Escolha a <b>Frente</b> — a lista vem das iniciativas do 5W2H. Uma linha por frente por semana.</li>
+          <li><b>P — Meta da semana:</b> o que era para acontecer. <b>D — O que foi feito:</b> o que aconteceu de fato.</li>
+          <li><b>C — Desvio:</b> o que não saiu <i>e por quê</i>. Sem o porquê, a próxima semana repete o erro.</li>
+          <li><b>A — Ação corretiva:</b> vira a meta da semana seguinte. Use o botão <b>↻</b> na linha para copiá-la para a nova semana.</li>
+          <li>Preencha <b>Meta (nº)</b> e <b>Realizado (nº)</b>. O % e o status são sugeridos automaticamente — você pode sobrescrever.</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h2>Diário semanal — ciclo PDCA</h2>
+        <p class="desc">Filtro por mês para não rolar a lista inteira. O report mensal lê exatamente estas linhas.</p>
+        <div class="btnrow" style="margin-bottom:12px">
+          <button class="btn primary" id="add_sem">+ Nova semana</button>
+          <label style="font-size:12.5px;color:var(--ink-2);display:flex;align-items:center;gap:6px">
+            Filtrar mês: <select id="filtroMes" style="width:auto"></select></label>
+          <span class="badge b-neutro" id="semCount"><span class="sig"></span>0 registros</span>
+        </div>
+        <div class="tblwrap"><table class="tbl" id="tb_diario" style="min-width:1320px">
+          <thead><tr>
+            <th style="width:56px">Sem.</th><th style="width:120px">Data (sexta)</th><th style="width:52px">Mês</th><th style="width:56px">Ano</th>
+            <th style="min-width:170px">Frente / Iniciativa</th>
+            <th style="min-width:180px">Meta da semana (P)</th><th style="min-width:180px">O que foi feito (D)</th>
+            <th style="min-width:190px">Desvio — o que não saiu e por quê (C)</th><th style="min-width:190px">Ação corretiva p/ próxima semana (A)</th>
+            <th style="width:82px">Meta (nº)</th><th style="width:92px">Realizado</th><th style="width:78px">% ating.</th>
+            <th style="width:118px">Status</th><th style="width:60px"></th>
+          </tr></thead><tbody></tbody>
+        </table></div>
+      </div>
+
+      <div class="card">
+        <h2>Ritmo das últimas semanas</h2>
+        <p class="desc">% atingido por semana registrada. A linha vertical marca os 100% da meta.</p>
+        <div id="graficoSemanas" class="chart"></div>
+      </div>
+
+      <details class="exp"><summary>Por que o PDCA quebra na maioria das equipes (e como não quebrar aqui)</summary><div class="body">
+        <ul>
+          <li><b>Erro 1 — virar diário de bordo.</b> Se você só escreve "o que foi feito" e nunca a ação corretiva, é relatório, não gestão. A coluna A é a mais importante da tela.</li>
+          <li><b>Erro 2 — desvio sem causa.</b> "Não bateu a meta" não é desvio; "2 vendedores do PA não rodaram a lista porque ficaram presos em visita agendada" é.</li>
+          <li><b>Erro 3 — meta sem número.</b> "Melhorar o relacionamento" não se mede. "300 contatos em integradores parados" se mede.</li>
+          <li><b>Erro 4 — pular semana.</b> Duas semanas em branco e a rotina morreu. Se a semana foi ruim, registre a semana ruim — é exatamente o dado que você vai precisar no report.</li>
+        </ul>
+      </div></details>
+    </section>
+
+    <!-- ========== REPORT ========== -->
+    <section class="view" id="v-report">
+      <div class="guia">
+        <h3>Coordenadas — última semana do mês</h3>
+        <ol>
+          <li>Escolha <b>mês e ano</b>. O farol por frente se monta sozinho a partir do diário — você não digita nada nessa tabela.</li>
+          <li>Escreva a <b>leitura</b> de cada frente: o que explica o resultado. Use o botão <b>✦</b> para gerar um rascunho a partir dos números.</li>
+          <li>Feche com <b>Manter / Parar / Começar</b> e o <b>resumo executivo de 3 linhas</b> para levar à diretoria.</li>
+          <li>Farol vermelho? Volte ao SWOT: se era uma fraqueza que você já conhecia, o plano estava errado desde o início.</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h2>Mês de referência</h2>
+        <div class="grid4">
+          <label class="f"><span>Mês</span><select id="rp_mes"></select></label>
+          <label class="f"><span>Ano</span><input type="number" id="rp_ano" min="2020" max="2100"></label>
+          <label class="f"><span>Semanas registradas</span><input type="text" id="rp_semanas" readonly></label>
+          <label class="f"><span>&nbsp;</span><button class="btn" id="rp_print" style="width:100%">🖨 Imprimir / salvar PDF</button></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">1</span> Farol por frente</h2>
+        <p class="desc">O que deu certo, o que deu errado, o que está em evolução. Contagem de semanas por status + acumulado de meta e realizado — tudo puxado do diário.</p>
+        <div class="tblwrap"><table class="tbl" id="tb_farol" style="min-width:1080px">
+          <thead><tr>
+            <th style="min-width:190px">Frente / Iniciativa</th>
+            <th style="width:72px">Verde</th><th style="width:82px">Amarelo</th><th style="width:82px">Vermelho</th>
+            <th style="width:130px">Farol do mês</th><th style="width:92px">Meta acum.</th><th style="width:100px">Realiz. acum.</th>
+            <th style="width:88px">% ating.</th><th style="min-width:280px">Leitura — o que explica o resultado</th>
+          </tr></thead><tbody></tbody>
+        </table></div>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">2</span> Fechamento do mês — Manter / Parar / Começar</h2>
+        <p class="desc">Três colunas, poucas linhas cada. Se você não consegue apontar algo para <b>parar</b>, provavelmente não olhou de verdade.</p>
+        <div class="grid3">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--good);margin-bottom:7px">✓ MANTER — o que deu certo</div>
+            <div id="rp_manter"></div>
+            <button class="btn ghost sm" data-add-mpc="manter">+ Adicionar</button>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--crit);margin-bottom:7px">✕ PARAR / CORRIGIR — o que deu errado</div>
+            <div id="rp_parar"></div>
+            <button class="btn ghost sm" data-add-mpc="parar">+ Adicionar</button>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--accent-ink);margin-bottom:7px">◆ COMEÇAR — em evolução ou novo teste</div>
+            <div id="rp_comecar"></div>
+            <button class="btn ghost sm" data-add-mpc="comecar">+ Adicionar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="num">3</span> Resumo executivo — 3 linhas para a diretoria</h2>
+        <p class="desc">Se a diretoria só ler estas três linhas, ela precisa entender o mês inteiro.</p>
+        <label class="f"><span>Resultado do mês <em>— número + comparação com a meta</em></span><textarea id="rp_r1" placeholder="Ex.: 268 de 300 contatos (89%) e 19 pedidos gerados; R$ 1,4 mi faturados contra meta de R$ 1,6 mi."></textarea></label>
+        <label class="f"><span>Principal causa do desvio</span><textarea id="rp_r2" placeholder="Ex.: dois vendedores do PA não rodaram a lista de reativação; concentração de faturamento em 3 integradores."></textarea></label>
+        <label class="f"><span>Decisão / aposta para o próximo mês</span><textarea id="rp_r3" placeholder="Ex.: redistribuir a carteira do PA e travar meta diária de contatos por vendedor com cobrança na reunião de segunda."></textarea></label>
+        <div class="btnrow"><button class="btn" id="rp_sugResumo">✦ Sugerir resumo a partir dos números</button></div>
+      </div>
+    </section>
+
+    <!-- ========== EQUIPE ========== -->
+    <section class="view" id="v-equipe">
+      <div class="guia">
+        <h3>Coordenadas — camada de apoio (não estava na planilha original)</h3>
+        <p>A planilha controla <b>frentes</b>. Esta tela controla <b>pessoas e carteira</b> — quem está entregando, quem está travado e onde a carteira está concentrada. Atualize uma vez por semana, junto com o diário. O analista virtual usa esses números para apontar risco de concentração e cobertura por UF.</p>
+        <ul style="margin-top:8px">
+          <li><b>Positivação</b> = quantos clientes da carteira do vendedor compraram no mês. É o indicador que separa vendedor de tirador de pedido.</li>
+          <li><b>Carteira ativa</b> = integradores que compraram nos últimos 90 dias. A diferença entre carteira total e ativa é o seu campo de reativação.</li>
+        </ul>
+      </div>
+
+      <div class="kpis" id="kpiEquipe"></div>
+
+      <div class="card">
+        <h2>Equipe comercial</h2>
+        <p class="desc">Uma linha por vendedor. O ranking e os alertas são calculados a partir daqui.</p>
+        <div class="btnrow" style="margin-bottom:12px">
+          <button class="btn primary" id="add_vend">+ Novo vendedor</button>
+          <button class="btn" id="gerar_vend">Gerar 20 linhas em branco</button>
+          <label style="font-size:12.5px;color:var(--ink-2);display:flex;align-items:center;gap:6px">Mês de referência:
+            <input type="month" id="eq_mes" style="width:auto"></label>
+        </div>
+        <div class="tblwrap"><table class="tbl" id="tb_equipe" style="min-width:1080px">
+          <thead><tr>
+            <th style="min-width:150px">Vendedor</th><th style="width:130px">UF / região</th>
+            <th style="width:120px">Meta do mês (R$)</th><th style="width:130px">Realizado (R$)</th><th style="width:80px">%</th>
+            <th style="width:110px">Carteira total</th><th style="width:110px">Positivados</th><th style="width:95px">Positivação</th>
+            <th style="min-width:170px">Observação / risco</th><th></th>
+          </tr></thead><tbody></tbody>
+        </table></div>
+      </div>
+
+      <div class="split">
+        <div class="card">
+          <h2>Ranking — % da meta</h2>
+          <p class="desc">Barra cheia = 100% da meta. Quem está abaixo de 70% precisa de conversa, não de cobrança genérica.</p>
+          <div id="graficoEquipe" class="chart"></div>
+        </div>
+        <div class="card">
+          <h2>Cobertura do Norte</h2>
+          <p class="desc">UFs da sua região principal com e sem vendedor atribuído.</p>
+          <div id="coberturaUF"></div>
+          <div class="hint" style="margin-top:14px"><b>Clientes de fora do Norte</b> na carteira não são problema — são receita. Mas se mais de metade do seu realizado vem de fora da sua região de atuação, sua estrutura de atendimento está no lugar errado. Registre isso como fraqueza no SWOT.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== ANALISTA ========== -->
+    <section class="view" id="v-analise">
+      <div class="guia">
+        <h3>Como o analista virtual trabalha — em duas camadas</h3>
+        <ol>
+          <li><b>Diagnóstico automático (funciona sempre, offline):</b> um conjunto de regras lê tudo o que você preencheu e aponta inconsistências, riscos e o que fazer. É determinístico — mesma entrada, mesma saída.</li>
+          <li><b>Análise com IA (opcional):</b> monta um dossiê completo da sua operação e pede uma leitura estratégica. Você pode <b>copiar o dossiê</b> e colar no Claude/ChatGPT, ou <b>conectar sua chave de API</b> e receber a resposta aqui dentro.</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h2>Diagnóstico automático</h2>
+        <p class="desc">Recalculado a cada vez que você abre esta tela. Cada achado traz o <b>porquê</b> e a <b>ação recomendada</b>.</p>
+        <div class="btnrow" style="margin-bottom:14px">
+          <button class="btn primary" id="btnDiag">↻ Recalcular diagnóstico</button>
+          <span class="badge b-vermelho" id="cntCrit"><span class="sig"></span>0 críticos</span>
+          <span class="badge b-amarelo" id="cntWarn"><span class="sig"></span>0 atenções</span>
+          <span class="badge b-verde" id="cntOk"><span class="sig"></span>0 ok</span>
+        </div>
+        <div id="diagBox"></div>
+      </div>
+
+      <div class="card">
+        <h2>Análise com IA</h2>
+        <p class="desc">A leitura estratégica que o diagnóstico por regras não consegue fazer: conexões entre camadas, hipóteses de causa e o plano do próximo ciclo.</p>
+
+        <div class="grid2">
+          <label class="f"><span>Tipo de análise</span>
+            <select id="ai_tipo">
+              <option value="completa">Análise completa da rotina (todas as camadas)</option>
+              <option value="estrategia">Só a estratégia — meu SWOT/OKR está bem construído?</option>
+              <option value="semana">Leitura da semana — o que fazer na segunda-feira</option>
+              <option value="report">Fechamento do mês — texto pronto para a diretoria</option>
+              <option value="equipe">Equipe e carteira — quem cobrar e como</option>
+              <option value="risco">Devil's advocate — o que estou deixando passar</option>
+            </select></label>
+          <label class="f"><span>Pergunta específica <em>— opcional</em></span>
+            <input type="text" id="ai_pergunta" placeholder="Ex.: vale a pena puxar meta de positivação em vez de faturamento?"></label>
+        </div>
+
+        <div class="btnrow">
+          <button class="btn" id="ai_copiar">📋 Copiar dossiê para colar no Claude/ChatGPT</button>
+          <button class="btn" id="ai_ver">👁 Ver o dossiê</button>
+          <button class="btn primary" id="ai_rodar">✦ Analisar com IA agora</button>
+        </div>
+
+        <details class="exp" id="ai_conf"><summary>⚙ Conectar minha chave de API (opcional — para receber a análise aqui dentro)</summary><div class="body">
+          <p>Sem chave, o programa continua 100% funcional: use o botão <b>Copiar dossiê</b> e cole em qualquer assistente de IA. A chave fica salva <b>só neste navegador</b> (armazenamento local do seu computador) e é enviada apenas para a API da Anthropic. Nunca compartilhe este arquivo depois de salvar a chave.</p>
+          <div class="grid2">
+            <label class="f"><span>Chave da API Anthropic <em>— começa com sk-ant-</em></span><input type="password" id="ai_key" placeholder="sk-ant-..." autocomplete="off"></label>
+            <label class="f"><span>Modelo</span>
+              <select id="ai_model">
+                <option value="claude-opus-5">Claude Opus 5 — mais capaz (recomendado)</option>
+                <option value="claude-sonnet-5">Claude Sonnet 5 — mais rápido e barato</option>
+              </select></label>
+          </div>
+          <div class="btnrow"><button class="btn sm" id="ai_salvarKey">Salvar chave neste navegador</button><button class="btn sm danger" id="ai_limparKey">Apagar chave</button></div>
+        </div></details>
+
+        <div id="ai_status" style="margin-top:14px"></div>
+        <div id="ai_out" style="margin-top:14px"></div>
+      </div>
+
+      <div class="card flat">
+        <h2>O que perguntar à IA quando travar</h2>
+        <div class="sugs" id="sug_perguntas"></div>
+      </div>
+    </section>
+
+    <!-- ========== DADOS ========== -->
+    <section class="view" id="v-dados">
+      <div class="guia">
+        <h3>Onde os seus dados ficam</h3>
+        <p>Tudo é salvo no <b>armazenamento local deste navegador, neste computador</b>. Nada sai para a internet (exceto o dossiê, se você usar a análise com IA conectada). Isso significa: se limpar os dados do navegador ou trocar de máquina, <b>você perde o histórico</b> — por isso exporte o backup toda semana.</p>
+      </div>
+
+      <div class="split">
+        <div class="card">
+          <h2>Backup e restauração</h2>
+          <p class="desc">O arquivo <code>.json</code> guarda tudo: estratégia, diário, report e equipe.</p>
+          <div class="btnrow">
+            <button class="btn primary" id="d_export">⬇ Exportar backup (.json)</button>
+            <button class="btn" id="d_import">⬆ Restaurar backup</button>
+            <input type="file" id="d_file" accept=".json" hidden>
+          </div>
+          <div class="hint" style="margin-top:14px"><b>Rotina sugerida:</b> exporte toda sexta depois de preencher o diário e guarde o arquivo em uma pasta da nuvem da empresa. Assim o histórico sobrevive a qualquer troca de máquina.</div>
+        </div>
+        <div class="card">
+          <h2>Planilhas e impressão</h2>
+          <p class="desc">Para levar os números para o BI, para a reunião ou para o e-mail da diretoria.</p>
+          <div class="btnrow">
+            <button class="btn" id="d_csvDiario">⬇ Diário semanal (.csv)</button>
+            <button class="btn" id="d_csvPlano">⬇ Plano 5W2H (.csv)</button>
+            <button class="btn" id="d_csvEquipe">⬇ Equipe (.csv)</button>
+            <button class="btn" id="d_print">🖨 Imprimir tudo</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Começar do zero</h2>
+        <p class="desc">Use quando terminar um trimestre e quiser recomeçar — ou se quiser limpar os exemplos.</p>
+        <div class="btnrow">
+          <button class="btn" id="d_exemplo">Carregar exemplo preenchido (distribuidora FV)</button>
+          <button class="btn" id="d_novoTri">Novo trimestre — manter estratégia, limpar diário</button>
+          <button class="btn danger" id="d_zerar">Apagar tudo</button>
+        </div>
+        <div class="hint" style="margin-top:14px;border-left-color:var(--warn)"><b>Novo trimestre:</b> mantém SWOT, OKR e plano (você vai revisá-los), mas zera o diário semanal e o report. Exporte o backup antes.</div>
+      </div>
+
+      <div class="card flat">
+        <h2>Perguntas frequentes</h2>
+        <details class="exp"><summary>Posso usar em mais de um computador?</summary><div class="body">Sim, mas os dados não sincronizam sozinhos. Exporte o backup em uma máquina e restaure na outra. Se quiser uso simultâneo por várias pessoas, o caminho é hospedar o arquivo em uma pasta compartilhada e combinar quem edita — ou evoluir para uma versão com banco de dados.</div></details>
+        <details class="exp"><summary>Como coloco isso na intranet da empresa?</summary><div class="body">É um arquivo HTML único, sem dependências. Basta colocá-lo em qualquer servidor web, pasta compartilhada ou até no SharePoint — abre direto no navegador. Cada usuário terá seus próprios dados locais.</div></details>
+        <details class="exp"><summary>A chave de API fica segura?</summary><div class="body">Ela fica no armazenamento local do navegador, igual a uma senha salva. Não vai para lugar nenhum além da API da Anthropic quando você clica em analisar. Ainda assim: <b>não envie este arquivo por e-mail depois de salvar a chave</b> — a chave não vai junto no arquivo (ela está no navegador, não no HTML), mas evite salvar a chave em máquinas compartilhadas.</div></details>
+        <details class="exp"><summary>Dá para conectar direto no meu Power BI / ERP?</summary><div class="body">Nesta versão, não — os números você digita ou cola. A integração automática exige uma camada de servidor. O caminho intermediário mais simples é exportar o CSV do BI e preencher as colunas numéricas em bloco.</div></details>
+      </div>
+    </section>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+<div class="toast" id="toast"></div>
+<script>
+"use strict";
+/* =========================================================================
+   ROTINA DE GESTÃO COMERCIAL — 3 CAMADAS
+   Aplicação de arquivo único. Dados no localStorage do navegador.
+   ========================================================================= */
+
+const KEY = "rgc3c.v1";
+const NORTE = ["AM","PA","RO","AC","RR","AP","TO"];
+const MESES = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const CRUZAMENTOS = ["Forças + Oportunidades","Forças + Ameaças","Fraquezas + Oportunidades","Fraquezas + Ameaças"];
+const SITUACOES = ["Não iniciada","Em andamento","Concluída","Travada","Descartada"];
+const STATUS = ["Verde","Amarelo","Vermelho"];
+
+/* ---------------- utilidades ---------------- */
+const $  = (s,r)=> (r||document).querySelector(s);
+const $$ = (s,r)=> Array.from((r||document).querySelectorAll(s));
+const uid = ()=> Math.random().toString(36).slice(2,9);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num = v => { const n = parseFloat(String(v==null?"":v).replace(",",".")); return isFinite(n)?n:null; };
+const pct = (a,b)=> (b===null||b===0||b===undefined||a===null||a===undefined) ? null : a/b;
+const fpct = v => v===null||v===undefined||!isFinite(v) ? "—" : (v*100).toFixed(0)+"%";
+const fnum = v => v===null||v===undefined||v==="" ? "—" : Number(v).toLocaleString("pt-BR");
+const fbrl = v => v===null||v===undefined||v==="" ? "—" : Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0});
+const hoje = ()=> new Date();
+const iso  = d => d.toISOString().slice(0,10);
+const dbr  = s => { if(!s) return "—"; const p=String(s).split("-"); return p.length===3? p[2]+"/"+p[1] : s; };
+function proximaSexta(){ const d=hoje(); const dif=(5-d.getDay()+7)%7; d.setDate(d.getDate()+dif); return iso(d); }
+function trimestreDe(m){ return "Q"+Math.ceil(m/3); }
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("on"),2200); }
+function debounce(fn,ms){ let t; return function(){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,arguments),ms); }; }
+
+/* ---------------- biblioteca do setor ---------------- */
+const BIB = {
+  forcas:[
+    "Estoque local na região — entrega em até 48h para o integrador",
+    "Equipe de 20 vendedores com cobertura nas 7 UFs do Norte",
+    "Relacionamento direto com os maiores integradores da região",
+    "Suporte técnico de dimensionamento e apoio na homologação junto à concessionária",
+    "Mix completo: módulo, inversor, estrutura, string box e cabo no mesmo pedido",
+    "Prazo de faturamento e limite de crédito melhores que os do concorrente",
+    "Capacidade de atender obra grande (usina / GD remota) com programação de entrega"
+  ],
+  fraquezas:[
+    "Carteira sem contato há mais de 60 dias em parte das UFs",
+    "Faturamento concentrado em poucos integradores",
+    "Sem rotina de pós-venda — o integrador só é procurado quando vai comprar",
+    "Ruptura recorrente de itens de giro rápido (inversor 5–8 kW, cabo solar)",
+    "Frete e prazo logístico altos para o interior (rota fluvial / rodoviária)",
+    "Time sem argumento técnico — vende preço porque não sabe defender valor",
+    "CRM desatualizado: o funil não reflete o que está na rua",
+    "Vendedor com meta só de faturamento, sem meta de positivação"
+  ],
+  oportunidades:[
+    "Integradores novos se homologando na concessionária todo mês",
+    "Integradores pequenos sem fornecedor com estoque local — hoje compram de fora e esperam 20 dias",
+    "Crescimento de GD remota e consórcios de energia na região",
+    "Base de clientes inativos com histórico alto de compra — pronta para reativação",
+    "Demanda por kit completo com projeto: quem entrega serviço junto leva o pedido",
+    "Concorrente reduziu equipe / atendimento presencial na região",
+    "Linhas de financiamento ao consumidor final aquecendo a demanda do integrador"
+  ],
+  ameacas:[
+    "Concorrente com prazo de entrega menor ou centro de distribuição mais próximo",
+    "Guerra de preço de módulo puxada por marketplace e importador direto",
+    "Variação cambial e preço de módulo comprimindo a margem",
+    "Fabricante vendendo direto ao integrador grande, pulando a distribuição",
+    "Mudança regulatória alterando o payback do cliente final",
+    "Inadimplência e restrição de crédito no canal integrador",
+    "Demora no parecer de acesso da concessionária travando o fechamento das obras"
+  ],
+  kr:[
+    "Integradores positivados no trimestre|Nº de CNPJs com ao menos 1 compra|CRM / BI — painel de carteira",
+    "Reativação da carteira parada|Clientes com compra após 60+ dias inativos|BI — painel de carteira",
+    "Faturamento do trimestre|Receita líquida (R$)|ERP — faturamento",
+    "Ticket médio por pedido|Receita ÷ nº de pedidos (R$)|ERP",
+    "Venda de mix|% de pedidos com 3+ famílias de produto|ERP",
+    "Conquista de clientes novos|Nº de integradores com 1ª compra na vida|CRM",
+    "Share of wallet nos top 30|% da compra do integrador feita conosco|Pesquisa + BI"
+  ],
+  iniciativa:[
+    "Campanha de reativação de integradores parados há 60+ dias",
+    "Programa de conquista: integradores homologados que ainda não compram conosco",
+    "Rotina de positivação semanal — meta de clientes distintos por vendedor",
+    "Blindagem dos top 20 clientes contra investida do concorrente",
+    "Venda técnica: kit completo com projeto em vez de venda de preço",
+    "Rotina de pós-venda em D+7 do faturamento"
+  ],
+  perguntas:[
+    "Meu OKR está medindo a coisa certa para uma distribuidora fotovoltaica?",
+    "Como transformar a meta de faturamento em metas semanais por vendedor?",
+    "Estou com farol vermelho há duas semanas na mesma frente — o que faço?",
+    "Minha carteira está concentrada demais? Como reduzir sem perder receita?",
+    "Que argumentos meu time deve usar quando o integrador só fala de preço?",
+    "Como priorizar entre reativar carteira parada e conquistar cliente novo?",
+    "Que indicador antecipa queda de faturamento antes de ela aparecer?",
+    "Como estruturar a reunião de segunda a partir do diário da sexta?"
+  ]
+};
+
+/* ---------------- estado ---------------- */
+function estadoVazio(){
+  const d = hoje();
+  return {
+    meta:{ empresa:"", gestor:"", trimestre:trimestreDe(d.getMonth()+1)+" ("+["jan-mar","abr-jun","jul-set","out-dez"][Math.ceil((d.getMonth()+1)/3)-1]+")",
+           ano:d.getFullYear(), vendedores:20, regiao:"Norte do Brasil (AM, PA, RO, AC, RR, AP, TO)", perfil:"Integradores fotovoltaicos (B2B)" },
+    swot:{ forcas:[], fraquezas:[], oportunidades:[], ameacas:[] },
+    cruzada:{ fo:[], fa:[], fro:[], fra:[] },
+    prioriz:[], okr:{ objetivo:"", krs:[] }, plano:[], diario:[],
+    report:{ mes:d.getMonth()+1, ano:d.getFullYear(), leituras:{}, manter:[], parar:[], comecar:[], r1:"", r2:"", r3:"" },
+    equipe:[], equipeMes: iso(d).slice(0,7),
+    ui:{ modelo:"claude-opus-5" }
+  };
+}
+let S = estadoVazio();
+
+function carregar(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(raw){ const o = JSON.parse(raw); S = Object.assign(estadoVazio(), o);
+      S.meta=Object.assign(estadoVazio().meta,o.meta||{}); S.swot=Object.assign(estadoVazio().swot,o.swot||{});
+      S.cruzada=Object.assign(estadoVazio().cruzada,o.cruzada||{}); S.okr=Object.assign({objetivo:"",krs:[]},o.okr||{});
+      S.report=Object.assign(estadoVazio().report,o.report||{}); S.ui=Object.assign({modelo:"claude-opus-5"},o.ui||{});
+    }
+  }catch(e){ console.warn("Falha ao ler dados salvos:",e); }
+}
+const salvar = debounce(function(){
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); marcarSalvo(); }
+  catch(e){ toast("Não foi possível salvar (armazenamento cheio ou bloqueado)"); }
+},400);
+function salvarJa(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); marcarSalvo(); toast("Salvo neste navegador"); }catch(e){ toast("Falha ao salvar"); } }
+function marcarSalvo(){ const d=hoje(); $("#savedAt").textContent = "Salvo "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+
+/* ---------------- cálculos ---------------- */
+function indice(l){ const i=num(l.impacto), e=num(l.esforco); return (i===null||e===null||e===0)?null:i/e; }
+function prioridade(l){
+  if(!String(l.estrategia||"").trim()) return "";
+  if(l.cruzamento==="Fraquezas + Ameaças") return "1 - Gargalo crítico";
+  const ix = indice(l);
+  if(l.cruzamento==="Forças + Oportunidades" && ix!==null && ix>=1) return "2 - Ganho rápido";
+  return "3 - Fila";
+}
+function statusSugerido(p){ if(p===null) return ""; if(p>=1) return "Verde"; if(p>=0.8) return "Amarelo"; return "Vermelho"; }
+function frentes(){ return S.plano.map(p=>String(p.iniciativa||"").trim()).filter(Boolean); }
+function diarioDoMes(m,a){ return S.diario.filter(l=>{ if(!l.data) return false; const p=l.data.split("-"); return +p[1]===+m && +p[0]===+a; }); }
+function farolDaFrente(f,m,a){
+  const ls = diarioDoMes(m,a).filter(l=>l.frente===f);
+  const v=ls.filter(l=>l.status==="Verde").length, am=ls.filter(l=>l.status==="Amarelo").length, vm=ls.filter(l=>l.status==="Vermelho").length;
+  let farol = "Sem registro"; if(ls.length){ farol = vm>0?"Vermelho":(am>0?"Amarelo":"Verde"); }
+  const meta = ls.reduce((s,l)=>s+(num(l.metaNum)||0),0), real = ls.reduce((s,l)=>s+(num(l.realNum)||0),0);
+  return { v, am, vm, farol, meta, real, p: meta?real/meta:null, n: ls.length, linhas: ls };
+}
+function badge(txt){
+  const map={ "Verde":"b-verde","Amarelo":"b-amarelo","Vermelho":"b-vermelho" };
+  const cls = map[txt] || "b-neutro";
+  return '<span class="badge '+cls+'"><span class="sig"></span>'+esc(txt||"—")+"</span>";
+}
+function progressoTrimestre(){
+  const d=hoje(); const m=d.getMonth()+1; const inicio=(Math.ceil(m/3)-1)*3+1;
+  const ini=new Date(d.getFullYear(),inicio-1,1), fim=new Date(d.getFullYear(),inicio+2,0);
+  return Math.min(1,Math.max(0,(d-ini)/(fim-ini)));
+}
+
+/* =======================================================================
+   RENDERIZAÇÃO
+   ======================================================================= */
+function opts(list, sel, vazio){
+  let h = vazio!==false ? '<option value=""></option>' : "";
+  list.forEach(o=>{ h += '<option'+(String(o)===String(sel)?" selected":"")+'>'+esc(o)+"</option>"; });
+  return h;
+}
+
+/* --------- listas de texto simples (SWOT, cruzada, manter/parar/começar) --------- */
+function listaEditavel(box, arr, placeholder, extra){
+  box.innerHTML = "";
+  if(!arr.length){ box.innerHTML = '<div style="font-size:12.5px;color:var(--muted);padding:4px 2px">Nenhum item ainda.</div>'; }
+  arr.forEach((txt,i)=>{
+    const row = document.createElement("div"); row.className="itemrow";
+    row.innerHTML = '<textarea rows="2" placeholder="'+esc(placeholder)+'"></textarea><button class="iconbtn" title="Remover">✕</button>';
+    const ta = row.querySelector("textarea"); ta.value = txt;
+    ta.addEventListener("input", ()=>{ arr[i]=ta.value; salvar(); extra&&extra(); });
+    row.querySelector("button").addEventListener("click", ()=>{ arr.splice(i,1); listaEditavel(box,arr,placeholder,extra); salvar(); extra&&extra(); });
+    box.appendChild(row);
+  });
+}
+
+/* --------- identificação --------- */
+function renderMeta(){
+  const m=S.meta;
+  $("#m_empresa").value=m.empresa||""; $("#m_gestor").value=m.gestor||"";
+  $("#m_trim").value=m.trimestre||"Q1 (jan-mar)"; $("#m_ano").value=m.ano||hoje().getFullYear();
+  $("#m_vend").value=m.vendedores||""; $("#m_reg").value=m.regiao||""; $("#m_perfil").value=m.perfil||"";
+  $("#brandSub").textContent = m.empresa ? m.empresa : "Distribuidora fotovoltaica · B2B";
+  $("#cicloBadge").innerHTML = '<span class="sig"></span>'+esc((m.trimestre||"").split(" ")[0]+" "+(m.ano||""));
+}
+function bindMeta(){
+  const map={m_empresa:"empresa",m_gestor:"gestor",m_trim:"trimestre",m_ano:"ano",m_vend:"vendedores",m_reg:"regiao",m_perfil:"perfil"};
+  Object.keys(map).forEach(id=>{
+    $("#"+id).addEventListener("input",e=>{ S.meta[map[id]] = (e.target.type==="number") ? num(e.target.value) : e.target.value; salvar(); renderMeta(); });
+  });
+}
+
+/* --------- SWOT --------- */
+function renderSwot(){
+  ["forcas","fraquezas","oportunidades","ameacas"].forEach(k=>{
+    listaEditavel($("#sw_"+k), S.swot[k], "Seja específico e mensurável…", ()=>{ preencherGerador(); });
+  });
+  preencherGerador();
+}
+function renderSugestoes(){
+  $$("[data-sug]").forEach(box=>{
+    const tipo = box.dataset.sug; const lista = BIB[tipo]||[];
+    box.innerHTML = '<div style="width:100%;font-size:11px;color:var(--muted);margin:6px 0 2px">Biblioteca do setor — clique para inserir e depois edite:</div>' +
+      lista.map((t,i)=>'<button class="sug" data-i="'+i+'">'+esc(t.split("|")[0])+"</button>").join("");
+    box.querySelectorAll(".sug").forEach(b=>b.addEventListener("click",()=>{
+      const t = lista[+b.dataset.i];
+      if(tipo==="kr"){ const p=t.split("|"); S.okr.krs.push({id:uid(),nome:p[0],indicador:p[1],base:null,meta:null,real:null,fonte:p[2]}); renderOkr(); }
+      else if(tipo==="iniciativa"){ S.plano.push({id:uid(),iniciativa:t,porque:"",resp:"",prazo:"",uf:"",como:"",custo:"",kr:"",situacao:"Não iniciada"}); renderPlano(); renderDiario(); renderReport(); }
+      else { S.swot[tipo].push(t); renderSwot(); }
+      salvar(); toast("Inserido — edite com a sua realidade");
+    }));
+  });
+  const pb = $("#sug_perguntas");
+  pb.innerHTML = BIB.perguntas.map(p=>'<button class="sug">'+esc(p)+"</button>").join("");
+  pb.querySelectorAll(".sug").forEach(b=>b.addEventListener("click",()=>{ $("#ai_pergunta").value=b.textContent; toast("Pergunta carregada — clique em Analisar com IA"); }));
+}
+
+/* --------- Cruzada --------- */
+function renderCross(){
+  const ph={fo:"Estratégia ofensiva…",fa:"Estratégia de defesa…",fro:"Melhoria / capacitação…",fra:"Gargalo crítico…"};
+  ["fo","fa","fro","fra"].forEach(k=> listaEditavel($("#cx_"+k), S.cruzada[k], ph[k]));
+}
+function preencherGerador(){
+  const int = S.swot.forcas.map(t=>({t,tipo:"F"})).concat(S.swot.fraquezas.map(t=>({t,tipo:"Fr"})));
+  const ext = S.swot.oportunidades.map(t=>({t,tipo:"O"})).concat(S.swot.ameacas.map(t=>({t,tipo:"A"})));
+  const gi=$("#gx_int"), ge=$("#gx_ext"); if(!gi) return;
+  gi.innerHTML = int.length? int.map((o,i)=>'<option value="'+i+'">['+o.tipo+'] '+esc(o.t.slice(0,70))+"</option>").join("") : '<option value="">— preencha o SWOT primeiro —</option>';
+  ge.innerHTML = ext.length? ext.map((o,i)=>'<option value="'+i+'">['+o.tipo+'] '+esc(o.t.slice(0,70))+"</option>").join("") : '<option value="">— preencha o SWOT primeiro —</option>';
+  gi._d=int; ge._d=ext;
+}
+function gerarCruzamento(){
+  const gi=$("#gx_int"), ge=$("#gx_ext");
+  const a=(gi._d||[])[+gi.value], b=(ge._d||[])[+ge.value];
+  if(!a||!b){ toast("Preencha o SWOT antes de gerar o cruzamento"); return; }
+  const chave = (a.tipo==="F"?"f":"fr") + (b.tipo==="O"?"o":"a");
+  const verbo = { fo:"Usar", fa:"Usar", fro:"Corrigir", fra:"Reduzir" }[chave];
+  const conector = { fo:"para aproveitar", fa:"para minimizar", fro:"aproveitando", fra:"para evitar" }[chave];
+  const texto = verbo+' "'+a.t+'" '+conector+' "'+b.t+'" → [descreva a ação concreta]';
+  S.cruzada[chave].push(texto); renderCross(); salvar();
+  toast("Estratégia candidata criada no quadrante "+chave.toUpperCase()+" — edite o final da frase");
+}
+
+/* --------- Priorização --------- */
+function renderPrior(){
+  const tb = $("#tb_prior tbody"); tb.innerHTML="";
+  if(!S.prioriz.length) tb.innerHTML='<tr><td colspan="8" class="empty">Nenhuma estratégia priorizada. Use "Trazer estratégias do bloco 2".</td></tr>';
+  S.prioriz.forEach((l,idx)=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML =
+      '<td><textarea rows="2" data-f="estrategia"></textarea></td>'+
+      '<td><select data-f="cruzamento">'+opts(CRUZAMENTOS,l.cruzamento)+"</select></td>"+
+      '<td><input type="number" min="1" max="5" data-f="impacto"></td>'+
+      '<td><input type="number" min="1" max="5" data-f="esforco"></td>'+
+      '<td class="calc c-ix"></td><td class="calc c-pr"></td>'+
+      '<td><select data-f="vira">'+opts(["Sim","Não","Descartada"],l.vira)+"</select></td>"+
+      '<td class="act"><button class="iconbtn" title="Excluir linha">✕</button></td>';
+    tr.querySelector('[data-f="estrategia"]').value=l.estrategia||"";
+    tr.querySelector('[data-f="impacto"]').value=l.impacto??"";
+    tr.querySelector('[data-f="esforco"]').value=l.esforco??"";
+    const calc=()=>{ const ix=indice(l); tr.querySelector(".c-ix").textContent = ix===null?"—":ix.toFixed(2);
+      const p=prioridade(l); const cor = p.startsWith("1")?"var(--crit)":p.startsWith("2")?"var(--good)":"var(--muted)";
+      tr.querySelector(".c-pr").innerHTML = p? '<b style="color:'+cor+'">'+esc(p)+"</b>" : "—"; avisoPrior(); };
+    tr.querySelectorAll("[data-f]").forEach(inp=>inp.addEventListener("input",()=>{
+      l[inp.dataset.f] = inp.type==="number" ? num(inp.value) : inp.value; calc(); salvar(); }));
+    tr.querySelector(".iconbtn").addEventListener("click",()=>{ if(confirm("Excluir esta linha?")){ S.prioriz.splice(idx,1); renderPrior(); salvar(); } });
+    tb.appendChild(tr); calc();
+  });
+  avisoPrior();
+}
+function avisoPrior(){
+  const n = S.prioriz.filter(l=>l.vira==="Sim").length;
+  const box=$("#priorAviso"); if(!box) return;
+  if(n===0) box.innerHTML='<span class="badge b-neutro"><span class="sig"></span>nenhuma vira iniciativa</span>';
+  else if(n<=3) box.innerHTML='<span class="badge b-verde"><span class="sig"></span>'+n+" de no máximo 3 iniciativas</span>";
+  else box.innerHTML='<span class="badge b-vermelho"><span class="sig"></span>'+n+" iniciativas — acima do limite de 3</span>";
+}
+
+/* --------- OKR --------- */
+function renderOkr(){
+  $("#okr_obj").value = S.okr.objetivo||"";
+  const tb=$("#tb_okr tbody"); tb.innerHTML="";
+  if(!S.okr.krs.length) tb.innerHTML='<tr><td colspan="8" class="empty">Nenhum resultado-chave. Use a biblioteca abaixo ou "+ Novo KR".</td></tr>';
+  S.okr.krs.forEach((k,idx)=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML =
+      '<td><textarea rows="2" data-f="nome"></textarea></td><td><textarea rows="2" data-f="indicador"></textarea></td>'+
+      '<td><input type="number" data-f="base"></td><td><input type="number" data-f="meta"></td><td><input type="number" data-f="real"></td>'+
+      '<td class="calc c-p"></td><td><textarea rows="2" data-f="fonte"></textarea></td>'+
+      '<td class="act"><button class="iconbtn" title="Excluir KR">✕</button></td>';
+    ["nome","indicador","fonte"].forEach(f=>tr.querySelector('[data-f="'+f+'"]').value=k[f]||"");
+    ["base","meta","real"].forEach(f=>tr.querySelector('[data-f="'+f+'"]').value=k[f]??"");
+    const calc=()=>{ const p=pct(num(k.real),num(k.meta));
+      const cor = p===null?"var(--muted)": p>=0.9?"var(--good)": p>=0.7?"var(--warn)":"var(--crit)";
+      tr.querySelector(".c-p").innerHTML='<b style="color:'+cor+'">'+fpct(p)+"</b>"; renderPainel(); };
+    tr.querySelectorAll("[data-f]").forEach(inp=>inp.addEventListener("input",()=>{
+      k[inp.dataset.f] = inp.type==="number"?num(inp.value):inp.value; calc(); salvar(); }));
+    tr.querySelector(".iconbtn").addEventListener("click",()=>{ if(confirm("Excluir este KR?")){ S.okr.krs.splice(idx,1); renderOkr(); salvar(); } });
+    tb.appendChild(tr); calc();
+  });
+  const n=S.okr.krs.length;
+  $("#okrCount").className = "badge "+(n===0?"b-neutro":n<=3?"b-verde":"b-vermelho");
+  $("#okrCount").innerHTML = '<span class="sig"></span>'+n+" de 3";
+}
+
+/* --------- Plano 5W2H --------- */
+function renderPlano(){
+  const tb=$("#tb_plano tbody"); tb.innerHTML="";
+  if(!S.plano.length) tb.innerHTML='<tr><td colspan="10" class="empty">Nenhuma iniciativa. Sem isto, o Diário e o Report ficam sem frentes.</td></tr>';
+  const krNomes = S.okr.krs.map((k,i)=>"KR"+(i+1));
+  S.plano.forEach((p,idx)=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML =
+      '<td><textarea rows="2" data-f="iniciativa"></textarea></td><td><textarea rows="2" data-f="porque"></textarea></td>'+
+      '<td><input type="text" data-f="resp"></td><td><input type="text" data-f="prazo" placeholder="30/09"></td>'+
+      '<td><input type="text" data-f="uf" placeholder="AM, PA"></td><td><textarea rows="2" data-f="como"></textarea></td>'+
+      '<td><textarea rows="2" data-f="custo"></textarea></td>'+
+      '<td><select data-f="kr">'+opts(krNomes,p.kr)+"</select></td>"+
+      '<td><select data-f="situacao">'+opts(SITUACOES,p.situacao)+"</select></td>"+
+      '<td class="act"><button class="iconbtn" title="Excluir iniciativa">✕</button></td>';
+    ["iniciativa","porque","resp","prazo","uf","como","custo"].forEach(f=>tr.querySelector('[data-f="'+f+'"]').value=p[f]||"");
+    tr.querySelectorAll("[data-f]").forEach(inp=>inp.addEventListener("input",()=>{
+      p[inp.dataset.f]=inp.value; salvar();
+      if(inp.dataset.f==="iniciativa"){ atualizarFrentesNoDiario(); renderReport(); }
+    }));
+    tr.querySelector(".iconbtn").addEventListener("click",()=>{ if(confirm("Excluir esta iniciativa? Ela deixa de aparecer no diário e no report.")){ S.plano.splice(idx,1); renderPlano(); renderDiario(); renderReport(); salvar(); } });
+    tb.appendChild(tr);
+  });
+}
+function atualizarFrentesNoDiario(){
+  $$("#tb_diario select[data-f='frente']").forEach(sel=>{ const v=sel.value; sel.innerHTML=opts(frentes(),v); });
+}
+
+/* --------- Diário semanal --------- */
+function renderDiario(){
+  const sel=$("#filtroMes"); const chaves=[...new Set(S.diario.filter(l=>l.data).map(l=>l.data.slice(0,7)))].sort().reverse();
+  const atual = sel.value || "todos";
+  sel.innerHTML = '<option value="todos">Todos</option>'+chaves.map(k=>{ const p=k.split("-"); return '<option value="'+k+'">'+MESES[+p[1]]+"/"+p[0]+"</option>"; }).join("");
+  sel.value = chaves.includes(atual)||atual==="todos" ? atual : "todos";
+
+  const tb=$("#tb_diario tbody"); tb.innerHTML="";
+  const lista = S.diario.filter(l=> sel.value==="todos" || (l.data||"").slice(0,7)===sel.value)
+                        .sort((a,b)=> String(b.data||"").localeCompare(String(a.data||"")));
+  if(!lista.length) tb.innerHTML='<tr><td colspan="14" class="empty">Nenhuma semana registrada neste filtro. Clique em "+ Nova semana".</td></tr>';
+  lista.forEach(l=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML =
+      '<td><input type="number" data-f="semana" style="width:46px"></td>'+
+      '<td><input type="date" data-f="data"></td>'+
+      '<td class="calc c-mes"></td><td class="calc c-ano"></td>'+
+      '<td><select data-f="frente">'+opts(frentes(),l.frente)+"</select></td>"+
+      '<td><textarea rows="2" data-f="metaP"></textarea></td><td><textarea rows="2" data-f="feitoD"></textarea></td>'+
+      '<td><textarea rows="2" data-f="desvioC"></textarea></td><td><textarea rows="2" data-f="acaoA"></textarea></td>'+
+      '<td><input type="number" data-f="metaNum"></td><td><input type="number" data-f="realNum"></td>'+
+      '<td class="calc c-p"></td>'+
+      '<td><select data-f="status">'+opts(STATUS,l.status)+"</select></td>"+
+      '<td class="act"><button class="iconbtn ren" title="Criar próxima semana a partir da ação corretiva">↻</button><button class="iconbtn" title="Excluir">✕</button></td>';
+    ["semana","data","metaP","feitoD","desvioC","acaoA"].forEach(f=>tr.querySelector('[data-f="'+f+'"]').value=l[f]??"");
+    ["metaNum","realNum"].forEach(f=>tr.querySelector('[data-f="'+f+'"]').value=l[f]??"");
+    const calc=()=>{
+      const p=l.data?l.data.split("-"):null;
+      tr.querySelector(".c-mes").textContent = p?+p[1]:"—";
+      tr.querySelector(".c-ano").textContent = p?p[0]:"—";
+      const v=pct(num(l.realNum),num(l.metaNum));
+      const cor = v===null?"var(--muted)": v>=1?"var(--good)": v>=0.8?"var(--warn)":"var(--crit)";
+      tr.querySelector(".c-p").innerHTML='<b style="color:'+cor+'">'+fpct(v)+"</b>";
+    };
+    tr.querySelectorAll("[data-f]").forEach(inp=>inp.addEventListener("input",()=>{
+      const f=inp.dataset.f;
+      l[f] = inp.type==="number" ? num(inp.value) : inp.value;
+      if(f==="status") l.statusManual = true;
+      if((f==="metaNum"||f==="realNum") && !l.statusManual){
+        const sug=statusSugerido(pct(num(l.realNum),num(l.metaNum)));
+        if(sug){ l.status=sug; tr.querySelector('[data-f="status"]').value=sug; }
+      }
+      calc(); salvar(); renderPainel(); renderGraficoSemanas();
+    }));
+    tr.querySelector(".ren").addEventListener("click",()=>{
+      const d = l.data? new Date(l.data+"T12:00:00") : hoje(); d.setDate(d.getDate()+7);
+      S.diario.push({ id:uid(), semana:(num(l.semana)||0)+1, data:iso(d), frente:l.frente,
+        metaP: l.acaoA ? "↻ "+l.acaoA : "", feitoD:"", desvioC:"", acaoA:"", metaNum:null, realNum:null, status:"" });
+      renderDiario(); salvar(); toast("Próxima semana criada com a ação corretiva como meta (PDCA fechado)");
+    });
+    tr.querySelector(".act .iconbtn:last-child").addEventListener("click",()=>{
+      if(confirm("Excluir esta semana?")){ S.diario = S.diario.filter(x=>x.id!==l.id); renderDiario(); salvar(); renderPainel(); }
+    });
+    tb.appendChild(tr); calc();
+  });
+  $("#semCount").innerHTML='<span class="sig"></span>'+S.diario.length+" registro(s)";
+  renderGraficoSemanas();
+}
+function renderGraficoSemanas(){
+  const box=$("#graficoSemanas"); if(!box) return;
+  const ls = S.diario.filter(l=>l.data && num(l.metaNum)).sort((a,b)=>String(a.data).localeCompare(String(b.data))).slice(-12);
+  if(!ls.length){ box.innerHTML='<div class="empty">Registre semanas com Meta (nº) e Realizado para ver o ritmo.</div>'; return; }
+  const MAXP = 1.5;
+  box.innerHTML = '<div class="bars">'+ls.map(l=>{
+    const p = pct(num(l.realNum),num(l.metaNum)) ?? 0;
+    const w = Math.min(p,MAXP)/MAXP*100, ref = (1/MAXP)*100;
+    const cor = p>=1?"var(--good)": p>=0.8?"var(--warn)":"var(--crit)";
+    const lbl = "Sem "+(l.semana||"?")+" · "+dbr(l.data);
+    return '<div class="row"><span class="lbl" title="'+esc(l.frente||"")+'">'+esc(lbl)+'</span>'+
+      '<span class="track"><span class="fill" style="width:'+w.toFixed(1)+'%;background:'+cor+'"></span><span class="ref" style="left:'+ref+'%"></span></span>'+
+      '<span class="num">'+fpct(p)+"</span></div>";
+  }).join("")+"</div>";
+}
+
+/* --------- Report mensal --------- */
+function renderReport(){
+  const ms=$("#rp_mes");
+  if(!ms.options.length) ms.innerHTML = MESES.slice(1).map((m,i)=>'<option value="'+(i+1)+'">'+m+"</option>").join("");
+  ms.value = S.report.mes; $("#rp_ano").value = S.report.ano;
+  const ls = diarioDoMes(S.report.mes,S.report.ano);
+  $("#rp_semanas").value = ls.length + " semana(s) registrada(s)";
+
+  const tb=$("#tb_farol tbody"); tb.innerHTML="";
+  const fs = frentes();
+  if(!fs.length) tb.innerHTML='<tr><td colspan="9" class="empty">Cadastre iniciativas no Bloco 5 (Plano 5W2H) para o farol se montar.</td></tr>';
+  fs.forEach(f=>{
+    const r = farolDaFrente(f,S.report.mes,S.report.ano);
+    const tr=document.createElement("tr");
+    const cor = r.p===null?"var(--muted)": r.p>=1?"var(--good)": r.p>=0.8?"var(--warn)":"var(--crit)";
+    tr.innerHTML =
+      "<td><b>"+esc(f)+"</b></td>"+
+      '<td class="calc">'+r.v+'</td><td class="calc">'+r.am+'</td><td class="calc">'+r.vm+"</td>"+
+      "<td>"+badge(r.farol)+"</td>"+
+      '<td class="calc">'+fnum(r.meta||null)+'</td><td class="calc">'+fnum(r.real||null)+"</td>"+
+      '<td class="calc"><b style="color:'+cor+'">'+fpct(r.p)+"</b></td>"+
+      '<td><div style="display:flex;gap:5px"><textarea rows="2" placeholder="O que explica esse resultado?"></textarea>'+
+      '<button class="iconbtn sug" title="Sugerir leitura a partir dos números" style="color:var(--accent)">✦</button></div></td>';
+    const ta=tr.querySelector("textarea"); ta.value = S.report.leituras[f]||"";
+    ta.addEventListener("input",()=>{ S.report.leituras[f]=ta.value; salvar(); });
+    tr.querySelector(".sug").addEventListener("click",()=>{ ta.value = leituraSugerida(f,r); S.report.leituras[f]=ta.value; salvar(); toast("Rascunho gerado — ajuste com o que você sabe do campo"); });
+    tb.appendChild(tr);
+  });
+
+  listaEditavel($("#rp_manter"), S.report.manter, "O que funcionou e continua no próximo mês…");
+  listaEditavel($("#rp_parar"),  S.report.parar,  "O que deu errado e precisa parar ou mudar…");
+  listaEditavel($("#rp_comecar"),S.report.comecar,"Novo teste ou ajuste para o próximo mês…");
+  $("#rp_r1").value=S.report.r1||""; $("#rp_r2").value=S.report.r2||""; $("#rp_r3").value=S.report.r3||"";
+}
+function leituraSugerida(f,r){
+  if(!r.n) return "Sem registro no diário neste mês — não há base para leitura. Registre as semanas antes de reportar.";
+  const partes=[];
+  partes.push("Em "+r.n+" semana(s) registrada(s): "+r.v+" verde, "+r.am+" amarela(s) e "+r.vm+" vermelha(s).");
+  if(r.meta) partes.push("Acumulado de "+fnum(r.real)+" contra meta de "+fnum(r.meta)+" ("+fpct(r.p)+").");
+  const desvios = r.linhas.filter(l=>String(l.desvioC||"").trim()).map(l=>String(l.desvioC).trim());
+  if(desvios.length) partes.push("Causa apontada no diário: "+desvios[desvios.length-1]);
+  const acoes = r.linhas.filter(l=>String(l.acaoA||"").trim()).map(l=>String(l.acaoA).trim());
+  if(acoes.length) partes.push("Última ação corretiva definida: "+acoes[acoes.length-1]);
+  if(r.vm>=2) partes.push("ATENÇÃO: duas ou mais semanas vermelhas — o problema não é execução, é o plano. Volte ao SWOT.");
+  else if(r.p!==null && r.p>=1 && r.vm===0) partes.push("Frente no ritmo. Avaliar se a meta semanal não está fácil demais.");
+  return partes.join(" ");
+}
+function sugerirResumo(){
+  const m=S.report.mes,a=S.report.ano, fs=frentes();
+  const rs = fs.map(f=>({f,r:farolDaFrente(f,m,a)})).filter(x=>x.r.n);
+  if(!rs.length){ toast("Sem registros no diário deste mês"); return; }
+  const meta = rs.reduce((s,x)=>s+x.r.meta,0), real = rs.reduce((s,x)=>s+x.r.real,0);
+  const p = meta?real/meta:null;
+  const piores = rs.filter(x=>x.r.farol==="Vermelho").map(x=>x.f);
+  const melhores = rs.filter(x=>x.r.farol==="Verde").map(x=>x.f);
+  $("#rp_r1").value = "Fechamos "+MESES[m]+"/"+a+" com "+fnum(real)+" contra meta de "+fnum(meta)+" ("+fpct(p)+") somando "+rs.length+" frente(s) ativa(s)."+
+    (melhores.length? " No ritmo: "+melhores.join("; ")+"." : "");
+  const desvios = rs.flatMap(x=>x.r.linhas).filter(l=>String(l.desvioC||"").trim()).slice(-2).map(l=>l.desvioC);
+  $("#rp_r2").value = (piores.length? "Frente(s) travada(s): "+piores.join("; ")+". " : "Nenhuma frente em vermelho. ")+
+    (desvios.length? "Causas registradas no diário: "+desvios.join(" | ") : "Sem causa registrada no diário — este é o próximo ponto a corrigir na rotina.");
+  const acoes = rs.flatMap(x=>x.r.linhas).filter(l=>String(l.acaoA||"").trim()).slice(-2).map(l=>l.acaoA);
+  $("#rp_r3").value = acoes.length? "Apostas do próximo mês: "+acoes.join(" | ") : "Definir a aposta do próximo mês a partir das ações corretivas do diário.";
+  S.report.r1=$("#rp_r1").value; S.report.r2=$("#rp_r2").value; S.report.r3=$("#rp_r3").value; salvar();
+  toast("Rascunho gerado a partir dos números — revise antes de enviar");
+}
+
+/* --------- Equipe --------- */
+function renderEquipe(){
+  $("#eq_mes").value = S.equipeMes || iso(hoje()).slice(0,7);
+  const tb=$("#tb_equipe tbody"); tb.innerHTML="";
+  if(!S.equipe.length) tb.innerHTML='<tr><td colspan="10" class="empty">Nenhum vendedor cadastrado. Use "Gerar 20 linhas em branco" para começar rápido.</td></tr>';
+  S.equipe.forEach((v,idx)=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML =
+      '<td><input type="text" data-f="nome"></td><td><input type="text" data-f="uf" placeholder="AM"></td>'+
+      '<td><input type="number" data-f="meta"></td><td><input type="number" data-f="real"></td><td class="calc c-p"></td>'+
+      '<td><input type="number" data-f="carteira"></td><td><input type="number" data-f="posit"></td><td class="calc c-pos"></td>'+
+      '<td><textarea rows="2" data-f="obs"></textarea></td>'+
+      '<td class="act"><button class="iconbtn" title="Excluir">✕</button></td>';
+    ["nome","uf","obs"].forEach(f=>tr.querySelector('[data-f="'+f+'"]').value=v[f]||"");
+    ["meta","real","carteira","posit"].forEach(f=>tr.querySelector('[data-f="'+f+'"]').value=v[f]??"");
+    const calc=()=>{
+      const p=pct(num(v.real),num(v.meta));
+      const cor=p===null?"var(--muted)":p>=1?"var(--good)":p>=0.7?"var(--warn)":"var(--crit)";
+      tr.querySelector(".c-p").innerHTML='<b style="color:'+cor+'">'+fpct(p)+"</b>";
+      const q=pct(num(v.posit),num(v.carteira));
+      tr.querySelector(".c-pos").innerHTML = q===null?"—":fpct(q);
+    };
+    tr.querySelectorAll("[data-f]").forEach(inp=>inp.addEventListener("input",()=>{
+      v[inp.dataset.f]= inp.type==="number"?num(inp.value):inp.value; calc(); salvar(); renderKpiEquipe(); renderGraficoEquipe(); renderCobertura(); }));
+    tr.querySelector(".iconbtn").addEventListener("click",()=>{ if(confirm("Excluir "+(v.nome||"este vendedor")+"?")){ S.equipe.splice(idx,1); renderEquipe(); salvar(); } });
+    tb.appendChild(tr); calc();
+  });
+  renderKpiEquipe(); renderGraficoEquipe(); renderCobertura();
+}
+function renderKpiEquipe(){
+  const box=$("#kpiEquipe"); if(!box) return;
+  const eq=S.equipe.filter(v=>String(v.nome||"").trim());
+  const meta=eq.reduce((s,v)=>s+(num(v.meta)||0),0), real=eq.reduce((s,v)=>s+(num(v.real)||0),0);
+  const p = meta?real/meta:null;
+  const abaixo = eq.filter(v=>{ const q=pct(num(v.real),num(v.meta)); return q!==null && q<0.7; }).length;
+  const ord = eq.map(v=>num(v.real)||0).sort((a,b)=>b-a);
+  const top3 = ord.slice(0,3).reduce((s,x)=>s+x,0);
+  const conc = real? top3/real : null;
+  const cart = eq.reduce((s,v)=>s+(num(v.carteira)||0),0), pos = eq.reduce((s,v)=>s+(num(v.posit)||0),0);
+  box.innerHTML =
+    kpi("Realizado do mês", fbrl(real||null), "Meta: "+fbrl(meta||null), p, p===null?null:(p>=1?"good":p>=0.85?"warn":"crit")) +
+    kpi("Vendedores ativos", eq.length, abaixo+" abaixo de 70% da meta", null, abaixo>0?"warn":"good") +
+    kpi("Positivação da carteira", fpct(pct(pos,cart)), pos+" de "+cart+" integradores compraram", pct(pos,cart), null) +
+    kpi("Concentração top 3", fpct(conc), conc!==null&&conc>0.5?"Risco: metade da receita em 3 vendedores":"Distribuição saudável", conc, conc!==null&&conc>0.5?"crit":"good");
+}
+function kpi(lbl,val,foot,meter,cls){
+  let h='<div class="kpi"><div class="lbl">'+esc(lbl)+'</div><div class="val'+(cls?" "+cls:"")+'">'+val+"</div>";
+  if(meter!==null&&meter!==undefined&&isFinite(meter)){
+    const c = meter>=1?"good":meter>=0.7?"warn":"crit";
+    h+='<div class="meter"><i class="'+c+'" style="width:'+Math.min(100,meter*100).toFixed(0)+'%"></i></div>';
+  }
+  h+='<div class="foot">'+esc(foot)+"</div></div>"; return h;
+}
+function renderGraficoEquipe(){
+  const box=$("#graficoEquipe"); if(!box) return;
+  const eq=S.equipe.filter(v=>String(v.nome||"").trim() && num(v.meta))
+    .map(v=>({n:v.nome,p:pct(num(v.real),num(v.meta))||0})).sort((a,b)=>b.p-a.p);
+  if(!eq.length){ box.innerHTML='<div class="empty">Preencha nome e meta dos vendedores para ver o ranking.</div>'; return; }
+  const MAXP=1.5;
+  box.innerHTML='<div class="bars">'+eq.map(v=>{
+    const w=Math.min(v.p,MAXP)/MAXP*100, ref=(1/MAXP)*100;
+    const cor=v.p>=1?"var(--good)":v.p>=0.7?"var(--warn)":"var(--crit)";
+    return '<div class="row"><span class="lbl">'+esc(v.n)+'</span><span class="track"><span class="fill" style="width:'+w.toFixed(1)+'%;background:'+cor+'"></span><span class="ref" style="left:'+ref+'%"></span></span><span class="num">'+fpct(v.p)+"</span></div>";
+  }).join("")+"</div>";
+}
+function renderCobertura(){
+  const box=$("#coberturaUF"); if(!box) return;
+  const cobertas = new Set();
+  S.equipe.forEach(v=>{ String(v.uf||"").toUpperCase().split(/[^A-Z]+/).forEach(u=>{ if(NORTE.includes(u)) cobertas.add(u); }); });
+  box.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:7px">'+NORTE.map(u=>{
+    const ok = cobertas.has(u);
+    return '<span class="badge '+(ok?"b-verde":"b-vermelho")+'"><span class="sig"></span>'+u+(ok?"":" — sem vendedor")+"</span>";
+  }).join("")+"</div>";
+  const fora = S.equipe.filter(v=>{ const us=String(v.uf||"").toUpperCase().split(/[^A-Z]+/).filter(Boolean); return us.length && !us.some(u=>NORTE.includes(u)); }).length;
+  if(fora) box.innerHTML += '<div class="hint" style="margin-top:12px">'+fora+' vendedor(es) com atuação fora do Norte. Isso é receita — mas confira se o custo de atendimento remoto está no preço.</div>';
+}
+
+/* --------- Painel --------- */
+function renderPainel(){
+  const box=$("#kpiRow"); if(!box) return;
+  const krs=S.okr.krs.filter(k=>num(k.meta));
+  const medio = krs.length? krs.reduce((s,k)=>s+(pct(num(k.real),num(k.meta))||0),0)/krs.length : null;
+  const tempo = progressoTrimestre();
+  const m=hoje().getMonth()+1, a=hoje().getFullYear();
+  const semanasMes = diarioDoMes(m,a).length;
+  const fs=frentes();
+  const vermelhas = fs.filter(f=>farolDaFrente(f,m,a).farol==="Vermelho").length;
+  const iniAtivas = S.plano.filter(p=>p.situacao==="Em andamento").length;
+  box.innerHTML =
+    kpi("OKR — média dos KRs", fpct(medio), "Trimestre "+fpct(tempo)+" decorrido"+(medio!==null&&medio<tempo-0.15?" · abaixo do ritmo":""),
+        medio, medio===null?null:(medio>=tempo-0.05?"good":medio>=tempo-0.15?"warn":"crit")) +
+    kpi("Semanas registradas", semanasMes, MESES[m]+"/"+a+" · rotina "+(semanasMes>=3?"em dia":semanasMes>0?"parcial":"parada"),
+        null, semanasMes>=3?"good":semanasMes>0?"warn":"crit") +
+    kpi("Iniciativas em andamento", iniAtivas, S.plano.length+" cadastrada(s) no 5W2H · limite recomendado: 3",
+        null, iniAtivas>3?"crit":iniAtivas>0?"good":"warn") +
+    kpi("Frentes em vermelho", vermelhas, vermelhas? "Precisam de decisão sua neste mês":"Nenhuma frente travada este mês",
+        null, vermelhas>0?"crit":"good");
+
+  /* farol resumo */
+  const fr=$("#farolResumo");
+  if(!fs.length) fr.innerHTML='<div class="empty">Cadastre iniciativas no Bloco 5 da Estratégia.</div>';
+  else fr.innerHTML = fs.map(f=>{
+    const r=farolDaFrente(f,m,a);
+    return '<div style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)">'+
+      '<span style="font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(f)+"</span>"+
+      '<span style="font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums">'+fpct(r.p)+"</span>"+badge(r.farol)+"</div>";
+  }).join("");
+
+  /* agenda */
+  const ag=$("#agendaBox"); const d=hoje(); const dow=d.getDay();
+  const ultimaSemana = d.getDate() > new Date(d.getFullYear(),d.getMonth()+1,0).getDate()-7;
+  const itens=[];
+  if(!S.plano.length) itens.push(["crit","Cadastrar a estratégia","Sem iniciativas no 5W2H o diário não tem frentes e o report não tem farol. Comece pela aba Estratégia do trimestre."]);
+  if(dow===5||dow===6) itens.push(["warn","Preencher o diário da semana","É sexta ou sábado — 15 minutos agora garantem que o report do mês se monte sozinho."]);
+  else if(dow===1) itens.push(["info","Reunião de segunda com o diário na mão","Abra a ação corretiva da última sexta e cobre nome por nome. É isso que fecha o PDCA."]);
+  if(ultimaSemana) itens.push(["warn","Fechar o report mensal","Estamos na última semana do mês. Gere o farol, escreva a leitura e o resumo executivo."]);
+  if(semanasMes===0 && d.getDate()>10) itens.push(["crit","Rotina parada neste mês","Nenhuma semana registrada em "+MESES[m]+". Registre mesmo as semanas ruins — são elas que explicam o mês."]);
+  if(!itens.length) itens.push(["ok","Rotina em dia","Nada urgente hoje. Aproveite para atualizar o realizado dos KRs com o número do BI."]);
+  ag.innerHTML = itens.map(i=>'<div class="finding '+i[0]+'"><h4>'+esc(i[1])+'</h4><p>'+esc(i[2])+"</p></div>").join("");
+
+  /* alertas topo */
+  const achados = diagnosticar().filter(f=>f.sev==="crit"||f.sev==="warn").slice(0,4);
+  $("#alertasTopo").innerHTML = achados.length
+    ? achados.map(renderFinding).join("")
+    : '<div class="finding ok"><h4>Nenhum alerta crítico</h4><p>O diagnóstico não encontrou inconsistências relevantes com o que está preenchido até agora.</p></div>';
+  const crits = diagnosticar().filter(f=>f.sev==="crit").length;
+  $("#navDot").hidden = crits===0;
+}
+
+/* =======================================================================
+   MOTOR DE DIAGNÓSTICO (regras determinísticas)
+   ======================================================================= */
+function diagnosticar(){
+  const F=[]; const add=(sev,onde,titulo,texto,acao)=>F.push({sev,onde,titulo,texto,acao});
+  const m=hoje().getMonth()+1, a=hoje().getFullYear();
+
+  /* --- Camada 1: estratégia --- */
+  const rasos = ["forcas","fraquezas","oportunidades","ameacas"].filter(k=>S.swot[k].filter(t=>String(t).trim()).length<3);
+  if(!S.swot.forcas.length && !S.swot.fraquezas.length && !S.swot.oportunidades.length && !S.swot.ameacas.length){
+    add("crit","Estratégia · Bloco 1","O SWOT está vazio",
+      "Sem diagnóstico não há estratégia — o resto do programa fica sem base. Tudo o que vem depois (cruzamento, priorização, OKR, plano) parte daqui.",
+      "Reserve 40 minutos e escreva pelo menos 3 itens em cada quadrante. Use a biblioteca do setor como ponto de partida e edite com a sua realidade.");
+  } else if(rasos.length){
+    add("warn","Estratégia · Bloco 1","Diagnóstico raso em "+rasos.length+" quadrante(s)",
+      "Os quadrantes "+rasos.join(", ")+" têm menos de 3 itens. Um SWOT curto normalmente significa que você listou só o óbvio — e o óbvio já está resolvido.",
+      "Complete até ter 3 a 6 itens por quadrante. Para as ameaças, pense especificamente em concorrência, preço de módulo, crédito do integrador e prazo de parecer de acesso.");
+  }
+  const genericos = [].concat(S.swot.forcas,S.swot.fraquezas).filter(t=>String(t).trim().length>0 && String(t).trim().length<25);
+  if(genericos.length>=2){
+    add("warn","Estratégia · Bloco 1","Itens do SWOT genéricos demais",
+      "Há "+genericos.length+" itens muito curtos (ex.: \""+esc(genericos[0])+"\"). Item de SWOT sem número ou sem recorte não vira estratégia — vira frase de efeito.",
+      "Reescreva com quantidade, prazo ou UF. Em vez de \"equipe boa\", escreva \"6 vendedores com 3+ anos de casa e relação direta com os 20 maiores integradores do PA\".");
+  }
+  const cruzTotal = ["fo","fa","fro","fra"].reduce((s,k)=>s+S.cruzada[k].filter(t=>String(t).trim()).length,0);
+  if(S.swot.forcas.length && !cruzTotal){
+    add("crit","Estratégia · Bloco 2","SWOT preenchido, mas sem cruzamento",
+      "Você tem o diagnóstico e parou nele. SWOT sem cruzamento é lista de reclamação bonita: nada dali vira ação.",
+      "Vá ao Bloco 2 e responda as 4 perguntas. Use o gerador de cruzamento para montar o rascunho de cada estratégia.");
+  }
+  if(S.swot.fraquezas.length && S.swot.ameacas.length && !S.cruzada.fra.filter(t=>String(t).trim()).length){
+    add("crit","Estratégia · Bloco 2","Você não olhou os gargalos críticos (FrA)",
+      "O cruzamento Fraquezas + Ameaças é o de maior risco de sobrevivência — é onde uma fraqueza sua encontra uma ameaça do mercado. Está vazio.",
+      "Pergunte-se: qual fraqueza interna, combinada com qual movimento do concorrente ou do mercado, pode custar a carteira? Essa resposta entra no plano mesmo dando trabalho.");
+  }
+  const sim = S.prioriz.filter(l=>l.vira==="Sim");
+  if(cruzTotal && !S.prioriz.length){
+    add("warn","Estratégia · Bloco 3","Estratégias criadas, mas não priorizadas",
+      "Sem priorização, todas as ideias parecem igualmente importantes — e a equipe acaba fazendo a mais fácil, não a mais relevante.",
+      "Use \"Trazer estratégias do bloco 2\" e dê nota de Impacto e Esforço (1 a 5) para cada uma.");
+  }
+  if(sim.length>3){
+    add("crit","Estratégia · Bloco 3","Frentes demais para uma equipe de "+(S.meta.vendedores||20)+" vendedores",
+      sim.length+" estratégias marcadas como iniciativa. Com mais de 3 frentes simultâneas, a atenção da equipe se dilui e nenhuma avança até o fim.",
+      "Escolha no máximo 3. As demais ficam registradas como \"Fila\" para o próximo trimestre — isso não é abandono, é sequenciamento.");
+  }
+  S.prioriz.forEach(l=>{
+    if(l.cruzamento==="Fraquezas + Ameaças" && l.vira!=="Sim" && String(l.estrategia||"").trim()){
+      add("crit","Estratégia · Bloco 3","Gargalo crítico ficou de fora do plano",
+        "\""+String(l.estrategia).slice(0,90)+"\" veio de Fraquezas + Ameaças e não virou iniciativa. Gargalo crítico é risco de sobrevivência: ele entra no plano mesmo com índice ruim.",
+        "Marque como \"Sim\" no Bloco 3 e leve para o 5W2H — ou registre conscientemente por que decidiu não agir neste trimestre.");
+    }
+    const ix=indice(l);
+    if(l.cruzamento==="Forças + Oportunidades" && ix!==null && ix>=1 && l.vira!=="Sim" && sim.length<3 && String(l.estrategia||"").trim()){
+      add("warn","Estratégia · Bloco 3","Ganho rápido não aproveitado",
+        "\""+String(l.estrategia).slice(0,90)+"\" tem índice "+ix.toFixed(2)+" (impacto alto, esforço baixo) e você ainda tem espaço no limite de 3 frentes.",
+        "É o tipo de iniciativa que dá resultado no mesmo trimestre. Considere marcar como \"Sim\".");
+    }
+  });
+  if(!String(S.okr.objetivo||"").trim() && S.plano.length){
+    add("warn","Estratégia · Bloco 4","Plano sem objetivo de trimestre",
+      "Há iniciativas cadastradas, mas nenhum objetivo declarado. A equipe executa tarefas sem saber para onde elas somam.",
+      "Escreva uma frase de objetivo — qualitativa e clara. Ex.: \"Retomar a liderança de share entre os integradores do Norte\".");
+  }
+  if(!S.okr.krs.length && String(S.okr.objetivo||"").trim()){
+    add("crit","Estratégia · Bloco 4","Objetivo sem resultado-chave numérico",
+      "Objetivo sem KR é intenção. Sem número, no fim do trimestre a discussão vira \"eu acho que melhorou\".",
+      "Defina de 1 a 3 KRs com linha de base, meta e fonte do dado (BI, ERP, CRM).");
+  }
+  S.okr.krs.forEach((k,i)=>{
+    if(String(k.nome||"").trim() && !num(k.meta)) add("warn","Estratégia · Bloco 4","KR"+(i+1)+" sem meta numérica",
+      "\""+String(k.nome).slice(0,70)+"\" não tem meta. Um KR sem meta não é meta, é acompanhamento.",
+      "Defina a meta do trimestre e a linha de base — sem a base você não sabe se o esforço mudou alguma coisa.");
+    if(String(k.nome||"").trim() && !String(k.fonte||"").trim()) add("warn","Estratégia · Bloco 4","KR"+(i+1)+" sem fonte do dado",
+      "Sem saber de onde o número sai, na semana 3 ninguém atualiza e o OKR morre em silêncio.",
+      "Aponte a fonte exata: painel do BI, relatório do ERP, extração do CRM. Se não existe fonte, criar a fonte é a primeira iniciativa.");
+    const p=pct(num(k.real),num(k.meta)), t=progressoTrimestre();
+    if(p!==null && p < t-0.2) add("crit","Estratégia · Bloco 4","KR"+(i+1)+" abaixo do ritmo do trimestre",
+      "\""+String(k.nome).slice(0,60)+"\" está em "+fpct(p)+" com "+fpct(t)+" do trimestre decorrido. No ritmo atual não fecha.",
+      "Duas saídas honestas: mudar o plano (a iniciativa ligada a este KR não está funcionando) ou renegociar a meta agora, não no último dia.");
+  });
+  S.plano.forEach(p=>{
+    const nome=String(p.iniciativa||"").trim(); if(!nome) return;
+    if(!String(p.resp||"").trim()) add("crit","Estratégia · Bloco 5","Iniciativa sem responsável",
+      "\""+nome.slice(0,80)+"\" não tem dono. Tarefa de todo mundo é tarefa de ninguém.",
+      "Coloque um nome — pessoa, não área. \"Comercial\" não acorda de manhã e executa.");
+    if(!String(p.prazo||"").trim()) add("warn","Estratégia · Bloco 5","Iniciativa sem prazo",
+      "\""+nome.slice(0,80)+"\" não tem data. Sem prazo, ela vai sendo empurrada até o fim do trimestre.",
+      "Defina a data de conclusão e trate o diário semanal como o checkpoint dela.");
+    if(!String(p.porque||"").trim()) add("warn","Estratégia · Bloco 5","Iniciativa sem o \"por quê\"",
+      "\""+nome.slice(0,80)+"\" não explica o motivo. Sem o porquê você recebe cumprimento de tarefa; com ele, o vendedor resolve o problema quando a realidade sai do roteiro.",
+      "Escreva o motivo com número: \"40% da carteira sem compra há 60+ dias\".");
+    if(!String(p.kr||"").trim() && S.okr.krs.length) add("warn","Estratégia · Bloco 5","Iniciativa não ligada a nenhum KR",
+      "\""+nome.slice(0,80)+"\" não está vinculada a um resultado-chave. Ou ela move um número, ou é trabalho que consome equipe sem mover o trimestre.",
+      "Vincule ao KR correspondente — ou reavalie se ela deveria estar no plano.");
+  });
+
+  /* --- Camada 2: diário --- */
+  const semanas = S.diario.filter(l=>l.data).sort((x,y)=>String(y.data).localeCompare(String(x.data)));
+  if(S.plano.length && !semanas.length){
+    add("crit","Diário semanal","Plano cadastrado, mas nenhuma semana registrada",
+      "A camada 2 é a que faz o plano acontecer. Sem o diário, o report mensal não tem de onde puxar o farol.",
+      "Registre a primeira semana hoje mesmo, mesmo que seja para dizer que a iniciativa ainda não começou.");
+  }
+  if(semanas.length){
+    const ultima = new Date(semanas[0].data+"T12:00:00");
+    const dias = Math.floor((hoje()-ultima)/86400000);
+    if(dias>14) add("crit","Diário semanal","Rotina parada há "+dias+" dias",
+      "O último registro foi em "+dbr(semanas[0].data)+". A rotina morre exatamente assim: sem anúncio, por acúmulo de semanas puladas.",
+      "Registre as semanas em atraso agora, mesmo em bloco e mesmo que tenham sido ruins. Depois marque um horário fixo na agenda (ex.: sexta, 16h).");
+    else if(dias>9) add("warn","Diário semanal","Uma semana sem registro",
+      "O último registro foi em "+dbr(semanas[0].data)+". Duas semanas em branco e a rotina normalmente não volta.",
+      "Preencha hoje. Se a semana foi ruim, o registro é ainda mais importante — é o dado que explica o mês.");
+  }
+  const semNumero = S.diario.filter(l=>String(l.metaP||"").trim() && (!num(l.metaNum)||!num(l.realNum)));
+  if(semNumero.length) add("warn","Diário semanal",semNumero.length+" semana(s) sem número",
+    "Meta e realizado em texto viram percepção, não gestão. No fim do mês ninguém consegue dizer se foi bom ou ruim.",
+    "Toda linha precisa de Meta (nº) e Realizado (nº) — contatos, propostas, pedidos, R$ ou clientes positivados. O número sai do seu BI/ERP.");
+  const semCausa = S.diario.filter(l=>{ const p=pct(num(l.realNum),num(l.metaNum)); return p!==null && p<0.8 && !String(l.desvioC||"").trim(); });
+  if(semCausa.length) add("warn","Diário semanal",semCausa.length+" semana(s) abaixo da meta sem causa registrada",
+    "Semana vermelha sem o \"por quê\" é a garantia de que ela vai se repetir. A coluna C é a que impede a repetição.",
+    "Volte nessas linhas e escreva o que aconteceu de concreto — quem, onde e o que travou.");
+  const semAcao = S.diario.filter(l=>String(l.desvioC||"").trim() && !String(l.acaoA||"").trim());
+  if(semAcao.length) add("crit","Diário semanal",semAcao.length+" desvio(s) sem ação corretiva",
+    "Você identificou o problema e não definiu o que fazer. Aqui o PDCA quebra: vira diário de bordo em vez de ciclo de melhoria.",
+    "Para cada desvio, escreva a ação corretiva e use o botão ↻ na linha — ele cria a próxima semana já com essa ação como meta.");
+  frentes().forEach(f=>{
+    const ls = S.diario.filter(l=>l.frente===f && l.data).sort((x,y)=>String(x.data).localeCompare(String(y.data)));
+    const ult = ls.slice(-2);
+    if(ult.length===2 && ult.every(l=>l.status==="Vermelho")){
+      add("crit","Diário semanal","\""+f.slice(0,60)+"\" — duas semanas vermelhas seguidas",
+        "Quando a mesma frente fica vermelha duas semanas seguidas, o problema deixou de ser execução e passou a ser o plano ou o recurso.",
+        "Isto exige decisão sua, não cobrança: mude o COMO no 5W2H, troque o responsável, realoque gente — ou encerre a frente conscientemente.");
+    }
+    const r = farolDaFrente(f,m,a);
+    const kr = S.plano.find(p=>p.iniciativa===f);
+    if(r.n>=2 && r.farol==="Verde" && kr && kr.kr){
+      const i = parseInt(String(kr.kr).replace(/\D/g,""),10)-1;
+      const k = S.okr.krs[i];
+      if(k){ const pk=pct(num(k.real),num(k.meta));
+        if(pk!==null && pk < progressoTrimestre()-0.2)
+          add("warn","Diário × OKR","Frente sempre verde, mas o KR não anda",
+            "\""+f.slice(0,55)+"\" está verde no diário, porém o "+kr.kr+" está em "+fpct(pk)+" com "+fpct(progressoTrimestre())+" do trimestre decorrido. Isso quase sempre significa meta semanal fácil demais — ou meta semanal medindo a coisa errada.",
+            "Reveja o indicador semanal: ele precisa ser o que empurra o KR (ex.: se o KR é positivação, a meta semanal é clientes distintos atendidos, não número de ligações).");
+      }
+    }
+  });
+
+  /* --- Camada 3: report --- */
+  const rls = diarioDoMes(S.report.mes,S.report.ano);
+  if(rls.length){
+    const semLeitura = frentes().filter(f=>{ const r=farolDaFrente(f,S.report.mes,S.report.ano); return r.farol==="Vermelho" && !String(S.report.leituras[f]||"").trim(); });
+    if(semLeitura.length) add("warn","Report mensal",semLeitura.length+" frente(s) em vermelho sem leitura",
+      "Farol vermelho sem explicação escrita não gera decisão — a diretoria só vê a cor e a conversa vira defesa.",
+      "Escreva a leitura de cada frente vermelha. Use o botão ✦ para gerar o rascunho a partir dos números do diário.");
+    if(!S.report.parar.filter(t=>String(t).trim()).length && rls.length>=3)
+      add("warn","Report mensal","Nada na coluna PARAR",
+        "Se em um mês inteiro não houve nada para parar ou corrigir, provavelmente o fechamento não olhou de verdade.",
+        "Aponte pelo menos uma coisa: uma reunião que não gera decisão, um relatório que ninguém lê, uma meta sem número.");
+    if(!String(S.report.r1||"").trim() && rls.length>=3)
+      add("warn","Report mensal","Resumo executivo em branco",
+        "As 3 linhas do resumo são o que a diretoria efetivamente lê. Sem elas, o report fica como tabela sem narrativa.",
+        "Use \"Sugerir resumo a partir dos números\" e depois ajuste com o que só você sabe do campo.");
+  }
+
+  /* --- Equipe --- */
+  const eq=S.equipe.filter(v=>String(v.nome||"").trim());
+  if(eq.length){
+    const meta=eq.reduce((s,v)=>s+(num(v.meta)||0),0), real=eq.reduce((s,v)=>s+(num(v.real)||0),0);
+    const ord=eq.slice().sort((x,y)=>(num(y.real)||0)-(num(x.real)||0));
+    const top3=ord.slice(0,3).reduce((s,v)=>s+(num(v.real)||0),0);
+    if(real && top3/real>0.5) add("crit","Equipe & carteira","Receita concentrada em 3 vendedores",
+      "Os 3 maiores respondem por "+fpct(top3/real)+" do realizado do mês ("+ord.slice(0,3).map(v=>v.nome).join(", ")+"). Se um deles sai ou adoece, o mês inteiro vai junto.",
+      "Duas frentes: entender o que os três fazem diferente e transformar em rotina para os demais; e redistribuir parte da carteira dos maiores para quem tem capacidade ociosa.");
+    const fracos = eq.filter(v=>{ const p=pct(num(v.real),num(v.meta)); return p!==null && p<0.7; });
+    if(fracos.length) add("warn","Equipe & carteira",fracos.length+" vendedor(es) abaixo de 70% da meta",
+      fracos.map(v=>v.nome+" ("+fpct(pct(num(v.real),num(v.meta)))+")").join(", ")+". Abaixo de 70% raramente é falta de esforço — costuma ser carteira ruim, território difícil ou falta de argumento técnico.",
+      "Antes de cobrar, diagnostique: a carteira dele tem clientes ativos suficientes? Ele perde no preço ou no prazo? Uma visita conjunta responde isso mais rápido que três reuniões.");
+    const semPos = eq.filter(v=>num(v.carteira) && pct(num(v.posit),num(v.carteira))!==null && pct(num(v.posit),num(v.carteira))<0.25);
+    if(semPos.length) add("warn","Equipe & carteira",semPos.length+" vendedor(es) com positivação abaixo de 25%",
+      "Menos de 1 em cada 4 integradores da carteira comprou no mês. Isso significa carteira grande e relacionamento raso — o vendedor está atendendo só quem liga.",
+      "Puxe meta de clientes distintos por semana. Positivação é o indicador que antecipa a queda de faturamento antes de ela aparecer no fechamento.");
+    if(meta && real/meta<0.85 && hoje().getDate()>20) add("crit","Equipe & carteira","Mês encaminhado para fechar abaixo da meta",
+      "Realizado em "+fpct(real/meta)+" com o mês já avançado. O gap de "+fbrl(meta-real)+" não se resolve com esforço genérico nos últimos dias.",
+      "Ataque onde o ciclo é mais curto: pedidos em aberto no CRM, clientes que compraram mês passado e ainda não voltaram, e itens com estoque parado que podem virar campanha relâmpago.");
+    const cobertas=new Set(); eq.forEach(v=>String(v.uf||"").toUpperCase().split(/[^A-Z]+/).forEach(u=>{ if(NORTE.includes(u)) cobertas.add(u); }));
+    const faltando = NORTE.filter(u=>!cobertas.has(u));
+    if(faltando.length && faltando.length<7) add("warn","Equipe & carteira","UFs do Norte sem vendedor atribuído: "+faltando.join(", "),
+      "São mercados da sua região de atuação sem responsável nominal. Território sem dono não é território pequeno — é território sem quem ligue.",
+      "Atribua nominalmente, mesmo que como carteira secundária de alguém. Depois compare o potencial de cada UF (integradores homologados) com o que você fatura lá.");
+  }
+
+  if(!F.length) add("ok","Geral","Nada crítico encontrado",
+    "Com o que está preenchido, a rotina está consistente: estratégia ligada ao plano, plano ligado ao diário e diário com número.",
+    "Mantenha a cadência. O próximo ganho vem de qualidade de conteúdo, não de estrutura — para isso, use a análise com IA.");
+
+  const ordem={crit:0,warn:1,info:2,ok:3};
+  return F.sort((x,y)=>ordem[x.sev]-ordem[y.sev]);
+}
+function renderFinding(f){
+  const rot={crit:"Crítico",warn:"Atenção",info:"Nota",ok:"Ok"};
+  const cls={crit:"b-vermelho",warn:"b-amarelo",info:"b-info",ok:"b-verde"};
+  return '<div class="finding '+f.sev+'"><h4><span class="badge '+cls[f.sev]+'"><span class="sig"></span>'+rot[f.sev]+"</span>"+esc(f.titulo)+
+    '<span style="font-weight:400;color:var(--muted);font-size:11.5px">· '+esc(f.onde)+"</span></h4>"+
+    "<p>"+esc(f.texto)+'</p><div class="do"><b>O que fazer:</b> '+esc(f.acao)+"</div></div>";
+}
+function renderDiagnostico(){
+  const F=diagnosticar();
+  $("#diagBox").innerHTML = F.map(renderFinding).join("");
+  const c=F.filter(f=>f.sev==="crit").length, w=F.filter(f=>f.sev==="warn").length, o=F.filter(f=>f.sev==="ok").length;
+  $("#cntCrit").innerHTML='<span class="sig"></span>'+c+" crítico(s)";
+  $("#cntWarn").innerHTML='<span class="sig"></span>'+w+" atenção(ões)";
+  $("#cntOk").innerHTML='<span class="sig"></span>'+o+" ok";
+}
+
+/* =======================================================================
+   COPILOTO — dossiê + chamada de IA
+   ======================================================================= */
+function dossie(){
+  const m=S.meta, L=[];
+  const li = a => a.filter(t=>String(t).trim()).map(t=>"- "+t).join("\n") || "- (vazio)";
+  L.push("# DOSSIÊ DA OPERAÇÃO COMERCIAL");
+  L.push("Distribuidora: "+(m.empresa||"(não informada)")+" | Gestor: "+(m.gestor||"(não informado)"));
+  L.push("Trimestre: "+(m.trimestre||"")+"/"+(m.ano||"")+" | Equipe: "+(m.vendedores||"?")+" vendedores");
+  L.push("Região de atuação: "+(m.regiao||"")+" | Perfil de cliente: "+(m.perfil||""));
+  L.push("Data de hoje: "+iso(hoje())+" | Trimestre decorrido: "+fpct(progressoTrimestre()));
+
+  L.push("\n## CAMADA 1 — ESTRATÉGIA\n### SWOT");
+  L.push("**Forças**\n"+li(S.swot.forcas));
+  L.push("**Fraquezas**\n"+li(S.swot.fraquezas));
+  L.push("**Oportunidades**\n"+li(S.swot.oportunidades));
+  L.push("**Ameaças**\n"+li(S.swot.ameacas));
+  L.push("### SWOT cruzada");
+  L.push("**FO — ofensivas (ganhos rápidos)**\n"+li(S.cruzada.fo));
+  L.push("**FA — defesa**\n"+li(S.cruzada.fa));
+  L.push("**FrO — melhorias**\n"+li(S.cruzada.fro));
+  L.push("**FrA — gargalos críticos**\n"+li(S.cruzada.fra));
+
+  L.push("### Priorização");
+  if(!S.prioriz.length) L.push("(nenhuma linha priorizada)");
+  S.prioriz.forEach(l=>{ if(!String(l.estrategia||"").trim()) return;
+    const ix=indice(l); L.push("- "+l.estrategia+" | origem: "+(l.cruzamento||"?")+" | impacto "+(l.impacto??"?")+" / esforço "+(l.esforco??"?")+
+      " | índice "+(ix===null?"?":ix.toFixed(2))+" | "+prioridade(l)+" | vira iniciativa: "+(l.vira||"?")); });
+
+  L.push("### OKR do trimestre");
+  L.push("Objetivo: "+(S.okr.objetivo||"(não definido)"));
+  if(!S.okr.krs.length) L.push("(nenhum KR)");
+  S.okr.krs.forEach((k,i)=>L.push("- KR"+(i+1)+": "+(k.nome||"?")+" | indicador: "+(k.indicador||"?")+
+    " | base "+(k.base??"?")+" → meta "+(k.meta??"?")+" | realizado "+(k.real??"?")+" ("+fpct(pct(num(k.real),num(k.meta)))+") | fonte: "+(k.fonte||"NÃO INFORMADA")));
+
+  L.push("### Plano 5W2H");
+  if(!S.plano.length) L.push("(nenhuma iniciativa)");
+  S.plano.forEach(p=>L.push("- **"+(p.iniciativa||"?")+"** | por quê: "+(p.porque||"NÃO INFORMADO")+" | responsável: "+(p.resp||"SEM DONO")+
+    " | prazo: "+(p.prazo||"SEM PRAZO")+" | onde: "+(p.uf||"?")+" | como: "+(p.como||"?")+" | custo/esforço: "+(p.custo||"?")+
+    " | KR: "+(p.kr||"não vinculado")+" | situação: "+(p.situacao||"?")));
+
+  L.push("\n## CAMADA 2 — DIÁRIO SEMANAL (PDCA)");
+  const ds = S.diario.filter(l=>l.data).sort((a,b)=>String(b.data).localeCompare(String(a.data))).slice(0,16);
+  if(!ds.length) L.push("(nenhuma semana registrada)");
+  ds.forEach(l=>{
+    L.push("- Semana "+(l.semana??"?")+" ("+dbr(l.data)+") | frente: "+(l.frente||"?")+" | status: "+(l.status||"?")+
+      " | meta "+(l.metaNum??"?")+" x realizado "+(l.realNum??"?")+" ("+fpct(pct(num(l.realNum),num(l.metaNum)))+")");
+    if(l.metaP)   L.push("  - P (meta da semana): "+l.metaP);
+    if(l.feitoD)  L.push("  - D (o que foi feito): "+l.feitoD);
+    if(l.desvioC) L.push("  - C (desvio e causa): "+l.desvioC);
+    if(l.acaoA)   L.push("  - A (ação corretiva): "+l.acaoA);
+  });
+
+  L.push("\n## CAMADA 3 — REPORT MENSAL ("+MESES[S.report.mes]+"/"+S.report.ano+")");
+  frentes().forEach(f=>{ const r=farolDaFrente(f,S.report.mes,S.report.ano);
+    L.push("- "+f+" | farol: "+r.farol+" | verde "+r.v+", amarelo "+r.am+", vermelho "+r.vm+
+      " | acumulado "+fnum(r.real)+" de "+fnum(r.meta)+" ("+fpct(r.p)+")"+(S.report.leituras[f]?" | leitura: "+S.report.leituras[f]:" | SEM LEITURA")); });
+  L.push("**Manter**\n"+li(S.report.manter));
+  L.push("**Parar/corrigir**\n"+li(S.report.parar));
+  L.push("**Começar**\n"+li(S.report.comecar));
+  L.push("Resumo executivo: 1) "+(S.report.r1||"(vazio)")+" 2) "+(S.report.r2||"(vazio)")+" 3) "+(S.report.r3||"(vazio)"));
+
+  const eq=S.equipe.filter(v=>String(v.nome||"").trim());
+  L.push("\n## EQUIPE & CARTEIRA ("+(S.equipeMes||"")+")");
+  if(!eq.length) L.push("(equipe não cadastrada)");
+  eq.forEach(v=>L.push("- "+v.nome+" | UF: "+(v.uf||"?")+" | meta "+fbrl(num(v.meta))+" x realizado "+fbrl(num(v.real))+
+    " ("+fpct(pct(num(v.real),num(v.meta)))+") | carteira "+(v.carteira??"?")+", positivados "+(v.posit??"?")+
+    " ("+fpct(pct(num(v.posit),num(v.carteira)))+")"+(v.obs?" | obs: "+v.obs:"")));
+
+  const F=diagnosticar().filter(f=>f.sev!=="ok");
+  L.push("\n## ACHADOS DO DIAGNÓSTICO AUTOMÁTICO (regras internas do programa)");
+  if(!F.length) L.push("(nenhum achado)");
+  F.forEach(f=>L.push("- ["+f.sev.toUpperCase()+"] "+f.onde+" — "+f.titulo+": "+f.texto));
+  return L.join("\n");
+}
+
+const PEDIDOS = {
+  completa:"Faça uma análise completa da rotina de gestão comercial acima, cobrindo as três camadas. Estruture assim:\n"+
+    "1. **Leitura em 3 linhas** — o que está realmente acontecendo nesta operação.\n"+
+    "2. **O que os números dizem que o gestor ainda não viu** — conexões entre camadas (ex.: uma frente verde no diário com KR parado, uma fraqueza do SWOT que reaparece como desvio recorrente).\n"+
+    "3. **Os 3 pontos mais críticos**, em ordem, com a causa provável de cada um.\n"+
+    "4. **Plano da próxima semana** — de 3 a 5 ações concretas, cada uma com dono sugerido, o que medir e como saber se funcionou.\n"+
+    "5. **Uma pergunta difícil** que o gestor deveria responder antes do próximo report.",
+  estrategia:"Avalie apenas a Camada 1 (estratégia). Responda: o SWOT tem itens específicos e mensuráveis ou é genérico? O cruzamento gerou estratégias reais ou repetiu o diagnóstico? A priorização respeita a regra (gargalo crítico primeiro, ganho rápido depois, máximo 3 iniciativas)? Os KRs medem resultado ou atividade? O plano 5W2H tem dono, prazo e porquê? Reescreva os 3 itens mais fracos do jeito que deveriam estar.",
+  semana:"Foque na Camada 2. Analise o padrão das últimas semanas: o PDCA está fechando (a ação corretiva de uma semana virou a meta da seguinte)? As causas registradas são causas de verdade ou repetição do sintoma? Entregue: (a) a leitura da semana em 3 linhas, (b) a pauta da reunião de segunda-feira — que perguntas fazer e para quem, (c) as metas numéricas da próxima semana por frente.",
+  report:"Escreva o fechamento mensal pronto para a diretoria: um resumo executivo de 3 linhas (resultado com número e comparação com a meta, principal causa do desvio, decisão para o próximo mês), seguido de um parágrafo curto por frente explicando o farol. Tom direto, sem adjetivo, sem defesa. Depois, liste separadamente as 2 decisões que precisam da diretoria e as 3 que o gestor toma sozinho.",
+  equipe:"Analise a equipe e a carteira. Identifique: risco de concentração (receita e clientes), vendedores que precisam de diagnóstico e não de cobrança, cobertura por UF do Norte, e a relação entre positivação e faturamento. Entregue um plano de conversa individual para os 3 casos mais críticos — o que perguntar, o que oferecer e qual meta acordar.",
+  risco:"Aja como advogado do diabo experiente em distribuição de material elétrico e fotovoltaico. Liste o que esta rotina está deixando passar: pontos cegos do SWOT, indicadores que podem estar mascarando problema (ex.: faturamento alto com positivação caindo), riscos de mercado não mapeados (câmbio e preço de módulo, venda direta do fabricante, marketplace, crédito do integrador, prazo de parecer de acesso, sazonalidade de obra), e dependências perigosas. Para cada ponto, diga qual indicador o gestor deveria acompanhar para enxergar o problema com antecedência."
+};
+
+function promptCompleto(){
+  const tipo=$("#ai_tipo").value, extra=$("#ai_pergunta").value.trim();
+  let p = dossie()+"\n\n---\n\n# O QUE EU PRECISO\n"+PEDIDOS[tipo];
+  if(extra) p += "\n\n**Pergunta específica do gestor (responda a esta em primeiro lugar):** "+extra;
+  return p;
+}
+const SISTEMA_IA =
+  "Você é um consultor sênior de gestão comercial especializado em distribuição B2B de equipamentos fotovoltaicos no Brasil, "+
+  "com vivência de canal (distribuidor → integrador → cliente final) e de operação no Norte do país. "+
+  "Você está apoiando um gerente comercial que usa uma rotina de três camadas: estratégia trimestral (SWOT → SWOT cruzada → priorização → OKR → 5W2H), "+
+  "diário semanal em PDCA e report mensal com farol.\n\n"+
+  "Regras da sua resposta:\n"+
+  "- Fale português do Brasil, direto, sem jargão de consultoria e sem elogio de cortesia.\n"+
+  "- Toda afirmação deve se apoiar em algo que está no dossiê. Quando faltar dado, diga exatamente qual dado falta e por que ele muda a conclusão — não invente número.\n"+
+  "- Sempre que apontar um problema, entregue a ação: o que fazer, quem faz e o que medir para saber se funcionou.\n"+
+  "- Prefira metas numéricas semanais a recomendações genéricas. 'Melhorar o relacionamento' não serve; 'meta de 12 integradores distintos atendidos por vendedor por semana' serve.\n"+
+  "- Considere o contexto do setor: giro de estoque, prazo de entrega e logística regional, crédito e inadimplência do integrador, "+
+  "guerra de preço de módulo, venda direta do fabricante, positivação e share of wallet, sazonalidade de obra e prazo de parecer de acesso da concessionária.\n"+
+  "- Use títulos com ## e listas curtas. Seja objetivo: no máximo o que caiba em uma leitura de 5 minutos.";
+
+/* markdown mínimo → html (seguro: escapa antes) */
+function md(t){
+  let h = esc(t);
+  h = h.replace(/^###\s+(.*)$/gm,"<h3>$1</h3>").replace(/^##\s+(.*)$/gm,"<h3>$1</h3>").replace(/^#\s+(.*)$/gm,"<h3>$1</h3>");
+  h = h.replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/`([^`]+)`/g,"<code>$1</code>");
+  h = h.replace(/^\s*[-*]\s+(.*)$/gm,"<li>$1</li>").replace(/^\s*(\d+)\.\s+(.*)$/gm,"<li>$2</li>");
+  h = h.replace(/(<li>[\s\S]*?<\/li>)(?!\s*<li>)/g,"<ul>$1</ul>");
+  h = h.split(/\n{2,}/).map(b=> /^\s*<(h3|ul)/.test(b)? b : "<p>"+b.replace(/\n/g,"<br>")+"</p>").join("");
+  return h;
+}
+
+async function chamarIA(){
+  const key = ($("#ai_key").value||"").trim() || localStorage.getItem(KEY+".key") || "";
+  const st=$("#ai_status"), out=$("#ai_out");
+  if(!key){
+    st.innerHTML='<div class="finding warn"><h4>Sem chave de API configurada</h4><p>Você tem duas opções, e as duas funcionam bem:</p>'+
+      '<div class="do"><b>Opção 1 (sem chave):</b> clique em <b>Copiar dossiê</b> e cole no Claude ou ChatGPT — a resposta será a mesma. '+
+      '<br><b>Opção 2:</b> abra <b>⚙ Conectar minha chave de API</b> logo acima e cole uma chave da Anthropic para receber a análise aqui dentro.</div></div>';
+    $("#ai_conf").open = true; return;
+  }
+  st.innerHTML='<div class="finding info"><h4>Analisando…</h4><p>Enviando o dossiê para o modelo. Uma análise completa costuma levar de 20 a 60 segundos.</p></div>';
+  out.innerHTML="";
+  try{
+    const r = await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{
+        "content-type":"application/json",
+        "x-api-key":key,
+        "anthropic-version":"2023-06-01",
+        "anthropic-dangerous-direct-browser-access":"true"
+      },
+      body: JSON.stringify({
+        model: $("#ai_model").value || "claude-opus-5",
+        max_tokens: 12000,
+        system: SISTEMA_IA,
+        messages: [{ role:"user", content: promptCompleto() }]
+      })
+    });
+    const data = await r.json();
+    if(!r.ok){
+      const msg = (data && data.error && data.error.message) || ("HTTP "+r.status);
+      let dica = "";
+      if(r.status===401) dica = "A chave foi recusada. Confira se copiou a chave inteira (começa com sk-ant-) e se ela ainda está ativa no console da Anthropic.";
+      else if(r.status===429) dica = "Limite de uso atingido. Espere alguns instantes e tente de novo, ou troque para o modelo Sonnet.";
+      else if(r.status===400) dica = "A requisição foi recusada. Se o dossiê estiver muito grande, filtre o diário por um mês antes de analisar.";
+      else dica = "Se o erro persistir, use o botão Copiar dossiê e cole em um assistente de IA — o resultado é o mesmo.";
+      st.innerHTML='<div class="finding crit"><h4>Não foi possível concluir a análise</h4><p>'+esc(msg)+'</p><div class="do">'+esc(dica)+"</div></div>";
+      return;
+    }
+    if(data.stop_reason === "refusal"){
+      st.innerHTML='<div class="finding warn"><h4>O modelo não respondeu a esta solicitação</h4><p>Reformule a pergunta específica e tente novamente.</p></div>';
+      return;
+    }
+    const texto = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
+    st.innerHTML='<div class="finding ok"><h4>Análise concluída</h4><p>Gerada em '+new Date().toLocaleString("pt-BR")+
+      " · modelo "+esc(data.model||"")+". Trate como leitura de apoio: quem conhece o campo é você.</p></div>";
+    out.innerHTML='<div class="aiout">'+md(texto)+"</div>"+
+      '<div class="btnrow" style="margin-top:10px"><button class="btn sm" id="ai_copyOut">📋 Copiar análise</button></div>';
+    $("#ai_copyOut").addEventListener("click",()=>{ copiar(texto); });
+  }catch(e){
+    st.innerHTML='<div class="finding crit"><h4>Falha de conexão</h4><p>'+esc(e.message||String(e))+
+      '</p><div class="do">Verifique sua internet. Se estiver abrindo o arquivo por um caminho local com restrição de rede, use o botão <b>Copiar dossiê</b> e cole a análise em um assistente de IA.</div></div>';
+  }
+}
+function copiar(txt){
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(txt).then(()=>toast("Copiado para a área de transferência"), ()=>copiaManual(txt));
+  } else copiaManual(txt);
+}
+function copiaManual(txt){
+  const ta=document.createElement("textarea"); ta.value=txt; ta.style.position="fixed"; ta.style.opacity="0";
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand("copy"); toast("Copiado"); }catch(e){ toast("Não foi possível copiar — o dossiê foi aberto abaixo para você selecionar"); $("#ai_out").innerHTML='<div class="aiout mono" style="white-space:pre-wrap">'+esc(txt)+"</div>"; }
+  document.body.removeChild(ta);
+}
+
+/* =======================================================================
+   EXPORTAÇÕES / BACKUP
+   ======================================================================= */
+function baixar(nome, conteudo, tipo){
+  const blob = new Blob([conteudo],{type:tipo||"application/octet-stream"});
+  const url = URL.createObjectURL(blob); const a=document.createElement("a");
+  a.href=url; a.download=nome; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },300);
+}
+function csv(linhas){
+  const q = v => '"'+String(v==null?"":v).replace(/"/g,'""')+'"';
+  return "﻿"+linhas.map(l=>l.map(q).join(";")).join("\r\n");
+}
+function exportarJSON(){
+  const nome = "rotina-comercial_"+(S.meta.empresa||"distribuidora").replace(/\W+/g,"-").toLowerCase()+"_"+iso(hoje())+".json";
+  baixar(nome, JSON.stringify(S,null,2), "application/json"); toast("Backup exportado — guarde na nuvem da empresa");
+}
+function importarJSON(file){
+  const fr=new FileReader();
+  fr.onload=()=>{ try{
+      const o=JSON.parse(fr.result);
+      if(!o || typeof o!=="object" || (!o.swot && !o.diario)) throw new Error("Arquivo não parece ser um backup deste programa");
+      if(!confirm("Restaurar este backup? Os dados atuais deste navegador serão substituídos.")) return;
+      S = Object.assign(estadoVazio(), o);
+      S.meta=Object.assign(estadoVazio().meta,o.meta||{}); S.swot=Object.assign(estadoVazio().swot,o.swot||{});
+      S.cruzada=Object.assign(estadoVazio().cruzada,o.cruzada||{}); S.okr=Object.assign({objetivo:"",krs:[]},o.okr||{});
+      S.report=Object.assign(estadoVazio().report,o.report||{});
+      salvarJa(); renderTudo(); toast("Backup restaurado");
+    }catch(e){ alert("Não foi possível restaurar: "+e.message); } };
+  fr.readAsText(file);
+}
+function csvDiario(){
+  const L=[["Semana","Data","Mês","Ano","Frente","Meta da semana (P)","O que foi feito (D)","Desvio (C)","Ação corretiva (A)","Meta (nº)","Realizado (nº)","% atingido","Status"]];
+  S.diario.slice().sort((a,b)=>String(a.data).localeCompare(String(b.data))).forEach(l=>{
+    const p=l.data?l.data.split("-"):["","",""];
+    L.push([l.semana??"",l.data||"",p[1]||"",p[0]||"",l.frente||"",l.metaP||"",l.feitoD||"",l.desvioC||"",l.acaoA||"",l.metaNum??"",l.realNum??"",fpct(pct(num(l.realNum),num(l.metaNum))),l.status||""]);
+  });
+  baixar("diario-semanal_"+iso(hoje())+".csv", csv(L),"text/csv");
+}
+function csvPlano(){
+  const L=[["Iniciativa (What)","Por que (Why)","Responsável (Who)","Prazo (When)","Onde/UF (Where)","Como (How)","Quanto custa","KR","Situação"]];
+  S.plano.forEach(p=>L.push([p.iniciativa||"",p.porque||"",p.resp||"",p.prazo||"",p.uf||"",p.como||"",p.custo||"",p.kr||"",p.situacao||""]));
+  baixar("plano-5w2h_"+iso(hoje())+".csv", csv(L),"text/csv");
+}
+function csvEquipe(){
+  const L=[["Vendedor","UF","Meta (R$)","Realizado (R$)","% da meta","Carteira","Positivados","Positivação","Observação"]];
+  S.equipe.forEach(v=>L.push([v.nome||"",v.uf||"",v.meta??"",v.real??"",fpct(pct(num(v.real),num(v.meta))),v.carteira??"",v.posit??"",fpct(pct(num(v.posit),num(v.carteira))),v.obs||""]));
+  baixar("equipe_"+iso(hoje())+".csv", csv(L),"text/csv");
+}
+
+/* ---------------- exemplo preenchido ---------------- */
+function carregarExemplo(){
+  if(!confirm("Carregar o exemplo preenchido? Os dados atuais serão substituídos (exporte o backup antes se precisar).")) return;
+  const d=hoje(), ano=d.getFullYear(), mes=d.getMonth()+1;
+  const sexta = s => { const x=new Date(); const dif=(5-x.getDay()+7)%7; x.setDate(x.getDate()+dif-7*s); return iso(x); };
+  S = estadoVazio();
+  S.meta = { empresa:"Solar Norte Distribuidora", gestor:"Gerência Comercial", trimestre:S.meta.trimestre, ano:ano,
+             vendedores:20, regiao:"Norte do Brasil (AM, PA, RO, AC, RR, AP, TO)", perfil:"Integradores fotovoltaicos (B2B)" };
+  S.swot = {
+    forcas:["Estoque local em Manaus e Belém — entrega em até 48h para o integrador","Equipe de 20 vendedores com cobertura nas 7 UFs do Norte","Relacionamento direto com os 30 maiores integradores da região","Mix completo: módulo, inversor, estrutura e cabo no mesmo pedido"],
+    fraquezas:["42% da carteira sem compra há mais de 60 dias em AM, PA e RO","Faturamento concentrado: 3 integradores respondem por 38% da receita","Ruptura recorrente de inversor 5–8 kW, item de maior giro","Time sem argumento técnico — perde a conversa quando o cliente só fala preço"],
+    oportunidades:["Cerca de 150 integradores homologados no AM sem compra conosco nos últimos 12 meses","Integradores pequenos compram de fora e esperam 20 dias pela entrega","Crescimento de GD remota e consórcios de energia na região","Concorrente reduziu o time de campo no PA"],
+    ameacas:["Concorrente do Sudeste com preço de módulo 6% menor via importação direta","Fabricante vendendo direto aos integradores grandes","Inadimplência subindo no canal integrador","Demora no parecer de acesso da concessionária travando fechamento de obra"]
+  };
+  S.cruzada = {
+    fo:["Usar o estoque local em Manaus e Belém para atacar os 150 integradores homologados sem compra, com promessa de entrega em 48h como argumento de conquista"],
+    fa:["Usar a relação direta com os top 30 para travar acordo de fornecimento trimestral antes da investida do concorrente do Sudeste"],
+    fro:["Corrigir a falta de argumento técnico treinando o time em dimensionamento, aproveitando a demanda dos integradores pequenos por apoio de projeto"],
+    fra:["Carteira parada há 60+ dias somada ao concorrente com preço menor = perda da base em AM, PA e RO. Reativar antes que o concorrente ocupe o espaço"]
+  };
+  S.prioriz = [
+    {id:uid(),estrategia:"Reativar a carteira parada de AM, PA e RO antes do avanço do concorrente",cruzamento:"Fraquezas + Ameaças",impacto:5,esforco:2,vira:"Sim"},
+    {id:uid(),estrategia:"Conquistar integradores homologados sem compra usando o estoque local como argumento",cruzamento:"Forças + Oportunidades",impacto:4,esforco:3,vira:"Sim"},
+    {id:uid(),estrategia:"Travar acordo trimestral com os top 30 para blindar contra o concorrente",cruzamento:"Forças + Ameaças",impacto:4,esforco:2,vira:"Sim"},
+    {id:uid(),estrategia:"Treinar o time em dimensionamento e venda técnica",cruzamento:"Fraquezas + Oportunidades",impacto:3,esforco:4,vira:"Não"}
+  ];
+  S.okr = { objetivo:"Retomar a liderança de share entre os integradores do Norte sem perder margem",
+    krs:[
+      {id:uid(),nome:"Reativar integradores parados",indicador:"Clientes com compra após 60+ dias inativos",base:40,meta:120,real:62,fonte:"BI — painel de carteira"},
+      {id:uid(),nome:"Integradores positivados no trimestre",indicador:"Nº de CNPJs com ao menos 1 compra",base:180,meta:260,real:198,fonte:"CRM / BI"},
+      {id:uid(),nome:"Faturamento do trimestre",indicador:"Receita líquida (R$)",base:9800000,meta:12500000,real:7100000,fonte:"ERP — faturamento"}
+    ]};
+  S.plano = [
+    {id:uid(),iniciativa:"Campanha de reativação de carteira parada",porque:"42% da carteira sem compra há 60+ dias em AM, PA e RO",resp:"Coordenador de campo",prazo:"30/09",uf:"AM, PA, RO",como:"Lista do BI dividida por vendedor + meta diária de 10 contatos e oferta de frete para o primeiro pedido",custo:"Sem custo direto — 1h/dia por vendedor",kr:"KR1",situacao:"Em andamento"},
+    {id:uid(),iniciativa:"Conquista de integradores homologados",porque:"150 integradores homologados no AM sem compra nos últimos 12 meses",resp:"Supervisor AM",prazo:"31/10",uf:"AM",como:"Cruzar lista de homologados da concessionária com o CRM e abordar com argumento de entrega em 48h",custo:"R$ 6 mil em visitas e material",kr:"KR2",situacao:"Em andamento"},
+    {id:uid(),iniciativa:"Blindagem dos top 30 clientes",porque:"3 integradores concentram 38% da receita e o concorrente está atacando com preço",resp:"Gerente comercial",prazo:"15/09",uf:"Todas",como:"Visita presencial + proposta de acordo trimestral com preço e prioridade de estoque",custo:"Margem negociada em até 2 p.p.",kr:"KR3",situacao:"Em andamento"}
+  ];
+  const F=S.plano.map(p=>p.iniciativa);
+  S.diario = [
+    {id:uid(),semana:1,data:sexta(3),frente:F[0],metaP:"300 contatos em integradores parados",feitoD:"268 contatos feitos, 19 pedidos gerados",desvioC:"2 vendedores do PA não rodaram a lista — presos em visita agendada",acaoA:"Redistribuir a lista do PA e cobrar em D+2 na reunião de segunda",metaNum:300,realNum:268,status:"Amarelo"},
+    {id:uid(),semana:2,data:sexta(2),frente:F[0],metaP:"↻ Redistribuir a lista do PA e cobrar em D+2 na reunião de segunda",feitoD:"Lista redistribuída; 312 contatos, 26 pedidos",desvioC:"",acaoA:"Manter a rotina e incluir oferta de frete no primeiro pedido",metaNum:300,realNum:312,status:"Verde"},
+    {id:uid(),semana:2,data:sexta(2),frente:F[1],metaP:"40 abordagens em homologados sem compra",feitoD:"22 abordagens — lista da concessionária saiu incompleta",desvioC:"Base de homologados desatualizada, sem telefone em 60% dos registros",acaoA:"Enriquecer a base com o CRM e redes sociais antes de nova rodada",metaNum:40,realNum:22,status:"Vermelho"},
+    {id:uid(),semana:3,data:sexta(1),frente:F[0],metaP:"↻ Manter a rotina e incluir oferta de frete no primeiro pedido",feitoD:"305 contatos, 31 pedidos, 14 clientes reativados",desvioC:"",acaoA:"Levar o modelo de oferta para RO na próxima semana",metaNum:300,realNum:305,status:"Verde"},
+    {id:uid(),semana:3,data:sexta(1),frente:F[1],metaP:"↻ Enriquecer a base e fazer 40 abordagens",feitoD:"31 abordagens, 4 cadastros novos",desvioC:"Enriquecimento consumiu 2 dias do supervisor",acaoA:"Contratar enriquecimento externo da base ou usar estagiário dedicado",metaNum:40,realNum:31,status:"Vermelho"},
+    {id:uid(),semana:3,data:sexta(1),frente:F[2],metaP:"Visitar 8 dos top 30",feitoD:"8 visitas feitas, 5 acordos trimestrais assinados",desvioC:"",acaoA:"Fechar os 3 restantes até a próxima sexta",metaNum:8,realNum:8,status:"Verde"}
+  ];
+  S.report = { mes:mes, ano:ano, leituras:{}, manter:["Reunião de segunda com a lista do BI na mão"], parar:["Meta semanal sem número — virou opinião em duas frentes"], comecar:["Meta diária de contatos por vendedor com acompanhamento no diário"], r1:"",r2:"",r3:"" };
+  const nomes=["Ana Ribeiro","Bruno Castro","Carla Menezes","Diego Alves","Elaine Souza","Fábio Nunes","Gisele Prado","Heitor Lima","Iara Campos","João Vitor","Kelly Andrade","Lucas Ferraz","Marina Duarte","Nelson Braga","Otávio Reis","Paula Chagas","Rafael Tavares","Sônia Martins","Tiago Oliveira","Vitória Amaral"];
+  const ufs=["AM","AM","AM","PA","PA","PA","PA","RO","RO","AC","RR","AP","TO","AM","PA","RO","AM","PA","SP / fora do Norte","MG / fora do Norte"];
+  S.equipe = nomes.map((n,i)=>({ id:uid(), nome:n, uf:ufs[i],
+    meta: 180000 + (i%5)*20000, real: Math.round((180000+(i%5)*20000) * (0.55 + ((i*37)%50)/100)),
+    carteira: 30+(i*7)%40, posit: Math.max(3, Math.round((30+(i*7)%40) * (0.18+((i*13)%40)/100))), obs:"" }));
+  S.equipeMes = iso(d).slice(0,7);
+  salvarJa(); renderTudo(); irPara("painel");
+  toast("Exemplo carregado — navegue pelas telas e depois substitua pelos seus dados");
+}
+function novoTrimestre(){
+  if(!confirm("Iniciar novo trimestre?\n\nMantém: SWOT, cruzada, priorização, OKR e plano 5W2H (para você revisar).\nZera: diário semanal, report e realizado dos KRs.\n\nExporte o backup antes se quiser guardar o histórico.")) return;
+  S.diario=[]; S.report=Object.assign(estadoVazio().report,{mes:hoje().getMonth()+1,ano:hoje().getFullYear()});
+  S.okr.krs.forEach(k=>{ k.base=k.real; k.real=null; });
+  S.prioriz.forEach(l=>{ if(l.vira==="Sim") l.vira="Sim"; });
+  salvarJa(); renderTudo(); toast("Novo trimestre iniciado — revise a estratégia antes de rodar a primeira semana");
+}
+function zerarTudo(){
+  if(!confirm("Apagar TODOS os dados deste navegador? Esta ação não pode ser desfeita.")) return;
+  if(!confirm("Confirma? Exporte o backup antes se houver qualquer chance de precisar do histórico.")) return;
+  S=estadoVazio(); salvarJa(); renderTudo(); toast("Tudo apagado");
+}
+
+/* =======================================================================
+   NAVEGAÇÃO E INICIALIZAÇÃO
+   ======================================================================= */
+const TITULOS = {
+  painel:["Painel de controle","Onde a rotina começa toda segunda-feira"],
+  manual:["Método — manual de uso","Como o SWOT vira plano de ação. Leitura única."],
+  estrategia:["Camada 1 — Estratégia do trimestre","Trimestral, ~2 horas. Os 5 blocos são sequenciais."],
+  diario:["Camada 2 — Diário semanal (PDCA)","Toda sexta, 15 minutos. Meta × Realizado sempre em número."],
+  report:["Camada 3 — Report mensal","Última semana do mês. O farol se monta sozinho."],
+  equipe:["Equipe & carteira","Quem está entregando, quem está travado e onde a carteira está concentrada."],
+  analise:["Analista virtual","Diagnóstico por regras + leitura estratégica com IA."],
+  dados:["Dados & backup","Seus dados ficam neste navegador. Exporte toda semana."]
+};
+function irPara(v){
+  $$(".view").forEach(s=>s.classList.toggle("on", s.id==="v-"+v));
+  $$(".nav button").forEach(b=>b.classList.toggle("on", b.dataset.go===v));
+  const t=TITULOS[v]||["",""]; $("#viewTitle").textContent=t[0]; $("#viewSub").textContent=t[1];
+  if(v==="analise") renderDiagnostico();
+  if(v==="painel") renderPainel();
+  if(v==="report") renderReport();
+  if(v==="equipe") renderEquipe();
+  window.scrollTo({top:0,behavior:"instant"});
+}
+function renderTudo(){
+  renderMeta(); renderSwot(); renderCross(); renderPrior(); renderOkr(); renderPlano();
+  renderDiario(); renderReport(); renderEquipe(); renderPainel(); renderSugestoes();
+}
+
+function init(){
+  carregar();
+  /* tema */
+  const temaSalvo = localStorage.getItem(KEY+".tema");
+  if(temaSalvo) document.documentElement.setAttribute("data-theme",temaSalvo);
+  $("#themeBtn").addEventListener("click",()=>{
+    const atual = document.documentElement.getAttribute("data-theme");
+    const novo = atual==="dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme",novo);
+    localStorage.setItem(KEY+".tema",novo);
+  });
+  /* navegação */
+  $$(".nav button").forEach(b=>b.addEventListener("click",()=>irPara(b.dataset.go)));
+  $("#btnSalvar").addEventListener("click",salvarJa);
+
+  bindMeta();
+
+  /* SWOT / cruzada */
+  $$("[data-add-swot]").forEach(b=>b.addEventListener("click",()=>{ S.swot[b.dataset.addSwot].push(""); renderSwot(); salvar(); }));
+  $$("[data-add-cross]").forEach(b=>b.addEventListener("click",()=>{ S.cruzada[b.dataset.addCross].push(""); renderCross(); salvar(); }));
+  $("#gx_go").addEventListener("click",gerarCruzamento);
+
+  /* priorização */
+  $("#add_prior").addEventListener("click",()=>{ S.prioriz.push({id:uid(),estrategia:"",cruzamento:"",impacto:null,esforco:null,vira:""}); renderPrior(); salvar(); });
+  $("#imp_cross").addEventListener("click",()=>{
+    const mapa={fo:"Forças + Oportunidades",fa:"Forças + Ameaças",fro:"Fraquezas + Oportunidades",fra:"Fraquezas + Ameaças"};
+    let n=0;
+    Object.keys(mapa).forEach(k=>S.cruzada[k].forEach(t=>{
+      const txt=String(t).trim(); if(!txt) return;
+      if(S.prioriz.some(l=>l.estrategia===txt)) return;
+      S.prioriz.push({id:uid(),estrategia:txt,cruzamento:mapa[k],impacto:null,esforco:null,vira:""}); n++;
+    }));
+    renderPrior(); salvar(); toast(n? n+" estratégia(s) trazida(s) — agora dê as notas":"Nada novo para trazer do bloco 2");
+  });
+
+  /* OKR */
+  $("#okr_obj").addEventListener("input",e=>{ S.okr.objetivo=e.target.value; salvar(); });
+  $("#add_okr").addEventListener("click",()=>{
+    if(S.okr.krs.length>=3 && !confirm("O método recomenda no máximo 3 resultados-chave. Adicionar mesmo assim?")) return;
+    S.okr.krs.push({id:uid(),nome:"",indicador:"",base:null,meta:null,real:null,fonte:""}); renderOkr(); salvar();
+  });
+
+  /* plano */
+  $("#add_plano").addEventListener("click",()=>{ S.plano.push({id:uid(),iniciativa:"",porque:"",resp:"",prazo:"",uf:"",como:"",custo:"",kr:"",situacao:"Não iniciada"}); renderPlano(); salvar(); });
+  $("#imp_prior").addEventListener("click",()=>{
+    let n=0; S.prioriz.filter(l=>l.vira==="Sim").forEach(l=>{
+      const txt=String(l.estrategia||"").trim(); if(!txt) return;
+      if(S.plano.some(p=>p.iniciativa===txt)) return;
+      S.plano.push({id:uid(),iniciativa:txt,porque:"Origem: "+(l.cruzamento||"")+" — índice "+(indice(l)===null?"?":indice(l).toFixed(2)),resp:"",prazo:"",uf:"",como:"",custo:"",kr:"",situacao:"Não iniciada"}); n++;
+    });
+    renderPlano(); renderDiario(); renderReport(); salvar();
+    toast(n? n+" iniciativa(s) criada(s) — complete quem, quando e como":"Marque estratégias como \"Sim\" no bloco 3 primeiro");
+  });
+
+  /* diário */
+  $("#add_sem").addEventListener("click",()=>{
+    if(!frentes().length){ toast("Cadastre pelo menos uma iniciativa no Bloco 5 da Estratégia"); irPara("estrategia"); return; }
+    const ult = S.diario.filter(l=>l.data).sort((a,b)=>String(b.data).localeCompare(String(a.data)))[0];
+    S.diario.push({ id:uid(), semana:(ult?(num(ult.semana)||0)+1:1), data:proximaSexta(), frente:frentes()[0],
+      metaP:"",feitoD:"",desvioC:"",acaoA:"",metaNum:null,realNum:null,status:"" });
+    renderDiario(); salvar();
+  });
+  $("#filtroMes").addEventListener("change",renderDiario);
+
+  /* report */
+  $("#rp_mes").addEventListener("change",e=>{ S.report.mes=+e.target.value; salvar(); renderReport(); });
+  $("#rp_ano").addEventListener("input",e=>{ S.report.ano=num(e.target.value)||hoje().getFullYear(); salvar(); renderReport(); });
+  ["r1","r2","r3"].forEach(k=>$("#rp_"+k).addEventListener("input",e=>{ S.report[k]=e.target.value; salvar(); }));
+  $$("[data-add-mpc]").forEach(b=>b.addEventListener("click",()=>{ S.report[b.dataset.addMpc].push(""); renderReport(); salvar(); }));
+  $("#rp_sugResumo").addEventListener("click",sugerirResumo);
+  $("#rp_print").addEventListener("click",()=>window.print());
+
+  /* equipe */
+  $("#add_vend").addEventListener("click",()=>{ S.equipe.push({id:uid(),nome:"",uf:"",meta:null,real:null,carteira:null,posit:null,obs:""}); renderEquipe(); salvar(); });
+  $("#gerar_vend").addEventListener("click",()=>{
+    if(S.equipe.length && !confirm("Já existem vendedores cadastrados. Adicionar mais 20 linhas em branco?")) return;
+    for(let i=0;i<20;i++) S.equipe.push({id:uid(),nome:"",uf:"",meta:null,real:null,carteira:null,posit:null,obs:""});
+    renderEquipe(); salvar();
+  });
+  $("#eq_mes").addEventListener("input",e=>{ S.equipeMes=e.target.value; salvar(); });
+
+  /* analista */
+  $("#btnDiag").addEventListener("click",()=>{ renderDiagnostico(); toast("Diagnóstico recalculado"); });
+  $("#ai_copiar").addEventListener("click",()=>copiar(promptCompleto()));
+  $("#ai_ver").addEventListener("click",()=>{ $("#ai_out").innerHTML='<div class="aiout mono" style="white-space:pre-wrap;max-height:420px;overflow:auto">'+esc(promptCompleto())+"</div>"; });
+  $("#ai_rodar").addEventListener("click",chamarIA);
+  const savedKey = localStorage.getItem(KEY+".key"); if(savedKey) $("#ai_key").value = savedKey;
+  $("#ai_model").value = S.ui.modelo || "claude-opus-5";
+  $("#ai_model").addEventListener("change",e=>{ S.ui.modelo=e.target.value; salvar(); });
+  $("#ai_salvarKey").addEventListener("click",()=>{
+    const k=($("#ai_key").value||"").trim();
+    if(!k){ toast("Cole a chave antes de salvar"); return; }
+    localStorage.setItem(KEY+".key",k); toast("Chave salva neste navegador");
+  });
+  $("#ai_limparKey").addEventListener("click",()=>{ localStorage.removeItem(KEY+".key"); $("#ai_key").value=""; toast("Chave apagada deste navegador"); });
+
+  /* dados */
+  $("#d_export").addEventListener("click",exportarJSON);
+  $("#d_import").addEventListener("click",()=>$("#d_file").click());
+  $("#d_file").addEventListener("change",e=>{ if(e.target.files[0]) importarJSON(e.target.files[0]); e.target.value=""; });
+  $("#d_csvDiario").addEventListener("click",csvDiario);
+  $("#d_csvPlano").addEventListener("click",csvPlano);
+  $("#d_csvEquipe").addEventListener("click",csvEquipe);
+  $("#d_print").addEventListener("click",()=>window.print());
+  $("#d_exemplo").addEventListener("click",carregarExemplo);
+  $("#d_novoTri").addEventListener("click",novoTrimestre);
+  $("#d_zerar").addEventListener("click",zerarTudo);
+
+  renderTudo();
+  marcarSalvo();
+
+  /* primeira visita: oferece o exemplo */
+  if(!localStorage.getItem(KEY)){
+    setTimeout(()=>{
+      if(confirm("Primeira vez aqui?\n\nQuer carregar um exemplo preenchido de distribuidora fotovoltaica para ver como cada tela funciona?\n\nVocê pode apagar tudo depois em Dados & backup.")) carregarExemplo();
+      else salvarJa();
+    },600);
+  }
+}
+document.addEventListener("DOMContentLoaded",init);
+</script>
+</body>
+</html>
