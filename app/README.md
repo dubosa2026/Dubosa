@@ -160,6 +160,36 @@ Para não redigitar a equipe toda lá, use o botão **"Copiar equipe"** na
 etapa 2: ele copia nome, UF e e-mail no formato da aba "Vendedores" do
 Google Sheets. É só colar na célula A1 de lá.
 
+## Publicar online (Netlify)
+
+O app é um HTML estático, então dá para deixá-lo numa URL fixa em vez de
+mandar o arquivo por WhatsApp. O repositório já vem preparado:
+
+1. Em [netlify.com](https://netlify.com), **Add new site → Import an
+   existing project** e conecte este repositório do GitHub.
+2. Escolha a branch. O `netlify.toml` da raiz já define o resto (build e
+   pasta publicada) — não precisa preencher nada.
+3. **Deploy**. Em cerca de um minuto sai uma URL, que dá para trocar por um
+   nome próprio em Site settings → Domain.
+
+A partir daí, todo push na branch republica o site sozinho. Quem abrir a URL
+sempre pega a versão mais nova, sem baixar nada.
+
+Duas coisas que continuam valendo depois de publicado:
+
+- **Os dados continuam sem sair do computador de quem usa.** O site entrega
+  só o programa; a planilha é lida dentro do navegador e nada é enviado para
+  o servidor. O Netlify nunca vê a base.
+- **A referência do funil é por navegador.** Cada pessoa que abre a URL tem a
+  própria referência da rodada anterior, guardada no navegador dela. Duas
+  pessoas usando o mesmo site não compartilham esse histórico.
+
+Um aviso importante: um site do Netlify no plano gratuito **fica acessível a
+qualquer pessoa que tenha a URL**. A página não contém dados de cliente, mas
+contém a lista de nomes da equipe. Proteção por senha é recurso de plano
+pago do Netlify. O `noindex` já configurado mantém a página fora dos
+buscadores, o que não é o mesmo que protegê-la.
+
 ## Editar o app
 
 O arquivo publicado é gerado a partir de `src/`:
@@ -170,6 +200,10 @@ src/app_core.js      leitura de arquivos, regras, funil, análises
 src/app_ui.js        ligação com a tela
 src/fonts/           fontes embutidas no build
 ```
+
+O build gera dois arquivos com o mesmo conteúdo:
+`belenergy-distribuicao.html` (para baixar e abrir com dois cliques) e
+`dist/index.html` (o que o Netlify publica).
 
 Depois de mexer em qualquer um deles:
 

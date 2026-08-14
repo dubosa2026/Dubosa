@@ -13,6 +13,25 @@ RAIZ = Path(__file__).resolve().parent
 SRC = RAIZ / "src"
 FONTES = SRC / "fonts"
 SAIDA = RAIZ / "belenergy-distribuicao.html"
+SAIDA_WEB = RAIZ / "dist" / "index.html"
+
+# O conteudo de app_shell.html e so o corpo da pagina. Sem este esqueleto o
+# navegador cai em quirks mode e, pior, sem <meta charset> os acentos podem
+# sair trocados e sem <meta viewport> o celular renderiza como desktop.
+ESQUELETO = """<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex, nofollow">
+{cabeca}
+</head>
+<body>
+{corpo}
+</body>
+</html>
+"""
 
 SUBSTITUICOES = {
     "__ARCHIVO__": "archivo-var.woff2",
@@ -33,10 +52,23 @@ def main() -> None:
 
     core = (SRC / "app_core.js").read_text(encoding="utf-8")
     ui = (SRC / "app_ui.js").read_text(encoding="utf-8")
-    html = shell + "\n<script>\n" + core + "\n" + ui + "\n</script>\n"
+
+    # <title> e <style> vao para o <head>; o resto e corpo da pagina.
+    corte = shell.index("</style>") + len("</style>")
+    cabeca, corpo = shell[:corte], shell[corte:]
+
+    html = ESQUELETO.format(
+        cabeca=cabeca,
+        corpo=corpo + "\n<script>\n" + core + "\n" + ui + "\n</script>",
+    )
 
     SAIDA.write_text(html, encoding="utf-8")
-    print(f"gerado {SAIDA.relative_to(RAIZ.parent)} ({len(html.encode()) / 1024:.0f} KB)")
+    SAIDA_WEB.parent.mkdir(parents=True, exist_ok=True)
+    SAIDA_WEB.write_text(html, encoding="utf-8")
+
+    tamanho = len(html.encode()) / 1024
+    print(f"gerado {SAIDA.relative_to(RAIZ.parent)} ({tamanho:.0f} KB)")
+    print(f"gerado {SAIDA_WEB.relative_to(RAIZ.parent)} (mesmo conteudo, para o Netlify)")
 
 
 if __name__ == "__main__":
