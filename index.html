@@ -812,10 +812,13 @@ table.tbl td.act{width:34px;text-align:center}
         <h3>Coordenadas — camada de apoio (não estava na planilha original)</h3>
         <p>A planilha controla <b>frentes</b>. Esta tela controla <b>pessoas e carteira</b> — quem está entregando, quem está travado e onde a carteira está concentrada. Atualize uma vez por semana, junto com o diário. O analista virtual usa esses números para apontar risco de concentração e cobertura por UF.</p>
         <ul style="margin-top:8px">
-          <li><b>Positivação</b> = quantos clientes da carteira do vendedor compraram no mês. É o indicador que separa vendedor de tirador de pedido.</li>
-          <li><b>Carteira ativa</b> = integradores que compraram nos últimos 90 dias. A diferença entre carteira total e ativa é o seu campo de reativação.</li>
+          <li><b>Pedidos</b> — volume de transações. Mostra atividade, não tamanho: muitos pedidos com faturamento baixo é ticket médio caindo.</li>
+          <li><b>Faturamento</b> — o número que a diretoria olha. Sozinho, esconde concentração e queda de base.</li>
+          <li><b>Integradores</b> (positivação) — quantos integradores distintos compraram no mês. É o indicador que separa vendedor de tirador de pedido e antecipa a queda de faturamento.</li>
+          <li><b>Integrador novo</b> — conquista. Sem ele, você só vive da base que já tem e a carteira encolhe por atrito natural.</li>
+          <li><b>BelCred</b> — penetração da solução de crédito. Integrador com crédito aprovado compra mais e sai menos para o concorrente.</li>
         </ul>
-        <p style="margin-top:9px"><b>Não digite tudo à mão:</b> exporte a base do seu BI/ERP em CSV e use <b>⬆ Importar base CSV</b>. O programa reconhece os títulos das colunas sozinho (Vendedor, UF, Meta, Realizado, Carteira, Positivados), aceita <code>;</code> ou <code>,</code> como separador e entende número no formato brasileiro (<code>R$ 180.000,00</code>). Se estiver em dúvida sobre o formato, baixe o modelo.</p>
+        <p style="margin-top:9px"><b>Não digite tudo à mão:</b> use <b>⬆ Importar base CSV</b> com a planilha de metas salva em CSV. O programa reconhece os títulos das colunas sozinho — inclusive os da sua planilha (<code>META PEDIDOS</code>, <code>RELIZADO PEDIDO</code>, <code>META FAT</code>, <code>REALIZADO INT</code>, <code>META INTEGRADOR NOVO</code>, <code>META BELCRED</code>…), ignora as colunas de <b>%</b> (ele recalcula) e descarta a linha de <b>TOTAIS</b>. Aceita <code>;</code> ou <code>,</code> como separador e número no formato brasileiro. A coluna <b>Observação / risco</b> é sua: fica no programa e <b>nunca é apagada por uma reimportação</b>, mesmo que a planilha não a traga.</p>
       </div>
 
       <div class="kpis" id="kpiEquipe"></div>
@@ -834,20 +837,39 @@ table.tbl td.act{width:34px;text-align:center}
             <input type="month" id="eq_mes" style="width:auto"></label>
         </div>
         <div id="eq_preview"></div>
-        <div class="tblwrap"><table class="tbl" id="tb_equipe" style="min-width:1080px">
-          <thead><tr>
-            <th style="min-width:150px">Vendedor</th><th style="width:130px">UF / região</th>
-            <th style="width:120px">Meta do mês (R$)</th><th style="width:130px">Realizado (R$)</th><th style="width:80px">%</th>
-            <th style="width:110px">Carteira total</th><th style="width:110px">Positivados</th><th style="width:95px">Positivação</th>
-            <th style="min-width:170px">Observação / risco</th><th></th>
-          </tr></thead><tbody></tbody>
+        <div class="tblwrap"><table class="tbl" id="tb_equipe" style="min-width:1760px">
+          <thead>
+            <tr>
+              <th rowspan="2" style="min-width:190px">Vendedor</th>
+              <th rowspan="2" style="width:62px">UF</th>
+              <th colspan="3" style="text-align:center;border-left:2px solid var(--line-strong)">Pedidos</th>
+              <th colspan="3" style="text-align:center;border-left:2px solid var(--line-strong)">Faturamento (R$)</th>
+              <th colspan="3" style="text-align:center;border-left:2px solid var(--line-strong)">Integradores</th>
+              <th colspan="3" style="text-align:center;border-left:2px solid var(--line-strong)">Integrador novo</th>
+              <th colspan="3" style="text-align:center;border-left:2px solid var(--line-strong)">BelCred</th>
+              <th rowspan="2" style="min-width:190px;border-left:2px solid var(--line-strong)">Observação / risco</th>
+              <th rowspan="2"></th>
+            </tr>
+            <tr>
+              <th style="width:78px;border-left:2px solid var(--line-strong)">Meta</th><th style="width:82px">Realiz.</th><th style="width:64px">%</th>
+              <th style="width:110px;border-left:2px solid var(--line-strong)">Meta</th><th style="width:112px">Realiz.</th><th style="width:64px">%</th>
+              <th style="width:72px;border-left:2px solid var(--line-strong)">Meta</th><th style="width:78px">Realiz.</th><th style="width:64px">%</th>
+              <th style="width:72px;border-left:2px solid var(--line-strong)">Meta</th><th style="width:78px">Realiz.</th><th style="width:64px">%</th>
+              <th style="width:72px;border-left:2px solid var(--line-strong)">Meta</th><th style="width:78px">Realiz.</th><th style="width:64px">%</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot></tfoot>
         </table></div>
       </div>
 
+      <div class="split">      </div>
+
       <div class="split">
         <div class="card">
-          <h2>Ranking — % da meta</h2>
-          <p class="desc">Barra cheia = 100% da meta. Quem está abaixo de 70% precisa de conversa, não de cobrança genérica.</p>
+          <h2>Ranking da equipe</h2>
+          <p class="desc">Barra cheia = 100% da meta do indicador escolhido. Quem está abaixo de 70% precisa de diagnóstico, não de cobrança genérica.</p>
+          <label class="f" style="max-width:280px"><span>Indicador</span><select id="eq_ind"></select></label>
           <div id="graficoEquipe" class="chart"></div>
         </div>
         <div class="card">
@@ -1105,6 +1127,16 @@ function carregar(){
       S.meta=Object.assign(estadoVazio().meta,o.meta||{}); S.swot=Object.assign(estadoVazio().swot,o.swot||{});
       S.cruzada=Object.assign(estadoVazio().cruzada,o.cruzada||{}); S.okr=Object.assign({objetivo:"",krs:[]},o.okr||{});
       S.report=Object.assign(estadoVazio().report,o.report||{}); S.ui=Object.assign({modelo:"claude-opus-5"},o.ui||{});
+      /* migração do formato antigo da equipe (meta/realizado/carteira/positivados) */
+      S.equipe = (S.equipe||[]).map(v=>{
+        if(v && v.fatM===undefined && (v.meta!==undefined || v.real!==undefined)){
+          return { id:v.id||uid(), nome:v.nome||"", uf:v.uf||"",
+            pedM:null, pedR:null, fatM:v.meta??null, fatR:v.real??null,
+            intM:v.carteira??null, intR:v.posit??null,
+            novoM:null, novoR:null, belM:null, belR:null, obs:v.obs||"" };
+        }
+        return v;
+      });
     }
   }catch(e){ console.warn("Falha ao ler dados salvos:",e); }
 }
@@ -1465,49 +1497,76 @@ function sugerirResumo(){
 }
 
 /* --------- Equipe --------- */
+const IND = [
+  {k:"ped",  rot:"Pedidos",           meta:"META PEDIDOS",         real:"REALIZADO PEDIDO",    moeda:false},
+  {k:"fat",  rot:"Faturamento",       meta:"META FAT",             real:"REALIZADO FAT",       moeda:true },
+  {k:"int",  rot:"Integradores",      meta:"META INT",             real:"REALIZADO INT",       moeda:false},
+  {k:"novo", rot:"Integrador novo",   meta:"META INTEGRADOR NOVO", real:"REALIZADO INT NOVO",  moeda:false},
+  {k:"bel",  rot:"BelCred",           meta:"META BELCRED",         real:"REALIZADO BELCRED",   moeda:false}
+];
+const fmtInd = (i,v) => v===null||v===undefined||v==="" ? "—" : (i.moeda ? fbrl(v) : fnum(v));
+const somaInd = (campo) => S.equipe.reduce((t,v)=>t+(num(v[campo])||0),0);
+function corPct(p){ return p===null?"var(--muted)": p>=1?"var(--good)": p>=0.7?"var(--warn)":"var(--crit)"; }
+
+function vendedorVazio(){
+  const v={id:uid(),nome:"",uf:"",obs:""};
+  IND.forEach(i=>{ v[i.k+"M"]=null; v[i.k+"R"]=null; });
+  return v;
+}
 function renderEquipe(){
   $("#eq_mes").value = S.equipeMes || iso(hoje()).slice(0,7);
   const tb=$("#tb_equipe tbody"); tb.innerHTML="";
-  if(!S.equipe.length) tb.innerHTML='<tr><td colspan="10" class="empty">Nenhum vendedor cadastrado. Use "Gerar 20 linhas em branco" para começar rápido.</td></tr>';
+  const nCols = 4 + IND.length*3;
+  if(!S.equipe.length) tb.innerHTML='<tr><td colspan="'+nCols+'" class="empty">Nenhum vendedor cadastrado. Importe a sua base com <b>⬆ Importar base CSV</b> ou use "20 linhas em branco".</td></tr>';
   S.equipe.forEach((v,idx)=>{
     const tr=document.createElement("tr");
-    tr.innerHTML =
-      '<td><input type="text" data-f="nome"></td><td><input type="text" data-f="uf" placeholder="AM"></td>'+
-      '<td><input type="number" data-f="meta"></td><td><input type="number" data-f="real"></td><td class="calc c-p"></td>'+
-      '<td><input type="number" data-f="carteira"></td><td><input type="number" data-f="posit"></td><td class="calc c-pos"></td>'+
-      '<td><textarea rows="2" data-f="obs"></textarea></td>'+
-      '<td class="act"><button class="iconbtn" title="Excluir">✕</button></td>';
-    ["nome","uf","obs"].forEach(f=>tr.querySelector('[data-f="'+f+'"]').value=v[f]||"");
-    ["meta","real","carteira","posit"].forEach(f=>tr.querySelector('[data-f="'+f+'"]').value=v[f]??"");
-    const calc=()=>{
-      const p=pct(num(v.real),num(v.meta));
-      const cor=p===null?"var(--muted)":p>=1?"var(--good)":p>=0.7?"var(--warn)":"var(--crit)";
-      tr.querySelector(".c-p").innerHTML='<b style="color:'+cor+'">'+fpct(p)+"</b>";
-      const q=pct(num(v.posit),num(v.carteira));
-      tr.querySelector(".c-pos").innerHTML = q===null?"—":fpct(q);
-    };
+    let h = '<td><input type="text" data-f="nome"></td><td><input type="text" data-f="uf" placeholder="AM"></td>';
+    IND.forEach(i=>{
+      h += '<td style="border-left:2px solid var(--line)"><input type="number" data-f="'+i.k+'M"></td>'+
+           '<td><input type="number" data-f="'+i.k+'R"></td>'+
+           '<td class="calc c-'+i.k+'"></td>';
+    });
+    h += '<td style="border-left:2px solid var(--line)"><textarea rows="2" data-f="obs" placeholder="Risco / contexto"></textarea></td>'+
+         '<td class="act"><button class="iconbtn" title="Excluir">✕</button></td>';
+    tr.innerHTML = h;
+    tr.querySelector('[data-f="nome"]').value = v.nome||"";
+    tr.querySelector('[data-f="uf"]').value   = v.uf||"";
+    tr.querySelector('[data-f="obs"]').value  = v.obs||"";
+    IND.forEach(i=>{ tr.querySelector('[data-f="'+i.k+'M"]').value = v[i.k+"M"]??"";
+                     tr.querySelector('[data-f="'+i.k+'R"]').value = v[i.k+"R"]??""; });
+    const calc=()=>{ IND.forEach(i=>{
+      const p = pct(num(v[i.k+"R"]), num(v[i.k+"M"]));
+      tr.querySelector(".c-"+i.k).innerHTML = '<b style="color:'+corPct(p)+'">'+fpct(p)+"</b>";
+    }); };
     tr.querySelectorAll("[data-f]").forEach(inp=>inp.addEventListener("input",()=>{
-      v[inp.dataset.f]= inp.type==="number"?num(inp.value):inp.value; calc(); salvar(); renderKpiEquipe(); renderGraficoEquipe(); renderCobertura(); }));
-    tr.querySelector(".iconbtn").addEventListener("click",()=>{ if(confirm("Excluir "+(v.nome||"este vendedor")+"?")){ S.equipe.splice(idx,1); renderEquipe(); salvar(); } });
+      v[inp.dataset.f] = inp.type==="number" ? num(inp.value) : inp.value;
+      calc(); salvar(); renderTotaisEquipe(); renderKpiEquipe(); renderGraficoEquipe(); renderCobertura(); }));
+    tr.querySelector(".iconbtn").addEventListener("click",()=>{
+      if(confirm("Excluir "+(v.nome||"este vendedor")+"?")){ S.equipe.splice(idx,1); renderEquipe(); salvar(); } });
     tb.appendChild(tr); calc();
   });
-  renderKpiEquipe(); renderGraficoEquipe(); renderCobertura();
+  renderTotaisEquipe(); renderKpiEquipe(); renderSeletorInd(); renderGraficoEquipe(); renderCobertura();
+}
+function renderTotaisEquipe(){
+  const tf=$("#tb_equipe tfoot"); if(!tf) return;
+  if(!S.equipe.length){ tf.innerHTML=""; return; }
+  let h='<tr style="background:var(--surface-2);font-weight:650"><td><b>TOTAIS</b></td><td class="calc">'+S.equipe.length+"</td>";
+  IND.forEach(i=>{
+    const M=somaInd(i.k+"M"), R=somaInd(i.k+"R"), p=pct(R,M);
+    h += '<td class="calc" style="border-left:2px solid var(--line)">'+fmtInd(i,M||null)+'</td><td class="calc">'+fmtInd(i,R||null)+
+         '</td><td class="calc"><b style="color:'+corPct(p)+'">'+fpct(p)+"</b></td>";
+  });
+  h += '<td colspan="2" style="border-left:2px solid var(--line)"></td></tr>';
+  tf.innerHTML = h;
 }
 function renderKpiEquipe(){
   const box=$("#kpiEquipe"); if(!box) return;
-  const eq=S.equipe.filter(v=>String(v.nome||"").trim());
-  const meta=eq.reduce((s,v)=>s+(num(v.meta)||0),0), real=eq.reduce((s,v)=>s+(num(v.real)||0),0);
-  const p = meta?real/meta:null;
-  const abaixo = eq.filter(v=>{ const q=pct(num(v.real),num(v.meta)); return q!==null && q<0.7; }).length;
-  const ord = eq.map(v=>num(v.real)||0).sort((a,b)=>b-a);
-  const top3 = ord.slice(0,3).reduce((s,x)=>s+x,0);
-  const conc = real? top3/real : null;
-  const cart = eq.reduce((s,v)=>s+(num(v.carteira)||0),0), pos = eq.reduce((s,v)=>s+(num(v.posit)||0),0);
-  box.innerHTML =
-    kpi("Realizado do mês", fbrl(real||null), "Meta: "+fbrl(meta||null), p, p===null?null:(p>=1?"good":p>=0.85?"warn":"crit")) +
-    kpi("Vendedores ativos", eq.length, abaixo+" abaixo de 70% da meta", null, abaixo>0?"warn":"good") +
-    kpi("Positivação da carteira", fpct(pct(pos,cart)), pos+" de "+cart+" integradores compraram", pct(pos,cart), null) +
-    kpi("Concentração top 3", fpct(conc), conc!==null&&conc>0.5?"Risco: metade da receita em 3 vendedores":"Distribuição saudável", conc, conc!==null&&conc>0.5?"crit":"good");
+  if(!S.equipe.length){ box.innerHTML='<div class="kpi"><div class="lbl">Equipe</div><div class="val">—</div><div class="foot">Importe a base para ver os indicadores</div></div>'; return; }
+  box.innerHTML = IND.map(i=>{
+    const M=somaInd(i.k+"M"), R=somaInd(i.k+"R"), p=pct(R,M);
+    const cls = p===null?null : p>=1?"good" : p>=0.7?"warn":"crit";
+    return kpi(i.rot, fpct(p), fmtInd(i,R||null)+" de "+fmtInd(i,M||null), p, cls);
+  }).join("");
 }
 function kpi(lbl,val,foot,meter,cls){
   let h='<div class="kpi"><div class="lbl">'+esc(lbl)+'</div><div class="val'+(cls?" "+cls:"")+'">'+val+"</div>";
@@ -1517,44 +1576,63 @@ function kpi(lbl,val,foot,meter,cls){
   }
   h+='<div class="foot">'+esc(foot)+"</div></div>"; return h;
 }
+function renderSeletorInd(){
+  const sel=$("#eq_ind"); if(!sel) return;
+  const atual = sel.value || "fat";
+  sel.innerHTML = IND.map(i=>'<option value="'+i.k+'">'+esc(i.rot)+"</option>").join("");
+  sel.value = IND.some(i=>i.k===atual)? atual : "fat";
+}
 function renderGraficoEquipe(){
   const box=$("#graficoEquipe"); if(!box) return;
-  const eq=S.equipe.filter(v=>String(v.nome||"").trim() && num(v.meta))
-    .map(v=>({n:v.nome,p:pct(num(v.real),num(v.meta))||0})).sort((a,b)=>b.p-a.p);
-  if(!eq.length){ box.innerHTML='<div class="empty">Preencha nome e meta dos vendedores para ver o ranking.</div>'; return; }
+  const k = ($("#eq_ind") && $("#eq_ind").value) || "fat";
+  const ind = IND.find(i=>i.k===k) || IND[1];
+  const eq = S.equipe.filter(v=>String(v.nome||"").trim() && num(v[k+"M"]))
+    .map(v=>({n:v.nome, p:pct(num(v[k+"R"]),num(v[k+"M"]))||0, r:num(v[k+"R"])||0}))
+    .sort((a,b)=>b.p-a.p);
+  if(!eq.length){ box.innerHTML='<div class="empty">Preencha nome e a meta de '+esc(ind.rot)+" para ver o ranking.</div>"; return; }
   const MAXP=1.5;
   box.innerHTML='<div class="bars">'+eq.map(v=>{
     const w=Math.min(v.p,MAXP)/MAXP*100, ref=(1/MAXP)*100;
-    const cor=v.p>=1?"var(--good)":v.p>=0.7?"var(--warn)":"var(--crit)";
-    return '<div class="row"><span class="lbl">'+esc(v.n)+'</span><span class="track"><span class="fill" style="width:'+w.toFixed(1)+'%;background:'+cor+'"></span><span class="ref" style="left:'+ref+'%"></span></span><span class="num">'+fpct(v.p)+"</span></div>";
+    return '<div class="row"><span class="lbl" title="'+esc(v.n)+" · "+esc(fmtInd(ind,v.r))+'">'+esc(v.n)+
+      '</span><span class="track"><span class="fill" style="width:'+w.toFixed(1)+'%;background:'+corPct(v.p)+'"></span>'+
+      '<span class="ref" style="left:'+ref+'%"></span></span><span class="num">'+fpct(v.p)+"</span></div>";
   }).join("")+"</div>";
 }
 function renderCobertura(){
   const box=$("#coberturaUF"); if(!box) return;
-  const cobertas = new Set();
-  S.equipe.forEach(v=>{ String(v.uf||"").toUpperCase().split(/[^A-Z]+/).forEach(u=>{ if(NORTE.includes(u)) cobertas.add(u); }); });
+  const porUF={};
+  S.equipe.forEach(v=>{ String(v.uf||"").toUpperCase().split(/[^A-Z]+/).forEach(u=>{
+    if(NORTE.includes(u)){ porUF[u]=porUF[u]||{n:0,fat:0}; porUF[u].n++; porUF[u].fat+=num(v.fatR)||0; } }); });
   box.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:7px">'+NORTE.map(u=>{
-    const ok = cobertas.has(u);
-    return '<span class="badge '+(ok?"b-verde":"b-vermelho")+'"><span class="sig"></span>'+u+(ok?"":" — sem vendedor")+"</span>";
+    const d=porUF[u];
+    return '<span class="badge '+(d?"b-verde":"b-vermelho")+'"><span class="sig"></span>'+u+(d? " · "+d.n+" vend. · "+fbrl(d.fat) : " — sem vendedor")+"</span>";
   }).join("")+"</div>";
-  const fora = S.equipe.filter(v=>{ const us=String(v.uf||"").toUpperCase().split(/[^A-Z]+/).filter(Boolean); return us.length && !us.some(u=>NORTE.includes(u)); }).length;
-  if(fora) box.innerHTML += '<div class="hint" style="margin-top:12px">'+fora+' vendedor(es) com atuação fora do Norte. Isso é receita — mas confira se o custo de atendimento remoto está no preço.</div>';
+  const fora = S.equipe.filter(v=>{ const us=String(v.uf||"").toUpperCase().split(/[^A-Z]+/).filter(Boolean); return us.length && !us.some(u=>NORTE.includes(u)); });
+  if(fora.length) box.innerHTML += '<div class="hint" style="margin-top:12px">'+fora.length+' vendedor(es) com atuação fora do Norte. Isso é receita — mas confira se o custo de atendimento remoto está no preço.</div>';
 }
+
 
 /* --------- Importação de base CSV da equipe --------- */
 const CAMPOS_EQUIPE = [
-  {k:"nome",     rot:"Vendedor",        alias:["nome","vendedor","consultor","representante","colaborador","nome do vendedor","vendedor(a)"]},
-  {k:"uf",       rot:"UF / região",     alias:["uf","estado","regiao","territorio","praca","area"]},
-  {k:"meta",     rot:"Meta (R$)",       n:true, alias:["meta","meta do mes","meta (r$)","meta r$","meta mensal","meta de faturamento","meta venda","objetivo"]},
-  {k:"real",     rot:"Realizado (R$)",  n:true, alias:["realizado","realizado (r$)","realizado r$","realizado mes","resultado","resultados","venda","vendas","faturamento","realizado do mes"]},
-  {k:"carteira", rot:"Carteira total",  n:true, alias:["carteira","carteira total","clientes","base","total de clientes","clientes na carteira","qtd clientes"]},
-  {k:"posit",    rot:"Positivados",     n:true, alias:["positivados","clientes positivados","clientes ativos","ativos","compradores","positivacao"]},
-  {k:"obs",      rot:"Observação",      alias:["observacao","observacoes","obs","comentario","risco","nota"]}
+  {k:"nome",  rot:"Vendedor",              alias:["vendedor","nome","consultor","representante","colaborador","nome do vendedor","vendedor(a)"]},
+  {k:"uf",    rot:"UF",                    alias:["uf","estado","regiao","territorio","praca"]},
+  {k:"pedM",  rot:"Meta pedidos",     n:1, alias:["meta pedidos","meta pedido","meta ped","meta de pedidos"]},
+  {k:"pedR",  rot:"Realizado pedidos",n:1, alias:["relizado pedido","realizado pedido","realizado pedidos","relizado pedidos","realizado ped","pedidos realizados","pedidos"]},
+  {k:"fatM",  rot:"Meta faturamento", n:1, alias:["meta fat","meta faturamento","meta fat r$","meta de faturamento","meta r$","meta"]},
+  {k:"fatR",  rot:"Realizado fat.",   n:1, alias:["realizado fat","relizado fat","faturamento realizado","realizado faturamento","faturamento","realizado r$","realizado","resultado"]},
+  {k:"intM",  rot:"Meta integradores",n:1, alias:["meta int","meta integradores","meta integrador","meta de integradores","meta positivacao"]},
+  {k:"intR",  rot:"Realizado int.",   n:1, alias:["realizado int","relizado int","integradores realizados","realizado integradores","integradores positivados","positivados","integradores"]},
+  {k:"novoM", rot:"Meta int. novo",   n:1, alias:["meta integrador novo","meta int novo","meta integradores novos","meta novos","meta conquista"]},
+  {k:"novoR", rot:"Realizado int. novo",n:1,alias:["relizado int novo","realizado int novo","realizado integrador novo","integradores novos","clientes novos","novos"]},
+  {k:"belM",  rot:"Meta BelCred",     n:1, alias:["meta belcred","meta bel cred","meta credito"]},
+  {k:"belR",  rot:"Realizado BelCred",n:1, alias:["realizado belcred","relizado belcred","belcred realizado","belcred","bel cred"]},
+  {k:"obs",   rot:"Observação / risco",    alias:["observacao","observacoes","observacao / risco","obs","comentario","risco","nota"]}
 ];
-const IGNORAR_COL = ["% da meta","%","percentual","% ating","% atingido","% positivacao","atingimento","indice"];
+const IGNORAR_COL = ["percentual","atingimento","indice"];
+const LINHAS_TOTAL = ["totais","total","total geral","totais gerais","soma","geral","media","média"];
 
 function normal(t){
-  return String(t==null?"":t).normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+  return String(t==null?"":t).normalize("NFD").replace(/[̀-ͯ]/g,"")
     .toLowerCase().replace(/\s+/g," ").replace(/[.:]+$/,"").trim();
 }
 function numBR(v){
@@ -1568,7 +1646,7 @@ function numBR(v){
   const n = parseFloat(t); return isFinite(n)?n:null;
 }
 function parseCSV(texto){
-  texto = String(texto).replace(/^\uFEFF/,"");
+  texto = String(texto).replace(/^﻿/,"");
   const prim = texto.split(/\r?\n/).find(l=>l.trim()) || "";
   const conta = d => (prim.split(d).length-1);
   const delim = [";","\t",","].sort((a,b)=>conta(b)-conta(a))[0];
@@ -1589,16 +1667,20 @@ function parseCSV(texto){
   return { delim, linhas: linhas.filter(l=>l.some(c=>String(c).trim()!=="")) };
 }
 function mapearColunas(cabecalho){
-  const mapa={}, usados={}, naoRec=[];
+  const mapa={}, usados={}, naoRec=[], pendentes=[];
   cabecalho.forEach((titulo,i)=>{
     const t = normal(titulo);
     if(!t) return;
-    if(IGNORAR_COL.some(x=>t===x || t.startsWith("%"))){ return; }
-    const campo = CAMPOS_EQUIPE.find(c=>!usados[c.k] && (c.alias.includes(t) || c.alias.some(a=>t===a)));
-    let escolhido = campo;
-    if(!escolhido){ escolhido = CAMPOS_EQUIPE.find(c=>!usados[c.k] && c.alias.some(a=>t.startsWith(a+" ") || t.includes(a))); }
-    if(escolhido){ mapa[escolhido.k]=i; usados[escolhido.k]=true; }
-    else naoRec.push(titulo);
+    if(t.startsWith("%") || t.indexOf("%")>=0 || IGNORAR_COL.some(x=>t===x)) return;   /* % é recalculado */
+    const exato = CAMPOS_EQUIPE.find(c=>!usados[c.k] && c.alias.indexOf(t)>=0);
+    if(exato){ mapa[exato.k]=i; usados[exato.k]=true; }
+    else pendentes.push({t,i,titulo});
+  });
+  pendentes.forEach(p=>{                                    /* 2ª passada: aproximação */
+    let melhor=null, tam=0;
+    CAMPOS_EQUIPE.forEach(c=>{ if(usados[c.k]) return;
+      c.alias.forEach(a=>{ if((p.t===a || p.t.startsWith(a+" ") || p.t.indexOf(a)>=0) && a.length>tam){ melhor=c; tam=a.length; } }); });
+    if(melhor){ mapa[melhor.k]=p.i; usados[melhor.k]=true; } else naoRec.push(p.titulo);
   });
   return { mapa, naoRec };
 }
@@ -1612,24 +1694,29 @@ function lerCSVEquipe(file){
       if(linhas.length < 2) throw new Error("O arquivo não tem linhas de dados abaixo do cabeçalho.");
       const { mapa, naoRec } = mapearColunas(linhas[0]);
       if(mapa.nome === undefined)
-        throw new Error("Não encontrei a coluna com o nome do vendedor. O cabeçalho precisa ter uma coluna chamada Vendedor (ou Nome, Consultor, Representante). Baixe o modelo para conferir o formato.");
+        throw new Error("Não encontrei a coluna com o nome do vendedor. O cabeçalho precisa ter uma coluna Vendedor (ou Nome, Consultor, Representante). Baixe o modelo para conferir o formato.");
+      let totaisIgnoradas = 0;
       const regs = linhas.slice(1).map(l=>{
         const o={id:uid()};
         CAMPOS_EQUIPE.forEach(c=>{
           const i = mapa[c.k];
           if(i===undefined){ o[c.k] = c.n? null : ""; return; }
-          const bruto = l[i];
-          o[c.k] = c.n ? numBR(bruto) : String(bruto==null?"":bruto).trim();
+          o[c.k] = c.n ? numBR(l[i]) : String(l[i]==null?"":l[i]).trim();
         });
         return o;
-      }).filter(o=>String(o.nome||"").trim());
+      }).filter(o=>{
+        const nm = normal(o.nome);
+        if(!nm) return false;
+        if(LINHAS_TOTAL.indexOf(nm)>=0){ totaisIgnoradas++; return false; }   /* linha TOTAIS da planilha */
+        return true;
+      });
       if(!regs.length) throw new Error("Nenhuma linha com nome de vendedor preenchido.");
-      _csvPend = { regs, mapa, naoRec, delim, arquivo:file.name };
+      _csvPend = { regs, mapa, naoRec, delim, arquivo:file.name, totaisIgnoradas };
       renderPreviaCSV();
     }catch(e){
       _csvPend = null;
       $("#eq_preview").innerHTML = '<div class="finding crit"><h4>Não consegui ler este arquivo</h4><p>'+esc(e.message||String(e))+
-        '</p><div class="do"><b>O que fazer:</b> salve a planilha como <b>CSV</b> (no Excel: Arquivo → Salvar como → CSV separado por vírgulas ou UTF-8) e confira se a primeira linha contém os títulos das colunas. O botão <b>Baixar modelo da planilha</b> gera um arquivo no formato certo.</div></div>';
+        '</p><div class="do"><b>O que fazer:</b> no Excel use <b>Arquivo → Salvar como → CSV UTF-8</b> e confira se a primeira linha tem os títulos das colunas. O botão <b>Baixar modelo da planilha</b> gera um arquivo já no formato certo.</div></div>';
     }
   };
   fr.onerror = ()=>{ $("#eq_preview").innerHTML='<div class="finding crit"><h4>Falha ao abrir o arquivo</h4><p>Tente novamente ou salve o arquivo em outra pasta.</p></div>'; };
@@ -1639,31 +1726,37 @@ function renderPreviaCSV(){
   const d=_csvPend; if(!d) return;
   const reconhecidas = CAMPOS_EQUIPE.filter(c=>d.mapa[c.k]!==undefined);
   const faltando = CAMPOS_EQUIPE.filter(c=>d.mapa[c.k]===undefined && c.k!=="obs");
+  const cols = CAMPOS_EQUIPE.filter(c=>c.k!=="obs");
   const amostra = d.regs.slice(0,5);
-  const somaMeta = d.regs.reduce((s,r)=>s+(r.meta||0),0), somaReal = d.regs.reduce((s,r)=>s+(r.real||0),0);
+  const somas = {}; IND.forEach(i=>{ somas[i.k]=d.regs.reduce((t,r)=>t+(r[i.k+"R"]||0),0); });
+  const traz = d.mapa.obs!==undefined;
   $("#eq_preview").innerHTML =
     '<div class="card" style="border-color:var(--accent);margin-top:12px">'+
       '<h2>Conferir antes de importar</h2>'+
-      '<p class="desc">Arquivo <b>'+esc(d.arquivo)+'</b> · separador <code>'+esc(d.delim==="\t"?"tabulação":d.delim)+'</code> · <b>'+d.regs.length+' vendedor(es)</b> lido(s).'+
-      (somaMeta?' Meta somada: <b>'+fbrl(somaMeta)+'</b>.':"")+(somaReal?' Realizado somado: <b>'+fbrl(somaReal)+'</b>.':"")+'</p>'+
+      '<p class="desc">Arquivo <b>'+esc(d.arquivo)+'</b> · separador <code>'+esc(d.delim==="\t"?"tabulação":d.delim)+'</code> · <b>'+d.regs.length+' vendedor(es)</b>'+
+      (d.totaisIgnoradas? " · linha de TOTAIS ignorada (o programa recalcula)":"")+
+      '. Faturamento no arquivo: <b>'+fbrl(somas.fat||null)+"</b>.</p>"+
       '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">'+
         reconhecidas.map(c=>'<span class="badge b-verde"><span class="sig"></span>'+esc(c.rot)+"</span>").join("")+
         faltando.map(c=>'<span class="badge b-neutro"><span class="sig"></span>'+esc(c.rot)+" — não veio</span>").join("")+
-        (d.naoRec.length? '<span class="badge b-amarelo"><span class="sig"></span>Colunas ignoradas: '+esc(d.naoRec.slice(0,4).join(", "))+"</span>" : "")+
+        (d.naoRec.length? '<span class="badge b-amarelo"><span class="sig"></span>Ignoradas: '+esc(d.naoRec.slice(0,4).join(", "))+"</span>" : "")+
       "</div>"+
-      '<div class="tblwrap"><table class="tbl" style="min-width:700px"><thead><tr>'+
-        CAMPOS_EQUIPE.map(c=>"<th>"+esc(c.rot)+"</th>").join("")+"</tr></thead><tbody>"+
-        amostra.map(r=>"<tr>"+CAMPOS_EQUIPE.map(c=>'<td class="calc">'+
-          (c.n ? (c.k==="meta"||c.k==="real" ? fbrl(r[c.k]) : fnum(r[c.k])) : esc(r[c.k]||"—"))+"</td>").join("")+"</tr>").join("")+
+      '<div class="tblwrap"><table class="tbl" style="min-width:900px"><thead><tr>'+
+        cols.map(c=>"<th>"+esc(c.rot)+"</th>").join("")+"</tr></thead><tbody>"+
+        amostra.map(r=>"<tr>"+cols.map(c=>{
+          let v = r[c.k];
+          if(c.n){ const ind=IND.find(i=>c.k===i.k+"M"||c.k===i.k+"R"); v = ind? fmtInd(ind,v) : fnum(v); }
+          else v = esc(v||"—");
+          return '<td class="calc">'+v+"</td>"; }).join("")+"</tr>").join("")+
       "</tbody></table></div>"+
       (d.regs.length>5? '<p class="desc" style="margin-top:8px">Mostrando as 5 primeiras de '+d.regs.length+" linhas.</p>":"")+
-      (faltando.some(c=>c.k==="meta"||c.k==="real")? '<div class="hint" style="border-left-color:var(--warn)"><b>Atenção:</b> o arquivo não trouxe '+
-        esc(faltando.filter(c=>c.k==="meta"||c.k==="real").map(c=>c.rot).join(" nem "))+
-        '. Sem esses números o ranking e os alertas de meta não funcionam — você pode completar à mão depois.</div>':"")+
-      '<div class="grid2" style="margin-top:14px">'+
+      '<div class="hint" style="border-left-color:'+(traz?"var(--accent)":"var(--good)")+'"><b>Observação / risco:</b> '+
+        (traz? "o arquivo traz essa coluna e ela será usada."
+             : "o arquivo não traz essa coluna — o que você já escreveu em <b>Observação / risco</b> é preservado para os vendedores com o mesmo nome, em qualquer modo de importação.")+"</div>"+
+      '<div class="grid2" style="margin-top:6px">'+
         '<label class="f"><span>Como importar</span><select id="eq_modo">'+
-          '<option value="substituir">Substituir a equipe atual ('+S.equipe.length+' cadastrado(s) serão apagados)</option>'+
-          '<option value="atualizar">Atualizar pelos nomes — mantém quem já existe e acrescenta os novos</option>'+
+          '<option value="atualizar">Atualizar pelos nomes — recomendado para a rotina mensal</option>'+
+          '<option value="substituir">Substituir a equipe atual ('+S.equipe.length+' cadastrado(s))</option>'+
           '<option value="acrescentar">Acrescentar todos como novos registros</option>'+
         "</select></label>"+
         '<label class="f"><span>&nbsp;</span><div class="btnrow">'+
@@ -1677,35 +1770,43 @@ function renderPreviaCSV(){
 function aplicarCSVEquipe(){
   const d=_csvPend; if(!d) return;
   const modo = $("#eq_modo").value;
+  /* observações já escritas ficam guardadas por nome — nunca se perdem numa reimportação */
+  const obsAntigas = {}; S.equipe.forEach(v=>{ const n=normal(v.nome); if(n && String(v.obs||"").trim()) obsAntigas[n]=v.obs; });
+  const herdaObs = r => { const n=normal(r.nome); if(!String(r.obs||"").trim() && obsAntigas[n]) r.obs = obsAntigas[n]; return r; };
   let novos=0, atualizados=0;
   if(modo==="substituir"){
-    if(S.equipe.length && !confirm("Isto apaga os "+S.equipe.length+" vendedor(es) já cadastrados e coloca os "+d.regs.length+" do arquivo no lugar. Confirma?")) return;
-    S.equipe = d.regs; novos = d.regs.length;
+    if(S.equipe.length && !confirm("Isto troca os "+S.equipe.length+" vendedor(es) cadastrados pelos "+d.regs.length+" do arquivo.\n\nAs observações de risco já escritas são preservadas para os nomes que se repetirem. Confirma?")) return;
+    S.equipe = d.regs.map(herdaObs); novos = d.regs.length;
   } else if(modo==="acrescentar"){
-    S.equipe = S.equipe.concat(d.regs); novos = d.regs.length;
+    S.equipe = S.equipe.concat(d.regs.map(herdaObs)); novos = d.regs.length;
   } else {
     d.regs.forEach(r=>{
       const alvo = S.equipe.find(v=>normal(v.nome) && normal(v.nome)===normal(r.nome));
       if(alvo){
-        ["uf","meta","real","carteira","posit","obs"].forEach(k=>{
-          const v = r[k];
-          if(v!==null && v!==undefined && v!=="") alvo[k]=v;
+        ["uf","obs"].concat(IND.map(i=>i.k+"M")).concat(IND.map(i=>i.k+"R")).forEach(k=>{
+          const val = r[k];
+          if(val!==null && val!==undefined && val!=="") alvo[k]=val;    /* campo vazio no arquivo não apaga o que já existe */
         });
         atualizados++;
-      } else { S.equipe.push(r); novos++; }
+      } else { S.equipe.push(herdaObs(r)); novos++; }
     });
   }
   _csvPend=null; $("#eq_preview").innerHTML="";
   renderEquipe(); salvarJa(); renderPainel();
   toast(atualizados? atualizados+" atualizado(s) e "+novos+" novo(s) importado(s)" : novos+" vendedor(es) importado(s)");
 }
+function cabecalhoEquipe(){
+  const h=["Vendedor","UF"];
+  IND.forEach(i=>{ h.push(i.meta, i.real, "% "+i.rot.toUpperCase()); });
+  h.push("Observação / risco"); return h;
+}
 function modeloCSVEquipe(){
-  const L=[CAMPOS_EQUIPE.map(c=>c.rot)];
-  L.push(["Ana Ribeiro","AM","180000","162000","38","11","Carteira concentrada em 2 clientes"]);
-  L.push(["Bruno Castro","PA","200000","131000","46","9",""]);
-  L.push(["Carla Menezes","RO","180000","190500","33","15",""]);
+  const L=[cabecalhoEquipe()];
+  L.push(["ALISSON DOS SANTOS RIBEIRO","AC","96","4","","400000","39605,13","","20","4","","5","0","","5","0","","Território novo — base pequena"]);
+  L.push(["ITALO CERQUEIA DOS SANTOS","AM","160","50","","2400000","1484747,74","","60","26","","5","0","","8","4","",""]);
+  L.push(["LEONARDO COSTA OLIVEIRA","RR","250","99","","3000000","1388203,48","","61","56","","5","3","","10","6","",""]);
   baixar("modelo-base-equipe.csv", csv(L), "text/csv");
-  toast("Modelo baixado — preencha no Excel, salve como CSV e importe");
+  toast("Modelo baixado — as colunas de % podem ficar em branco, o programa calcula");
 }
 
 /* --------- Painel --------- */
@@ -1928,28 +2029,68 @@ function diagnosticar(){
   /* --- Equipe --- */
   const eq=S.equipe.filter(v=>String(v.nome||"").trim());
   if(eq.length){
-    const meta=eq.reduce((s,v)=>s+(num(v.meta)||0),0), real=eq.reduce((s,v)=>s+(num(v.real)||0),0);
-    const ord=eq.slice().sort((x,y)=>(num(y.real)||0)-(num(x.real)||0));
-    const top3=ord.slice(0,3).reduce((s,v)=>s+(num(v.real)||0),0);
-    if(real && top3/real>0.5) add("crit","Equipe & carteira","Receita concentrada em 3 vendedores",
-      "Os 3 maiores respondem por "+fpct(top3/real)+" do realizado do mês ("+ord.slice(0,3).map(v=>v.nome).join(", ")+"). Se um deles sai ou adoece, o mês inteiro vai junto.",
-      "Duas frentes: entender o que os três fazem diferente e transformar em rotina para os demais; e redistribuir parte da carteira dos maiores para quem tem capacidade ociosa.");
-    const fracos = eq.filter(v=>{ const p=pct(num(v.real),num(v.meta)); return p!==null && p<0.7; });
-    if(fracos.length) add("warn","Equipe & carteira",fracos.length+" vendedor(es) abaixo de 70% da meta",
-      fracos.map(v=>v.nome+" ("+fpct(pct(num(v.real),num(v.meta)))+")").join(", ")+". Abaixo de 70% raramente é falta de esforço — costuma ser carteira ruim, território difícil ou falta de argumento técnico.",
-      "Antes de cobrar, diagnostique: a carteira dele tem clientes ativos suficientes? Ele perde no preço ou no prazo? Uma visita conjunta responde isso mais rápido que três reuniões.");
-    const semPos = eq.filter(v=>num(v.carteira) && pct(num(v.posit),num(v.carteira))!==null && pct(num(v.posit),num(v.carteira))<0.25);
-    if(semPos.length) add("warn","Equipe & carteira",semPos.length+" vendedor(es) com positivação abaixo de 25%",
-      "Menos de 1 em cada 4 integradores da carteira comprou no mês. Isso significa carteira grande e relacionamento raso — o vendedor está atendendo só quem liga.",
-      "Puxe meta de clientes distintos por semana. Positivação é o indicador que antecipa a queda de faturamento antes de ela aparecer no fechamento.");
-    if(meta && real/meta<0.85 && hoje().getDate()>20) add("crit","Equipe & carteira","Mês encaminhado para fechar abaixo da meta",
-      "Realizado em "+fpct(real/meta)+" com o mês já avançado. O gap de "+fbrl(meta-real)+" não se resolve com esforço genérico nos últimos dias.",
-      "Ataque onde o ciclo é mais curto: pedidos em aberto no CRM, clientes que compraram mês passado e ainda não voltaram, e itens com estoque parado que podem virar campanha relâmpago.");
+    const T={}; IND.forEach(i=>{ T[i.k]={M:somaInd(i.k+"M"), R:somaInd(i.k+"R")}; T[i.k].p=pct(T[i.k].R,T[i.k].M); });
+    const dia=hoje().getDate(), diasMes=new Date(hoje().getFullYear(),hoje().getMonth()+1,0).getDate();
+    const ritmo=dia/diasMes;
+
+    if(T.fat.p!==null && T.fat.p < ritmo-0.15)
+      add("crit","Equipe · Faturamento","Faturamento atrás do ritmo do mês",
+        "Realizado em "+fpct(T.fat.p)+" ("+fbrl(T.fat.R)+" de "+fbrl(T.fat.M)+") com "+fpct(ritmo)+" do mês decorrido. Falta "+fbrl(T.fat.M-T.fat.R)+" e o tempo restante não cobre esse gap no ritmo atual.",
+        "Ataque onde o ciclo é curto: propostas em aberto no CRM, integradores que compraram no mês passado e ainda não voltaram, e itens parados em estoque que viram campanha relâmpago. Cobrança genérica na reunião não fecha gap desse tamanho.");
+
+    if(T.int.p!==null && T.fat.p!==null && T.int.p < T.fat.p-0.15)
+      add("crit","Equipe · Positivação","Faturamento sustentado por poucos integradores",
+        "Faturamento em "+fpct(T.fat.p)+" mas positivação em apenas "+fpct(T.int.p)+" ("+fnum(T.int.R)+" de "+fnum(T.int.M)+" integradores). Você está faturando com menos clientes do que deveria — o número bonito esconde base encolhendo.",
+        "Puxe meta de integradores distintos por semana no diário. Positivação é o indicador que antecipa a queda de faturamento: quando ela cai, o faturamento cai no mês seguinte.");
+
+    const semNovo = eq.filter(v=>num(v.novoM) && !num(v.novoR));
+    if(semNovo.length >= Math.max(2, Math.ceil(eq.length/3)))
+      add("crit","Equipe · Conquista","Conquista parada: "+semNovo.length+" de "+eq.length+" vendedores sem nenhum integrador novo",
+        "Total de "+fnum(T.novo.R)+" integradores novos contra meta de "+fnum(T.novo.M)+" ("+fpct(T.novo.p)+"). Sem conquista, a operação vive só da base atual — e a base encolhe sozinha por atrito, mudança de fornecedor e integrador que sai do mercado.",
+        "Conquista não acontece na brecha do dia: precisa de bloco de agenda protegido. Reserve meio período fixo por semana só para prospecção, com lista nominal saída do cruzamento entre homologados na concessionária e o CRM. Nomes: "+semNovo.slice(0,6).map(v=>v.nome).join(", ")+(semNovo.length>6?"…":"")+".");
+
+    const semBel = eq.filter(v=>num(v.belM) && !num(v.belR));
+    if(semBel.length >= Math.max(2, Math.ceil(eq.length/3)))
+      add("warn","Equipe · BelCred","BelCred sem penetração em "+semBel.length+" vendedores",
+        fnum(T.bel.R)+" de "+fnum(T.bel.M)+" ("+fpct(T.bel.p)+"). Crédito é a ferramenta que destrava o integrador pequeno e o prende à distribuidora — quando ele não é oferecido, o vendedor está disputando só no preço.",
+        "Trate como argumento de venda, não como produto separado: o vendedor precisa saber em quanto tempo sai a aprovação e quanto isso aumenta o pedido médio. Treine com dois casos reais e cobre no diário semanal.");
+
+    const fracos = eq.filter(v=>{ const p=pct(num(v.fatR),num(v.fatM)); return p!==null && p<0.7; });
+    if(fracos.length)
+      add("warn","Equipe · Desempenho",fracos.length+" vendedor(es) abaixo de 70% da meta de faturamento",
+        fracos.slice(0,8).map(v=>v.nome+" ("+fpct(pct(num(v.fatR),num(v.fatM)))+")").join(", ")+(fracos.length>8?"…":"")+
+        ". Abaixo de 70% raramente é falta de esforço — costuma ser carteira pequena, território de baixa densidade ou falta de argumento técnico.",
+        "Antes de cobrar, diagnostique com os outros indicadores: se os pedidos estão em dia e o faturamento não, é ticket médio; se os pedidos também estão baixos, é atividade ou carteira. Uma visita conjunta responde isso mais rápido que três reuniões.");
+
+    const ordF = eq.slice().sort((a,b)=>(num(b.fatR)||0)-(num(a.fatR)||0));
+    const top3 = ordF.slice(0,3).reduce((t,v)=>t+(num(v.fatR)||0),0);
+    if(T.fat.R && top3/T.fat.R > 0.45)
+      add("crit","Equipe · Concentração","Receita concentrada em 3 vendedores",
+        ordF.slice(0,3).map(v=>v.nome).join(", ")+" respondem por "+fpct(top3/T.fat.R)+" do faturamento. Se um deles sai, adoece ou é abordado pelo concorrente, o mês inteiro vai junto.",
+        "Duas frentes ao mesmo tempo: mapear o que os três fazem diferente e transformar em rotina para os demais; e redistribuir parte da carteira dos maiores para quem tem capacidade ociosa — de preferência antes do fechamento do trimestre.");
+
+    const comTicket = eq.filter(v=>num(v.pedR) && num(v.fatR)).map(v=>({n:v.nome, t:num(v.fatR)/num(v.pedR)}));
+    if(comTicket.length>=4){
+      const medio = comTicket.reduce((t,x)=>t+x.t,0)/comTicket.length;
+      const baixos = comTicket.filter(x=>x.t < medio*0.5).sort((a,b)=>a.t-b.t);
+      if(baixos.length)
+        add("warn","Equipe · Ticket médio",baixos.length+" vendedor(es) com ticket médio muito abaixo da equipe",
+          baixos.slice(0,5).map(x=>x.n+" ("+fbrl(x.t)+" por pedido)").join(", ")+" contra média de "+fbrl(medio)+
+          ". Pedido pequeno normalmente significa venda de item avulso: o integrador compra o que faltou aqui e o kit inteiro no concorrente.",
+          "Ataque o mix, não o volume: meta de pedidos com 3+ famílias (módulo, inversor, estrutura, cabo) e checagem do que o cliente comprou fora. Ticket médio sobe mais rápido que número de pedidos.");
+    }
+    const semMeta = eq.filter(v=>!num(v.fatM));
+    if(semMeta.length)
+      add("warn","Equipe · Cadastro",semMeta.length+" vendedor(es) sem meta de faturamento",
+        semMeta.slice(0,6).map(v=>v.nome).join(", ")+". Sem meta não há % e o vendedor fica fora do ranking e dos alertas.",
+        "Importe a base atualizada ou preencha a meta na linha. Vendedor sem meta é vendedor sem régua — e no fim do mês a conversa vira negociação sobre o que era esperado.");
+
     const cobertas=new Set(); eq.forEach(v=>String(v.uf||"").toUpperCase().split(/[^A-Z]+/).forEach(u=>{ if(NORTE.includes(u)) cobertas.add(u); }));
     const faltando = NORTE.filter(u=>!cobertas.has(u));
-    if(faltando.length && faltando.length<7) add("warn","Equipe & carteira","UFs do Norte sem vendedor atribuído: "+faltando.join(", "),
-      "São mercados da sua região de atuação sem responsável nominal. Território sem dono não é território pequeno — é território sem quem ligue.",
-      "Atribua nominalmente, mesmo que como carteira secundária de alguém. Depois compare o potencial de cada UF (integradores homologados) com o que você fatura lá.");
+    if(faltando.length && faltando.length<7)
+      add("warn","Equipe · Cobertura","UFs do Norte sem vendedor atribuído: "+faltando.join(", "),
+        "São mercados da sua região de atuação sem responsável nominal. Território sem dono não é território pequeno — é território sem quem ligue.",
+        "Atribua nominalmente, mesmo como carteira secundária. Depois compare o potencial de cada UF (integradores homologados na concessionária) com o que você fatura lá — a diferença é a sua fila de conquista.");
   }
 
   if(!F.length) add("ok","Geral","Nada crítico encontrado",
@@ -2037,12 +2178,20 @@ function dossie(){
   L.push("**Começar**\n"+li(S.report.comecar));
   L.push("Resumo executivo: 1) "+(S.report.r1||"(vazio)")+" 2) "+(S.report.r2||"(vazio)")+" 3) "+(S.report.r3||"(vazio)"));
 
-  const eq=S.equipe.filter(v=>String(v.nome||"").trim());
-  L.push("\n## EQUIPE & CARTEIRA ("+(S.equipeMes||"")+")");
-  if(!eq.length) L.push("(equipe não cadastrada)");
-  eq.forEach(v=>L.push("- "+v.nome+" | UF: "+(v.uf||"?")+" | meta "+fbrl(num(v.meta))+" x realizado "+fbrl(num(v.real))+
-    " ("+fpct(pct(num(v.real),num(v.meta)))+") | carteira "+(v.carteira??"?")+", positivados "+(v.posit??"?")+
-    " ("+fpct(pct(num(v.posit),num(v.carteira)))+")"+(v.obs?" | obs: "+v.obs:"")));
+  const eqp=S.equipe.filter(v=>String(v.nome||"").trim());
+  L.push("\n## EQUIPE COMERCIAL ("+(S.equipeMes||"")+")");
+  if(!eqp.length) L.push("(equipe não cadastrada)");
+  else{
+    L.push("Indicadores por vendedor: pedidos, faturamento, integradores positivados, integradores novos e BelCred (meta → realizado, %).");
+    eqp.forEach(v=>{
+      const partes = IND.map(i=>i.rot+" "+fmtInd(i,v[i.k+"M"])+" → "+fmtInd(i,v[i.k+"R"])+" ("+fpct(pct(num(v[i.k+"R"]),num(v[i.k+"M"])))+")");
+      L.push("- "+v.nome+" | "+(v.uf||"?")+" | "+partes.join(" | ")+(v.obs?" | OBSERVAÇÃO/RISCO: "+v.obs:""));
+    });
+    const tot = IND.map(i=>{ const M=somaInd(i.k+"M"), R=somaInd(i.k+"R"); return i.rot+" "+fmtInd(i,M)+" → "+fmtInd(i,R)+" ("+fpct(pct(R,M))+")"; });
+    L.push("TOTAIS ("+eqp.length+" vendedores): "+tot.join(" | "));
+    const ticket = eqp.filter(v=>num(v.pedR)&&num(v.fatR));
+    if(ticket.length) L.push("Ticket médio da equipe: "+fbrl(ticket.reduce((t,v)=>t+num(v.fatR),0)/ticket.reduce((t,v)=>t+num(v.pedR),0))+" por pedido.");
+  }
 
   const F=diagnosticar().filter(f=>f.sev!=="ok");
   L.push("\n## ACHADOS DO DIAGNÓSTICO AUTOMÁTICO (regras internas do programa)");
@@ -2206,9 +2355,20 @@ function csvPlano(){
   baixar("plano-5w2h_"+iso(hoje())+".csv", csv(L),"text/csv");
 }
 function csvEquipe(){
-  const L=[["Vendedor","UF","Meta (R$)","Realizado (R$)","% da meta","Carteira","Positivados","Positivação","Observação"]];
-  S.equipe.forEach(v=>L.push([v.nome||"",v.uf||"",v.meta??"",v.real??"",fpct(pct(num(v.real),num(v.meta))),v.carteira??"",v.posit??"",fpct(pct(num(v.posit),num(v.carteira))),v.obs||""]));
-  baixar("equipe_"+iso(hoje())+".csv", csv(L),"text/csv");
+  const nBR = v => (v===null||v===undefined||v==="") ? "" : String(v).replace(".",",");   /* Excel pt-BR */
+  const pBR = (a,b) => { const q=pct(a,b); return q===null? "" : (q*100).toFixed(1).replace(".",",")+"%"; };
+  const L=[cabecalhoEquipe()];
+  S.equipe.forEach(v=>{
+    const l=[v.nome||"", v.uf||""];
+    IND.forEach(i=>{ l.push(nBR(v[i.k+"M"]), nBR(v[i.k+"R"]), pBR(num(v[i.k+"R"]),num(v[i.k+"M"]))); });
+    l.push(v.obs||""); L.push(l);
+  });
+  if(S.equipe.length){
+    const t=["TOTAIS",""];
+    IND.forEach(i=>{ const M=somaInd(i.k+"M"), R=somaInd(i.k+"R"); t.push(nBR(Math.round(M*100)/100), nBR(Math.round(R*100)/100), pBR(R,M)); });
+    t.push(""); L.push(t);
+  }
+  baixar("equipe_"+(S.equipeMes||iso(hoje()).slice(0,7))+".csv", csv(L),"text/csv");
 }
 
 /* ---------------- exemplo preenchido ---------------- */
@@ -2259,10 +2419,20 @@ function carregarExemplo(){
   ];
   S.report = { mes:mes, ano:ano, leituras:{}, manter:["Reunião de segunda com a lista do BI na mão"], parar:["Meta semanal sem número — virou opinião em duas frentes"], comecar:["Meta diária de contatos por vendedor com acompanhamento no diário"], r1:"",r2:"",r3:"" };
   const nomes=["Ana Ribeiro","Bruno Castro","Carla Menezes","Diego Alves","Elaine Souza","Fábio Nunes","Gisele Prado","Heitor Lima","Iara Campos","João Vitor","Kelly Andrade","Lucas Ferraz","Marina Duarte","Nelson Braga","Otávio Reis","Paula Chagas","Rafael Tavares","Sônia Martins","Tiago Oliveira","Vitória Amaral"];
-  const ufs=["AM","AM","AM","PA","PA","PA","PA","RO","RO","AC","RR","AP","TO","AM","PA","RO","AM","PA","SP / fora do Norte","MG / fora do Norte"];
-  S.equipe = nomes.map((n,i)=>({ id:uid(), nome:n, uf:ufs[i],
-    meta: 180000 + (i%5)*20000, real: Math.round((180000+(i%5)*20000) * (0.55 + ((i*37)%50)/100)),
-    carteira: 30+(i*7)%40, posit: Math.max(3, Math.round((30+(i*7)%40) * (0.18+((i*13)%40)/100))), obs:"" }));
+  const ufs=["AM","AM","AM","PA","PA","PA","PA","RO","RO","AC","RR","AP","TO","AM","PA","RO","AM","PA","TO","RO"];
+  S.equipe = nomes.map((n,i)=>{
+    const f = 0.35 + ((i*37)%55)/100;
+    const pedM = [96,130,140,160,195,250,280][i%7];
+    const fatM = [400000,750000,1400000,1800000,2400000,3000000,3500000][i%7];
+    const intM = [20,30,35,50,60,61,70][i%7];
+    return { id:uid(), nome:n, uf:ufs[i],
+      pedM:pedM,  pedR:Math.round(pedM*f),
+      fatM:fatM,  fatR:Math.round(fatM*f*100)/100,
+      intM:intM,  intR:Math.round(intM*(f+0.12)),
+      novoM:[5,5,8,10][i%4], novoR:(i%3===0? (i%4===0?2:1) : 0),
+      belM:[5,7,8,10][i%4],  belR:(i%2===0? (i%5)+1 : 0),
+      obs:(i===3?"Território novo — base pequena":"") };
+  });
   S.equipeMes = iso(d).slice(0,7);
   salvarJa(); renderTudo(); irPara("painel");
   toast("Exemplo carregado — navegue pelas telas e depois substitua pelos seus dados");
@@ -2381,10 +2551,10 @@ function init(){
   $("#rp_print").addEventListener("click",()=>window.print());
 
   /* equipe */
-  $("#add_vend").addEventListener("click",()=>{ S.equipe.push({id:uid(),nome:"",uf:"",meta:null,real:null,carteira:null,posit:null,obs:""}); renderEquipe(); salvar(); });
+  $("#add_vend").addEventListener("click",()=>{ S.equipe.push(vendedorVazio()); renderEquipe(); salvar(); });
   $("#gerar_vend").addEventListener("click",()=>{
     if(S.equipe.length && !confirm("Já existem vendedores cadastrados. Adicionar mais 20 linhas em branco?")) return;
-    for(let i=0;i<20;i++) S.equipe.push({id:uid(),nome:"",uf:"",meta:null,real:null,carteira:null,posit:null,obs:""});
+    for(let i=0;i<20;i++) S.equipe.push(vendedorVazio());
     renderEquipe(); salvar();
   });
   $("#eq_mes").addEventListener("input",e=>{ S.equipeMes=e.target.value; salvar(); });
@@ -2392,6 +2562,7 @@ function init(){
   $("#eq_file").addEventListener("change",e=>{ if(e.target.files[0]) lerCSVEquipe(e.target.files[0]); e.target.value=""; });
   $("#eq_modelo").addEventListener("click",modeloCSVEquipe);
   $("#eq_export").addEventListener("click",csvEquipe);
+  $("#eq_ind").addEventListener("change",renderGraficoEquipe);
 
   /* analista */
   $("#btnDiag").addEventListener("click",()=>{ renderDiagnostico(); toast("Diagnóstico recalculado"); });
