@@ -1,5 +1,8 @@
 # Rotina de Gestão Comercial — 3 Camadas
 
+> Versão atual: **1.3 — equipe com 5 indicadores** (o número aparece no rodapé da barra
+> lateral do programa, para conferir qual arquivo está aberto).
+
 Aplicação web de arquivo único que transforma a planilha `Rotina_Gestao_Comercial_3_Camadas.xlsx`
 em um programa com cara de sistema, mantendo integralmente o método original e acrescentando
 uma camada de análise assistida.
@@ -37,6 +40,11 @@ As iniciativas do 5W2H continuam alimentando as frentes do diário e as linhas d
   **5 indicadores** (Pedidos, Faturamento, Integradores/positivação, Integrador novo e BelCred),
   cada um com meta, realizado e % calculado, mais a coluna **Observação / risco** e uma linha de
   TOTAIS recalculada. KPIs por indicador, ranking com seletor de indicador e cobertura por UF do Norte.
+  Os títulos das colunas são os da própria planilha de metas (`META PEDIDOS`, `REALIZADO PEDIDO`,
+  `%REAL PED`, `META FAT`, `REALIZADO FAT`, `% REAL FAT`, `META INT`, `REALIZADO INT`,
+  `% REALIZADO INT`, `META INTEGRADOR NOVO`, `REALIZADO INT NOVO`, `%REALIZADO INT NOVO`,
+  `META BELCRED`, `REALIZADO BELCRED`, `% REALIZADO BELCRED`), agrupados por indicador, com o nome
+  do vendedor congelado à esquerda e a linha de TOTAIS fixa no rodapé da tabela.
   Aceita **importação de base CSV**: reconhece os títulos da planilha original (incluindo variações
   como `RELIZADO PEDIDO` e `META INTEGRADOR NOVO`), ignora as colunas de `%` (recalcula) e a linha
   de `TOTAIS`, detecta o separador (`;`, `,` ou tabulação), entende número no formato brasileiro e
