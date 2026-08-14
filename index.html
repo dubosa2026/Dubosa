@@ -815,6 +815,7 @@ table.tbl td.act{width:34px;text-align:center}
           <li><b>Positivação</b> = quantos clientes da carteira do vendedor compraram no mês. É o indicador que separa vendedor de tirador de pedido.</li>
           <li><b>Carteira ativa</b> = integradores que compraram nos últimos 90 dias. A diferença entre carteira total e ativa é o seu campo de reativação.</li>
         </ul>
+        <p style="margin-top:9px"><b>Não digite tudo à mão:</b> exporte a base do seu BI/ERP em CSV e use <b>⬆ Importar base CSV</b>. O programa reconhece os títulos das colunas sozinho (Vendedor, UF, Meta, Realizado, Carteira, Positivados), aceita <code>;</code> ou <code>,</code> como separador e entende número no formato brasileiro (<code>R$ 180.000,00</code>). Se estiver em dúvida sobre o formato, baixe o modelo.</p>
       </div>
 
       <div class="kpis" id="kpiEquipe"></div>
@@ -823,11 +824,16 @@ table.tbl td.act{width:34px;text-align:center}
         <h2>Equipe comercial</h2>
         <p class="desc">Uma linha por vendedor. O ranking e os alertas são calculados a partir daqui.</p>
         <div class="btnrow" style="margin-bottom:12px">
-          <button class="btn primary" id="add_vend">+ Novo vendedor</button>
-          <button class="btn" id="gerar_vend">Gerar 20 linhas em branco</button>
+          <button class="btn primary" id="eq_import">⬆ Importar base CSV</button>
+          <button class="btn" id="eq_modelo">⬇ Baixar modelo da planilha</button>
+          <button class="btn" id="eq_export">⬇ Exportar CSV</button>
+          <button class="btn" id="add_vend">+ Novo vendedor</button>
+          <button class="btn" id="gerar_vend">20 linhas em branco</button>
+          <input type="file" id="eq_file" accept=".csv,.txt" hidden>
           <label style="font-size:12.5px;color:var(--ink-2);display:flex;align-items:center;gap:6px">Mês de referência:
             <input type="month" id="eq_mes" style="width:auto"></label>
         </div>
+        <div id="eq_preview"></div>
         <div class="tblwrap"><table class="tbl" id="tb_equipe" style="min-width:1080px">
           <thead><tr>
             <th style="min-width:150px">Vendedor</th><th style="width:130px">UF / região</th>
@@ -1535,6 +1541,173 @@ function renderCobertura(){
   if(fora) box.innerHTML += '<div class="hint" style="margin-top:12px">'+fora+' vendedor(es) com atuação fora do Norte. Isso é receita — mas confira se o custo de atendimento remoto está no preço.</div>';
 }
 
+/* --------- Importação de base CSV da equipe --------- */
+const CAMPOS_EQUIPE = [
+  {k:"nome",     rot:"Vendedor",        alias:["nome","vendedor","consultor","representante","colaborador","nome do vendedor","vendedor(a)"]},
+  {k:"uf",       rot:"UF / região",     alias:["uf","estado","regiao","territorio","praca","area"]},
+  {k:"meta",     rot:"Meta (R$)",       n:true, alias:["meta","meta do mes","meta (r$)","meta r$","meta mensal","meta de faturamento","meta venda","objetivo"]},
+  {k:"real",     rot:"Realizado (R$)",  n:true, alias:["realizado","realizado (r$)","realizado r$","realizado mes","resultado","resultados","venda","vendas","faturamento","realizado do mes"]},
+  {k:"carteira", rot:"Carteira total",  n:true, alias:["carteira","carteira total","clientes","base","total de clientes","clientes na carteira","qtd clientes"]},
+  {k:"posit",    rot:"Positivados",     n:true, alias:["positivados","clientes positivados","clientes ativos","ativos","compradores","positivacao"]},
+  {k:"obs",      rot:"Observação",      alias:["observacao","observacoes","obs","comentario","risco","nota"]}
+];
+const IGNORAR_COL = ["% da meta","%","percentual","% ating","% atingido","% positivacao","atingimento","indice"];
+
+function normal(t){
+  return String(t==null?"":t).normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .toLowerCase().replace(/\s+/g," ").replace(/[.:]+$/,"").trim();
+}
+function numBR(v){
+  if(v===null||v===undefined) return null;
+  let t = String(v).replace(/\s/g,"").replace(/r\$/gi,"").replace(/%/g,"").replace(/[^\d,.\-]/g,"");
+  if(!t || t==="-") return null;
+  const temV=t.includes(","), temP=t.includes(".");
+  if(temV&&temP) t = t.replace(/\./g,"").replace(",",".");
+  else if(temV)  t = t.replace(",",".");
+  else if(temP){ const ps=t.split("."); if(ps.length>2 || (ps[1] && ps[1].length===3)) t = ps.join(""); }
+  const n = parseFloat(t); return isFinite(n)?n:null;
+}
+function parseCSV(texto){
+  texto = String(texto).replace(/^\uFEFF/,"");
+  const prim = texto.split(/\r?\n/).find(l=>l.trim()) || "";
+  const conta = d => (prim.split(d).length-1);
+  const delim = [";","\t",","].sort((a,b)=>conta(b)-conta(a))[0];
+  const linhas=[]; let campo="", linha=[], aspas=false;
+  for(let i=0;i<texto.length;i++){
+    const c = texto[i];
+    if(aspas){
+      if(c === '"'){ if(texto[i+1] === '"'){ campo+='"'; i++; } else aspas=false; }
+      else campo += c;
+    }else{
+      if(c === '"') aspas = true;
+      else if(c === delim){ linha.push(campo); campo=""; }
+      else if(c === "\n"){ linha.push(campo); linhas.push(linha); linha=[]; campo=""; }
+      else if(c !== "\r") campo += c;
+    }
+  }
+  if(campo.length || linha.length){ linha.push(campo); linhas.push(linha); }
+  return { delim, linhas: linhas.filter(l=>l.some(c=>String(c).trim()!=="")) };
+}
+function mapearColunas(cabecalho){
+  const mapa={}, usados={}, naoRec=[];
+  cabecalho.forEach((titulo,i)=>{
+    const t = normal(titulo);
+    if(!t) return;
+    if(IGNORAR_COL.some(x=>t===x || t.startsWith("%"))){ return; }
+    const campo = CAMPOS_EQUIPE.find(c=>!usados[c.k] && (c.alias.includes(t) || c.alias.some(a=>t===a)));
+    let escolhido = campo;
+    if(!escolhido){ escolhido = CAMPOS_EQUIPE.find(c=>!usados[c.k] && c.alias.some(a=>t.startsWith(a+" ") || t.includes(a))); }
+    if(escolhido){ mapa[escolhido.k]=i; usados[escolhido.k]=true; }
+    else naoRec.push(titulo);
+  });
+  return { mapa, naoRec };
+}
+
+let _csvPend = null;
+function lerCSVEquipe(file){
+  const fr = new FileReader();
+  fr.onload = ()=>{
+    try{
+      const { delim, linhas } = parseCSV(fr.result);
+      if(linhas.length < 2) throw new Error("O arquivo não tem linhas de dados abaixo do cabeçalho.");
+      const { mapa, naoRec } = mapearColunas(linhas[0]);
+      if(mapa.nome === undefined)
+        throw new Error("Não encontrei a coluna com o nome do vendedor. O cabeçalho precisa ter uma coluna chamada Vendedor (ou Nome, Consultor, Representante). Baixe o modelo para conferir o formato.");
+      const regs = linhas.slice(1).map(l=>{
+        const o={id:uid()};
+        CAMPOS_EQUIPE.forEach(c=>{
+          const i = mapa[c.k];
+          if(i===undefined){ o[c.k] = c.n? null : ""; return; }
+          const bruto = l[i];
+          o[c.k] = c.n ? numBR(bruto) : String(bruto==null?"":bruto).trim();
+        });
+        return o;
+      }).filter(o=>String(o.nome||"").trim());
+      if(!regs.length) throw new Error("Nenhuma linha com nome de vendedor preenchido.");
+      _csvPend = { regs, mapa, naoRec, delim, arquivo:file.name };
+      renderPreviaCSV();
+    }catch(e){
+      _csvPend = null;
+      $("#eq_preview").innerHTML = '<div class="finding crit"><h4>Não consegui ler este arquivo</h4><p>'+esc(e.message||String(e))+
+        '</p><div class="do"><b>O que fazer:</b> salve a planilha como <b>CSV</b> (no Excel: Arquivo → Salvar como → CSV separado por vírgulas ou UTF-8) e confira se a primeira linha contém os títulos das colunas. O botão <b>Baixar modelo da planilha</b> gera um arquivo no formato certo.</div></div>';
+    }
+  };
+  fr.onerror = ()=>{ $("#eq_preview").innerHTML='<div class="finding crit"><h4>Falha ao abrir o arquivo</h4><p>Tente novamente ou salve o arquivo em outra pasta.</p></div>'; };
+  fr.readAsText(file, "UTF-8");
+}
+function renderPreviaCSV(){
+  const d=_csvPend; if(!d) return;
+  const reconhecidas = CAMPOS_EQUIPE.filter(c=>d.mapa[c.k]!==undefined);
+  const faltando = CAMPOS_EQUIPE.filter(c=>d.mapa[c.k]===undefined && c.k!=="obs");
+  const amostra = d.regs.slice(0,5);
+  const somaMeta = d.regs.reduce((s,r)=>s+(r.meta||0),0), somaReal = d.regs.reduce((s,r)=>s+(r.real||0),0);
+  $("#eq_preview").innerHTML =
+    '<div class="card" style="border-color:var(--accent);margin-top:12px">'+
+      '<h2>Conferir antes de importar</h2>'+
+      '<p class="desc">Arquivo <b>'+esc(d.arquivo)+'</b> · separador <code>'+esc(d.delim==="\t"?"tabulação":d.delim)+'</code> · <b>'+d.regs.length+' vendedor(es)</b> lido(s).'+
+      (somaMeta?' Meta somada: <b>'+fbrl(somaMeta)+'</b>.':"")+(somaReal?' Realizado somado: <b>'+fbrl(somaReal)+'</b>.':"")+'</p>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">'+
+        reconhecidas.map(c=>'<span class="badge b-verde"><span class="sig"></span>'+esc(c.rot)+"</span>").join("")+
+        faltando.map(c=>'<span class="badge b-neutro"><span class="sig"></span>'+esc(c.rot)+" — não veio</span>").join("")+
+        (d.naoRec.length? '<span class="badge b-amarelo"><span class="sig"></span>Colunas ignoradas: '+esc(d.naoRec.slice(0,4).join(", "))+"</span>" : "")+
+      "</div>"+
+      '<div class="tblwrap"><table class="tbl" style="min-width:700px"><thead><tr>'+
+        CAMPOS_EQUIPE.map(c=>"<th>"+esc(c.rot)+"</th>").join("")+"</tr></thead><tbody>"+
+        amostra.map(r=>"<tr>"+CAMPOS_EQUIPE.map(c=>'<td class="calc">'+
+          (c.n ? (c.k==="meta"||c.k==="real" ? fbrl(r[c.k]) : fnum(r[c.k])) : esc(r[c.k]||"—"))+"</td>").join("")+"</tr>").join("")+
+      "</tbody></table></div>"+
+      (d.regs.length>5? '<p class="desc" style="margin-top:8px">Mostrando as 5 primeiras de '+d.regs.length+" linhas.</p>":"")+
+      (faltando.some(c=>c.k==="meta"||c.k==="real")? '<div class="hint" style="border-left-color:var(--warn)"><b>Atenção:</b> o arquivo não trouxe '+
+        esc(faltando.filter(c=>c.k==="meta"||c.k==="real").map(c=>c.rot).join(" nem "))+
+        '. Sem esses números o ranking e os alertas de meta não funcionam — você pode completar à mão depois.</div>':"")+
+      '<div class="grid2" style="margin-top:14px">'+
+        '<label class="f"><span>Como importar</span><select id="eq_modo">'+
+          '<option value="substituir">Substituir a equipe atual ('+S.equipe.length+' cadastrado(s) serão apagados)</option>'+
+          '<option value="atualizar">Atualizar pelos nomes — mantém quem já existe e acrescenta os novos</option>'+
+          '<option value="acrescentar">Acrescentar todos como novos registros</option>'+
+        "</select></label>"+
+        '<label class="f"><span>&nbsp;</span><div class="btnrow">'+
+          '<button class="btn primary" id="eq_confirma">Confirmar importação</button>'+
+          '<button class="btn" id="eq_cancela">Cancelar</button></div></label>'+
+      "</div>"+
+    "</div>";
+  $("#eq_confirma").addEventListener("click",aplicarCSVEquipe);
+  $("#eq_cancela").addEventListener("click",()=>{ _csvPend=null; $("#eq_preview").innerHTML=""; });
+}
+function aplicarCSVEquipe(){
+  const d=_csvPend; if(!d) return;
+  const modo = $("#eq_modo").value;
+  let novos=0, atualizados=0;
+  if(modo==="substituir"){
+    if(S.equipe.length && !confirm("Isto apaga os "+S.equipe.length+" vendedor(es) já cadastrados e coloca os "+d.regs.length+" do arquivo no lugar. Confirma?")) return;
+    S.equipe = d.regs; novos = d.regs.length;
+  } else if(modo==="acrescentar"){
+    S.equipe = S.equipe.concat(d.regs); novos = d.regs.length;
+  } else {
+    d.regs.forEach(r=>{
+      const alvo = S.equipe.find(v=>normal(v.nome) && normal(v.nome)===normal(r.nome));
+      if(alvo){
+        ["uf","meta","real","carteira","posit","obs"].forEach(k=>{
+          const v = r[k];
+          if(v!==null && v!==undefined && v!=="") alvo[k]=v;
+        });
+        atualizados++;
+      } else { S.equipe.push(r); novos++; }
+    });
+  }
+  _csvPend=null; $("#eq_preview").innerHTML="";
+  renderEquipe(); salvarJa(); renderPainel();
+  toast(atualizados? atualizados+" atualizado(s) e "+novos+" novo(s) importado(s)" : novos+" vendedor(es) importado(s)");
+}
+function modeloCSVEquipe(){
+  const L=[CAMPOS_EQUIPE.map(c=>c.rot)];
+  L.push(["Ana Ribeiro","AM","180000","162000","38","11","Carteira concentrada em 2 clientes"]);
+  L.push(["Bruno Castro","PA","200000","131000","46","9",""]);
+  L.push(["Carla Menezes","RO","180000","190500","33","15",""]);
+  baixar("modelo-base-equipe.csv", csv(L), "text/csv");
+  toast("Modelo baixado — preencha no Excel, salve como CSV e importe");
+}
+
 /* --------- Painel --------- */
 function renderPainel(){
   const box=$("#kpiRow"); if(!box) return;
@@ -2215,6 +2388,10 @@ function init(){
     renderEquipe(); salvar();
   });
   $("#eq_mes").addEventListener("input",e=>{ S.equipeMes=e.target.value; salvar(); });
+  $("#eq_import").addEventListener("click",()=>$("#eq_file").click());
+  $("#eq_file").addEventListener("change",e=>{ if(e.target.files[0]) lerCSVEquipe(e.target.files[0]); e.target.value=""; });
+  $("#eq_modelo").addEventListener("click",modeloCSVEquipe);
+  $("#eq_export").addEventListener("click",csvEquipe);
 
   /* analista */
   $("#btnDiag").addEventListener("click",()=>{ renderDiagnostico(); toast("Diagnóstico recalculado"); });

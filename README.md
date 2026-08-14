@@ -34,7 +34,11 @@ As iniciativas do 5W2H continuam alimentando as frentes do diário e as linhas d
   - *Análise com IA* — monta um dossiê completo da operação. Copie e cole em qualquer assistente,
     ou conecte uma chave da API Anthropic para receber a leitura dentro do próprio programa.
 - **Equipe & carteira** — 20 vendedores, ranking por % da meta, positivação, concentração de
-  receita e cobertura das UFs do Norte.
+  receita e cobertura das UFs do Norte. Aceita **importação de base CSV** exportada do BI/ERP:
+  reconhece os títulos das colunas automaticamente (Vendedor, UF, Meta, Realizado, Carteira,
+  Positivados e seus sinônimos), detecta o separador (`;`, `,` ou tabulação), entende número no
+  formato brasileiro (`R$ 180.000,00`) e mostra uma prévia com o mapeamento antes de gravar.
+  Três modos: substituir, atualizar pelos nomes ou acrescentar. Há um modelo de planilha para baixar.
 - **Biblioteca do setor fotovoltaico** — sugestões prontas de SWOT, KRs e iniciativas específicas
   de distribuição B2B para integradores (giro de estoque, prazo de entrega, crédito do canal,
   venda direta do fabricante, parecer de acesso, positivação, share of wallet).
