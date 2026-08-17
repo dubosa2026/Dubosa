@@ -73,15 +73,50 @@ Na primeira vez que você usa o app não há com o que comparar — a etapa 4
 avisa isso e guarda a rodada como referência. O funil aparece a partir da
 segunda base carregada.
 
-O ponto de comparação é sempre a última rodada distribuída. Se você
-distribuir duas vezes a mesma base, o funil acusa zero conversões (correto:
-nada mudou entre uma leitura e outra).
+### Quando o funil se recusa a dar um número
 
-A rodada de distribuição e a de "sem compras no mês" saem de bases
-diferentes, com categorias diferentes. Comparar uma com a outra daria um
-número sem significado, então nesse caso o funil não é calculado e a etapa 4
-explica o motivo — a rodada vira a nova referência e o aproveitamento volta
-quando você repetir o mesmo tipo.
+Cada cliente da rodada anterior tem um de três destinos: **converteu**,
+**segue em aberto**, ou **saiu da base**. Os três somados dão a carteira, e é
+esse terceiro que decide se a conta faz sentido.
+
+- **Mais de um terço saiu da base** → as duas exportações não falam dos
+  mesmos clientes (filtro de estado, de gerente ou de período diferente). O
+  funil não é calculado; a tela diz quantos saíram e por quê. Sem isso, o app
+  dividia 0 por 573 e mostrava "0% de aproveitamento", como se a equipe
+  tivesse falhado.
+- **Mesma base carregada duas vezes** → entre duas leituras do mesmo arquivo
+  não houve período nenhum. O app reconhece o arquivo pela impressão digital
+  dos clientes e categorias, e avisa em vez de reportar 0%.
+- **Tipos de rodada diferentes** (distribuição × sem compras no mês) → bases e
+  categorias diferentes, comparação sem significado.
+
+Nos três casos a rodada **não entra no histórico**, para não sujar a série
+com zeros falsos, e a rodada vira a nova referência — o aproveitamento volta
+na próxima base compatível.
+
+## Histórico de conversão por estado
+
+Toda rodada com comparação válida vira uma linha do histórico, guardada no
+navegador. Na etapa 4, escolha o estado e veja a série ao longo do tempo:
+
+- **Equipe toda** ou qualquer estado do Norte que já tenha rodada registrada.
+- Quatro números: taxa da última rodada, acumulado do período, total de
+  clientes reativados e a melhor rodada até hoje.
+- Um gráfico com uma barra por rodada, colorida pela faixa da taxa (verde
+  ≥12%, amarelo ≥6%, vermelho abaixo), e a tabela completa embaixo.
+- A **tendência**: a última rodada comparada com a média das anteriores, para
+  separar melhora real de oscilação.
+
+É esse recorte que mostra o resultado do trabalho. Uma taxa solta não diz
+nada; PA saindo de 4,9% para 20,0% em três rodadas, sim.
+
+O botão **Copiar histórico** exporta a série do estado escolhido para colar
+numa planilha. **Limpar** apaga tudo e pede confirmação, porque não tem
+como voltar.
+
+Duas limitações que valem saber: o histórico fica **no navegador** onde você
+usa o app — não é compartilhado entre computadores, e limpar os dados do
+navegador apaga a série. E ele guarda as **60 rodadas mais recentes**.
 
 ## Análises do dia
 
@@ -90,6 +125,16 @@ acontecendo e o que fazer a respeito: quem se destacou, quem está com
 carteira cheia e nenhuma conversão, qual estado converte melhor, onde está o
 dinheiro parado, se a carga entre UFs ficou desigual, qual estado vale
 atacar e o que precisa ser corrigido na origem dos dados.
+
+Três regras evitam análise incoerente:
+
+- **Destaque exige conversão de verdade** — pelo menos um cliente reativado e
+  taxa acima da média da equipe. Antes, com todos em 0%, o primeiro da fila
+  virava "destaque" sem ter convertido ninguém.
+- **Quem zerou fica fora do destaque e do "abaixo da média"** — sem isso o
+  mesmo vendedor aparecia elogiado num cartão e cobrado no seguinte.
+- **Valores em dinheiro só aparecem quando existem** — base sem coluna de
+  faturamento não gera frases com "R$ 0".
 
 Cada análise vem com uma ação sugerida. O botão **Copiar para a equipe**
 joga tudo em texto, pronto para colar no grupo.
@@ -255,5 +300,11 @@ Depois de mexer em qualquer um deles:
 ```bash
 python3 app/build_app.py
 ```
+
+`app/testes_historico.py` (precisa de Playwright) percorre o funil e o
+histórico pelo navegador: gera bases com taxa de conversão conhecida, roda
+várias rodadas em sequência e confere que a série por estado bate com o
+que foi injetado, que a mesma base repetida é recusada e que bases sem
+cliente em comum não produzem número nem entram no histórico.
 
 Isso regenera `belenergy-distribuicao.html` com tudo embutido.

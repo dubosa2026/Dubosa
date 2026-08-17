@@ -349,6 +349,36 @@ select{max-width:260px;}
 .fbar{height:6px;background:var(--panel-3);border-radius:99px;overflow:hidden;}
 .fbar i{display:block;height:100%;border-radius:99px;background:var(--ok);}
 
+/* ---------------- historico por estado ---------------- */
+.pick .rd{display:inline-flex;align-items:center;gap:8px;}
+.hbars{
+  display:flex;align-items:flex-end;gap:6px;height:132px;
+  padding:12px 10px 0;background:var(--panel-2);border:1px solid var(--line);
+  border-radius:8px;overflow-x:auto;margin-bottom:16px;
+}
+.hbar{
+  flex:1 0 34px;min-width:34px;display:flex;flex-direction:column;
+  align-items:center;justify-content:flex-end;height:100%;gap:6px;
+}
+.hbar i{
+  display:block;width:100%;border-radius:4px 4px 0 0;background:var(--y);
+  min-height:3px;transition:background .14s;
+}
+.hbar[data-lvl="bom"] i{background:var(--ok);}
+.hbar[data-lvl="ruim"] i{background:var(--no);}
+.hbar b{
+  font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text-2);
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.hbar span{
+  font-family:var(--mono);font-size:9px;color:var(--text-3);white-space:nowrap;
+}
+.hbar:hover i{background:var(--y-hi);}
+.trend{font-family:var(--mono);font-size:12px;font-weight:600;}
+.trend[data-d="sobe"]{color:var(--ok);}
+.trend[data-d="desce"]{color:var(--no);}
+.trend[data-d="igual"]{color:var(--text-3);}
+
 /* ---------------- insights ---------------- */
 .insight{
   border:1px solid var(--line);border-left:3px solid var(--line-2);border-radius:8px;
@@ -678,6 +708,21 @@ select{max-width:260px;}
     <p class="sub" id="perfSub"></p>
 
     <div id="funil"></div>
+
+    <div class="panel" id="histPanel">
+      <div class="panel-head">
+        <h3>Histórico de conversão</h3>
+        <div class="btn-row">
+          <button class="btn btn-sm" id="copyHist">Copiar histórico</button>
+          <button class="btn btn-sm btn-ghost" id="limparHist">Limpar</button>
+        </div>
+      </div>
+      <div class="sub-block">
+        <span class="lbl">Estado</span>
+        <div id="histUfs" class="pick"></div>
+      </div>
+      <div id="histConteudo"></div>
+    </div>
 
     <div class="panel">
       <div class="panel-head">
@@ -1302,6 +1347,21 @@ function distribuir(records, headers, equipe, opts) {
 
 /* Fotografia da rodada: quem ficou com cada cliente e em que situacao ele
    estava. E o que permite, na base seguinte, saber quem conseguiu ativar. */
+/* Impressao digital da base: mesma lista de clientes com as mesmas
+   categorias produz a mesma assinatura. Serve para reconhecer que o arquivo
+   carregado e o MESMO da rodada anterior -- nesse caso nao existe periodo
+   entre as duas leituras, e medir conversao ali nao significa nada. */
+function assinaturaBase(byKey) {
+  var partes = Object.keys(byKey).sort().map(function (k) {
+    return k + ':' + byKey[k].cat;
+  }).join('|');
+  var h = 5381;
+  for (var i = 0; i < partes.length; i++) {
+    h = ((h * 33) ^ partes.charCodeAt(i)) >>> 0;
+  }
+  return h.toString(36) + '-' + Object.keys(byKey).length;
+}
+
 function montarSnapshot(result, records, headers) {
   var byKey = {};
   result.atribuidos.forEach(function (row) {
@@ -1318,6 +1378,7 @@ function montarSnapshot(result, records, headers) {
     ts: Date.now(),
     modo: result.modo || 'normal',
     total: Object.keys(byKey).length,
+    assinatura: assinaturaBase(byKey),
     byKey: byKey
   };
 }
@@ -1343,6 +1404,12 @@ function analisarFunil(records, headers, result, snapshot) {
     var k = clientKey(row, headers);
     if (k) atual[k] = row;
   });
+
+  // Rodar duas vezes o mesmo arquivo nao e um periodo: seria sempre 0%.
+  if (snapshot.assinatura && result.assinaturaAtual &&
+      snapshot.assinatura === result.assinaturaAtual) {
+    return { mesmaBase: true, desde: snapshot.ts };
+  }
 
   var porVendedor = {}, porUf = {};
   var convertidos = [], perdidosDeVista = 0, aindaAbertos = 0;
@@ -1390,6 +1457,15 @@ function analisarFunil(records, headers, result, snapshot) {
   var totalConv = vendedores.reduce(function (a, v) { return a + v.conversoes; }, 0);
   var totalValor = vendedores.reduce(function (a, v) { return a + v.valor; }, 0);
 
+  /* Cada cliente da rodada anterior teve um de tres destinos: converteu,
+     segue em aberto, ou sumiu da base nova. Se quase todos sumiram, as duas
+     bases nao falam dos mesmos clientes e dividir conversoes pela carteira
+     produz um numero sem significado -- foi assim que o app ja mostrou
+     "0% de aproveitamento" quando na verdade nao havia o que comparar. */
+  var fracaoSumida = totalCarteira ? perdidosDeVista / totalCarteira : 1;
+  var LIMITE_SUMIDOS = 1 / 3;
+  var confiavel = totalCarteira > 0 && fracaoSumida <= LIMITE_SUMIDOS;
+
   return {
     desde: snapshot.ts,
     vendedores: vendedores,
@@ -1400,6 +1476,9 @@ function analisarFunil(records, headers, result, snapshot) {
     totalValor: totalValor,
     taxaGeral: totalCarteira ? totalConv / totalCarteira : 0,
     perdidosDeVista: perdidosDeVista,
+    fracaoSumida: fracaoSumida,
+    confiavel: confiavel,
+    temValor: !!result.colValor && totalValor > 0,
     aindaAbertos: aindaAbertos
   };
 }
@@ -1527,7 +1606,10 @@ function pct(x) { return (x * 100).toFixed(1).replace('.', ',') + '%'; }
 
 function gerarInsights(result, funil) {
   var out = [];
-  if (funil && funil.incompativel) funil = null;   // rodadas nao comparaveis
+  // Rodadas nao comparaveis, mesma base repetida ou comparacao sem clientes
+  // em comum nao produzem numero de desempenho: as analises que dependem do
+  // funil ficam fora, em vez de sair um "0%" que culpa a equipe a toa.
+  if (funil && (funil.incompativel || funil.mesmaBase || !funil.confiavel)) funil = null;
   var colVal = result.colValor, colCat = result.colCategoria, colUf = result.colUf;
   var colInteg = findCol(result.headers, 'Integrador (CLI - Nome)') || findCol(result.headers, 'Integrador');
   var colCidade = findCol(result.headers, 'Cidade');
@@ -1541,8 +1623,12 @@ function gerarInsights(result, funil) {
     add(funil.taxaGeral >= 0.12 ? 'bom' : (funil.taxaGeral >= 0.06 ? 'neutro' : 'ruim'),
       'Aproveitamento do período: ' + pct(funil.taxaGeral),
       fmtInt(funil.totalConversoes) + ' de ' + fmtInt(funil.totalCarteira) +
-      ' clientes trabalhados voltaram a comprar, somando ' + fmtMoney(funil.totalValor) +
-      ' em faturamento reativado. Outros ' + fmtInt(funil.aindaAbertos) + ' seguem em aberto.',
+      ' clientes trabalhados voltaram a comprar' +
+      (funil.temValor ? ', somando ' + fmtMoney(funil.totalValor) + ' em faturamento reativado' : '') +
+      '. Outros ' + fmtInt(funil.aindaAbertos) + ' seguem em aberto' +
+      (funil.perdidosDeVista
+        ? ' e ' + fmtInt(funil.perdidosDeVista) + ' saíram da base.'
+        : '.'),
       funil.taxaGeral < 0.06
         ? 'Taxa baixa. Antes de distribuir de novo, cobre da equipe o registro do contato: carteira grande com pouca conversão costuma ser falta de tentativa, não falta de cliente.'
         : 'Use os convertidos como prova social na abordagem dos que seguem parados — mesma região, mesmo perfil.');
@@ -1550,26 +1636,34 @@ function gerarInsights(result, funil) {
 
   if (funil && funil.vendedores.length >= 3) {
     var elegiveis = funil.vendedores.filter(function (v) { return v.carteira >= 15; });
+    var travados = elegiveis.filter(function (v) { return v.conversoes === 0; });
+    // Quem zerou sai da disputa de destaque: sem isso o mesmo vendedor
+    // aparecia como "Destaque" e, logo abaixo, entre os que nao converteram.
+    var converteram = elegiveis.filter(function (v) { return v.conversoes > 0; });
 
     /* --- 2. destaque --- */
-    if (elegiveis.length) {
-      var top = elegiveis[0];
-      add('bom', 'Destaque: ' + top.vendedor,
-        'Converteu ' + fmtInt(top.conversoes) + ' de ' + fmtInt(top.carteira) +
-        ' clientes (' + pct(top.taxa) + ') em ' + top.uf + ', trazendo ' + fmtMoney(top.valor) + '.',
-        'Peça para ' + top.vendedor.split(' ')[0] + ' descrever a abordagem numa reunião de 15 min. O que funciona em ' +
-        top.uf + ' costuma funcionar nas outras UFs do Norte.');
+    if (converteram.length) {
+      var top = converteram[0];
+      // So e destaque quem converteu de verdade e ficou acima da media.
+      if (top.taxa > funil.taxaGeral) {
+        add('bom', 'Destaque: ' + top.vendedor,
+          'Converteu ' + fmtInt(top.conversoes) + ' de ' + fmtInt(top.carteira) +
+          ' clientes (' + pct(top.taxa) + ') em ' + top.uf +
+          (top.valor > 0 ? ', trazendo ' + fmtMoney(top.valor) : '') + '. ' +
+          'A média da equipe no período foi ' + pct(funil.taxaGeral) + '.',
+          'Peça para ' + top.vendedor.split(' ')[0] + ' descrever a abordagem numa reunião de 15 min ' +
+          'e leve o roteiro para os outros estados.');
+      }
     }
 
     /* --- 3. quem precisa de apoio --- */
-    var travados = elegiveis.filter(function (v) { return v.conversoes === 0; });
     if (travados.length) {
       add('ruim', fmtInt(travados.length) + (travados.length === 1 ? ' vendedor sem nenhuma conversão' : ' vendedores sem nenhuma conversão'),
         travados.map(function (v) { return v.vendedor + ' (' + v.carteira + ' clientes, ' + v.uf + ')'; }).join(' · ') +
         '. Carteira cheia e nenhum cliente reativado no período.',
         'Acompanhe uma ligação de cada um ainda esta semana. Se a carteira estiver sendo trabalhada e mesmo assim não converte, o problema é abordagem ou preço — não volume.');
-    } else if (elegiveis.length >= 4) {
-      var ultimo = elegiveis[elegiveis.length - 1];
+    } else if (converteram.length >= 4) {
+      var ultimo = converteram[converteram.length - 1];
       var media = funil.taxaGeral;
       if (ultimo.taxa < media * 0.5) {
         add('neutro', 'Abaixo da média: ' + ultimo.vendedor,
@@ -1663,6 +1757,106 @@ function gerarInsights(result, funil) {
   }
 
   return out;
+}
+
+/* ==================================================================
+   HISTORICO DE CONVERSAO POR ESTADO
+
+   Cada rodada com comparacao valida vira uma linha do historico. O que
+   interessa acompanhar ao longo do tempo e a taxa de cada estado do Norte:
+   se PA melhorou de 9% para 14%, isso e o resultado do trabalho; um numero
+   solto de uma rodada nao diz nada sozinho.
+
+   Rodada nao confiavel (bases sem cliente em comum) e rodada repetida com
+   o mesmo arquivo NAO entram: poluiriam a serie com zeros falsos.
+   ================================================================== */
+
+var MAX_RODADAS_HISTORICO = 60;
+
+function novaEntradaHistorico(funil, result, origem) {
+  return {
+    ts: funil.desde ? Date.now() : Date.now(),
+    modo: result.modo || 'normal',
+    origem: origem || '',
+    totalCarteira: funil.totalCarteira,
+    totalConversoes: funil.totalConversoes,
+    totalValor: funil.totalValor,
+    temValor: !!funil.temValor,
+    taxaGeral: funil.taxaGeral,
+    ufs: funil.ufs.map(function (u) {
+      return { uf: u.uf, carteira: u.carteira, conversoes: u.conversoes, valor: u.valor, taxa: u.taxa };
+    }),
+    vendedores: funil.vendedores.map(function (v) {
+      return { vendedor: v.vendedor, uf: v.uf, carteira: v.carteira,
+               conversoes: v.conversoes, valor: v.valor, taxa: v.taxa };
+    })
+  };
+}
+
+/** Rodada que merece entrar na serie historica. */
+function rodadaHistoriavel(funil) {
+  return !!(funil && !funil.incompativel && !funil.mesmaBase &&
+            funil.confiavel && funil.totalCarteira > 0);
+}
+
+/** Serie de um estado ao longo das rodadas. uf vazio = a equipe toda. */
+function serieDoEstado(historico, uf) {
+  return historico.map(function (r) {
+    if (!uf) {
+      return { ts: r.ts, modo: r.modo, origem: r.origem, temValor: r.temValor,
+               carteira: r.totalCarteira, conversoes: r.totalConversoes,
+               valor: r.totalValor, taxa: r.taxaGeral };
+    }
+    var achado = (r.ufs || []).filter(function (u) { return u.uf === uf; })[0];
+    if (!achado) return null;
+    return { ts: r.ts, modo: r.modo, origem: r.origem, temValor: r.temValor,
+             carteira: achado.carteira, conversoes: achado.conversoes,
+             valor: achado.valor, taxa: achado.taxa };
+  }).filter(Boolean);
+}
+
+/** Estados presentes no historico, na ordem da Regiao Norte. */
+function estadosDoHistorico(historico) {
+  var vistos = {};
+  historico.forEach(function (r) {
+    (r.ufs || []).forEach(function (u) { vistos[u.uf] = (vistos[u.uf] || 0) + 1; });
+  });
+  return REGIAO_NORTE.filter(function (uf) { return vistos[uf]; })
+    .map(function (uf) { return { uf: uf, rodadas: vistos[uf] }; })
+    .concat(Object.keys(vistos)
+      .filter(function (uf) { return REGIAO_NORTE.indexOf(uf) === -1; })
+      .sort()
+      .map(function (uf) { return { uf: uf, rodadas: vistos[uf] }; }));
+}
+
+/** Resumo de uma serie: melhor, pior, media ponderada e tendencia. */
+function resumoDaSerie(serie) {
+  if (!serie.length) return null;
+  var carteira = serie.reduce(function (a, r) { return a + r.carteira; }, 0);
+  var conversoes = serie.reduce(function (a, r) { return a + r.conversoes; }, 0);
+  var valor = serie.reduce(function (a, r) { return a + r.valor; }, 0);
+  var taxas = serie.map(function (r) { return r.taxa; });
+
+  // Tendencia: ultima rodada contra a media das anteriores.
+  var ultima = serie[serie.length - 1];
+  var anteriores = serie.slice(0, -1);
+  var mediaAnterior = anteriores.length
+    ? anteriores.reduce(function (a, r) { return a + r.taxa; }, 0) / anteriores.length
+    : null;
+
+  return {
+    rodadas: serie.length,
+    carteira: carteira,
+    conversoes: conversoes,
+    valor: valor,
+    temValor: serie.some(function (r) { return r.temValor; }) && valor > 0,
+    taxaAcumulada: carteira ? conversoes / carteira : 0,
+    melhor: Math.max.apply(null, taxas),
+    pior: Math.min.apply(null, taxas),
+    ultima: ultima.taxa,
+    mediaAnterior: mediaAnterior,
+    variacao: mediaAnterior === null ? null : ultima.taxa - mediaAnterior
+  };
 }
 
 /* ==================================================================
@@ -2024,11 +2218,20 @@ $('run').addEventListener('click', function () {
 
     state.result = distribuir(state.records, state.headers, equipe, opts);
 
+    // A assinatura precisa existir antes da comparacao: e ela que denuncia
+    // que o arquivo carregado e o mesmo da rodada anterior.
+    var snapAtual = montarSnapshot(state.result, state.records, state.headers);
+    state.result.assinaturaAtual = snapAtual.assinatura;
+
     // compara a base nova com a fotografia da rodada anterior ANTES de sobrescrever
     state.funil = analisarFunil(state.records, state.headers, state.result, anterior);
     state.insights = gerarInsights(state.result, state.funil);
 
-    salvarSnapshot(montarSnapshot(state.result, state.records, state.headers));
+    if (rodadaHistoriavel(state.funil)) {
+      gravarHistorico(novaEntradaHistorico(state.funil, state.result, state.origem));
+    }
+
+    salvarSnapshot(snapAtual);
 
     $('s2').setAttribute('data-done', '1');
     $('s3').disabled = false;
@@ -2233,6 +2436,31 @@ function renderDesempenho() {
   var hoje = new Date();
   $('dataHoje').textContent = hoje.toLocaleDateString('pt-BR');
 
+  if (f && f.mesmaBase) {
+    $('perfSub').innerHTML =
+      'Esta é a <strong>mesma base</strong> da rodada anterior — mesmos clientes, mesmas ' +
+      'categorias. Entre duas leituras do mesmo arquivo não houve período nenhum, então não ' +
+      'há conversão a medir. Carregue a exportação seguinte do BI para ver o aproveitamento.';
+    $('funil').innerHTML = '';
+    renderHistorico();
+    renderInsights();
+    return;
+  }
+
+  if (f && !f.incompativel && !f.confiavel) {
+    $('perfSub').innerHTML =
+      '<strong>As duas bases não falam dos mesmos clientes.</strong> Dos ' +
+      fmtInt(f.totalCarteira) + ' clientes da rodada anterior, ' +
+      fmtInt(f.perdidosDeVista) + ' (' + pct(f.fracaoSumida) + ') não aparecem na base de agora. ' +
+      'Calcular aproveitamento em cima disso daria um número sem significado, então o funil ' +
+      'fica de fora desta vez. Normalmente é sinal de que as duas exportações usaram filtros ' +
+      'diferentes — de estado, de gerente ou de período.';
+    $('funil').innerHTML = '';
+    renderHistorico();
+    renderInsights();
+    return;
+  }
+
   if (f && f.incompativel) {
     var nomes = { carteira: 'sem compras no mês', normal: 'distribuição', ataque: 'distribuição' };
     $('perfSub').innerHTML =
@@ -2242,6 +2470,7 @@ function renderDesempenho() {
       'daria um número sem significado — o funil fica de fora desta vez. ' +
       'Esta rodada virou a nova referência: repita o mesmo tipo na próxima base para ver o aproveitamento.';
     $('funil').innerHTML = '';
+    renderHistorico();
     renderInsights();
     return;
   }
@@ -2319,6 +2548,7 @@ function renderDesempenho() {
     });
   }
 
+  renderHistorico();
   renderInsights();
 }
 
@@ -2544,6 +2774,167 @@ function renderLinks(prontos, falhas) {
     }), ['Vendedor', 'Clientes', 'Link']), todos, null);
   });
 }
+
+/* ---------- HISTORICO DE CONVERSAO POR ESTADO ---------- */
+
+var HIST_KEY = 'belenergy-historico-v1';
+var histUfEscolhida = '';   // '' = a equipe toda
+
+function lerHistorico() {
+  try {
+    var raw = localStorage.getItem(HIST_KEY);
+    var lista = raw ? JSON.parse(raw) : [];
+    return Array.isArray(lista) ? lista : [];
+  } catch (e) { return []; }
+}
+
+function gravarHistorico(entrada) {
+  try {
+    var lista = lerHistorico();
+    lista.push(entrada);
+    // Mantem a serie limitada: o navegador tem espaco finito e as rodadas
+    // antigas deixam de importar depois de alguns meses.
+    if (lista.length > MAX_RODADAS_HISTORICO) {
+      lista = lista.slice(lista.length - MAX_RODADAS_HISTORICO);
+    }
+    localStorage.setItem(HIST_KEY, JSON.stringify(lista));
+  } catch (e) { /* armazenamento cheio ou indisponivel */ }
+}
+
+function dataCurta(ts) {
+  var d = new Date(ts);
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+}
+
+function renderHistorico() {
+  var historico = lerHistorico();
+  var alvoUfs = $('histUfs');
+  var alvo = $('histConteudo');
+
+  if (!historico.length) {
+    alvoUfs.innerHTML = '<span class="pick-empty">Nenhuma rodada registrada ainda.</span>';
+    alvo.innerHTML =
+      '<p class="hint">O histórico começa na primeira comparação válida entre duas bases ' +
+      'diferentes. Rodadas repetidas com o mesmo arquivo, ou bases que não têm cliente em ' +
+      'comum, ficam de fora para não sujar a série com zeros falsos.</p>';
+    return;
+  }
+
+  // seletor de estado
+  var estados = estadosDoHistorico(historico);
+  if (histUfEscolhida && !estados.some(function (e) { return e.uf === histUfEscolhida; })) {
+    histUfEscolhida = '';
+  }
+  alvoUfs.innerHTML =
+    '<label class="rd"><input type="radio" name="histUf" value=""' +
+      (histUfEscolhida === '' ? ' checked' : '') + '>' +
+      '<span>Equipe toda</span><span class="n">' + historico.length + '</span></label>' +
+    estados.map(function (e) {
+      return '<label class="rd"><input type="radio" name="histUf" value="' + escapeHtml(e.uf) + '"' +
+        (histUfEscolhida === e.uf ? ' checked' : '') + '>' +
+        '<span>' + escapeHtml(e.uf) + '</span><span class="n">' + e.rodadas + '</span></label>';
+    }).join('');
+
+  alvoUfs.querySelectorAll('input[name="histUf"]').forEach(function (i) {
+    i.addEventListener('change', function () {
+      histUfEscolhida = i.value;
+      renderHistorico();
+    });
+  });
+
+  var serie = serieDoEstado(historico, histUfEscolhida);
+  var r = resumoDaSerie(serie);
+  var rotulo = histUfEscolhida || 'a equipe toda';
+
+  if (!serie.length) {
+    alvo.innerHTML = '<p class="empty">Sem rodadas registradas para ' + escapeHtml(rotulo) + '.</p>';
+    return;
+  }
+
+  // cartoes de resumo
+  var seta = r.variacao === null ? '' :
+    (r.variacao > 0.005 ? 'sobe' : (r.variacao < -0.005 ? 'desce' : 'igual'));
+  var tendencia = r.variacao === null
+    ? '<span class="trend" data-d="igual">primeira rodada</span>'
+    : '<span class="trend" data-d="' + seta + '">' +
+        (seta === 'sobe' ? '▲ ' : seta === 'desce' ? '▼ ' : '= ') +
+        pct(Math.abs(r.variacao)) + '</span>';
+
+  var cards =
+    '<div class="funil-grid">' +
+      '<div class="stat" data-t="go"><b>' + pct(r.ultima) + '</b><span>última rodada</span></div>' +
+      '<div class="stat" data-t="hold"><b>' + pct(r.taxaAcumulada) + '</b><span>acumulado do período</span></div>' +
+      '<div class="stat" data-t="go"><b>' + fmtInt(r.conversoes) + '</b><span>clientes reativados</span></div>' +
+      '<div class="stat" data-t="hold"><b>' + pct(r.melhor) + '</b><span>melhor rodada</span></div>' +
+    '</div>';
+
+  // grafico: uma barra por rodada, altura proporcional a taxa
+  var maxTaxa = Math.max(r.melhor, 0.01);
+  var barras = '<div class="hbars">' + serie.map(function (p) {
+    var altura = Math.max(3, Math.round(p.taxa / maxTaxa * 88));
+    return '<div class="hbar" data-lvl="' + nivelTaxa(p.taxa) + '" ' +
+      'title="' + escapeHtml(dataCurta(p.ts) + ' — ' + p.conversoes + ' de ' + p.carteira) + '">' +
+      '<b>' + pct(p.taxa).replace(',0%', '%') + '</b>' +
+      '<i style="height:' + altura + '%"></i>' +
+      '<span>' + dataCurta(p.ts) + '</span>' +
+    '</div>';
+  }).join('') + '</div>';
+
+  // tabela, da rodada mais recente para a mais antiga
+  var linhas = serie.slice().reverse().map(function (p) {
+    return '<tr>' +
+      '<td>' + escapeHtml(new Date(p.ts).toLocaleDateString('pt-BR')) + '</td>' +
+      '<td>' + escapeHtml(p.modo === 'carteira' ? 'sem compras no mês' : 'distribuição') + '</td>' +
+      '<td class="num">' + fmtInt(p.carteira) + '</td>' +
+      '<td class="num">' + fmtInt(p.conversoes) + '</td>' +
+      '<td class="num">' + pct(p.taxa) + '</td>' +
+      (r.temValor ? '<td class="num">' + fmtMoney(p.valor) + '</td>' : '') +
+    '</tr>';
+  }).join('');
+
+  alvo.innerHTML =
+    '<p class="sub" style="margin-bottom:16px;">' +
+      '<strong>' + escapeHtml(histUfEscolhida || 'Equipe toda') + '</strong> — ' +
+      fmtInt(r.rodadas) + (r.rodadas === 1 ? ' rodada registrada' : ' rodadas registradas') +
+      ', ' + fmtInt(r.conversoes) + ' de ' + fmtInt(r.carteira) + ' clientes reativados. ' +
+      'Última rodada contra a média das anteriores: ' + tendencia +
+    '</p>' +
+    cards + barras +
+    '<div class="tablewrap"><table><thead><tr>' +
+      '<th>Data</th><th>Tipo</th><th>Carteira</th><th>Reativados</th><th>Taxa</th>' +
+      (r.temValor ? '<th>Faturamento</th>' : '') +
+    '</tr></thead><tbody>' + linhas + '</tbody></table></div>';
+}
+
+$('copyHist').addEventListener('click', function () {
+  var serie = serieDoEstado(lerHistorico(), histUfEscolhida);
+  if (!serie.length) { toast('Nada no histórico ainda'); return; }
+  var rows = serie.map(function (p) {
+    return {
+      Data: new Date(p.ts).toLocaleDateString('pt-BR'),
+      Estado: histUfEscolhida || 'TODOS',
+      Tipo: p.modo === 'carteira' ? 'sem compras no mês' : 'distribuição',
+      Carteira: p.carteira,
+      Reativados: p.conversoes,
+      Taxa: pct(p.taxa),
+      Faturamento: p.valor
+    };
+  });
+  copyText(toTSV(rows, ['Data', 'Estado', 'Tipo', 'Carteira', 'Reativados', 'Taxa', 'Faturamento']),
+    $('copyHist'), null);
+});
+
+$('limparHist').addEventListener('click', function () {
+  var n = lerHistorico().length;
+  if (!n) { toast('Histórico já está vazio'); return; }
+  // Apagar e irreversivel: confirma antes.
+  if (!confirm('Apagar as ' + n + ' rodadas do histórico?\n\nIsso não afeta a distribuição atual, ' +
+               'mas a série de conversão por estado começa do zero e não tem como voltar.')) return;
+  try { localStorage.removeItem(HIST_KEY); } catch (e) { /* idem */ }
+  histUfEscolhida = '';
+  renderHistorico();
+  toast('Histórico apagado');
+});
 
 </script>
 </body>

@@ -608,6 +608,21 @@ function distribuir(records, headers, equipe, opts) {
 
 /* Fotografia da rodada: quem ficou com cada cliente e em que situacao ele
    estava. E o que permite, na base seguinte, saber quem conseguiu ativar. */
+/* Impressao digital da base: mesma lista de clientes com as mesmas
+   categorias produz a mesma assinatura. Serve para reconhecer que o arquivo
+   carregado e o MESMO da rodada anterior -- nesse caso nao existe periodo
+   entre as duas leituras, e medir conversao ali nao significa nada. */
+function assinaturaBase(byKey) {
+  var partes = Object.keys(byKey).sort().map(function (k) {
+    return k + ':' + byKey[k].cat;
+  }).join('|');
+  var h = 5381;
+  for (var i = 0; i < partes.length; i++) {
+    h = ((h * 33) ^ partes.charCodeAt(i)) >>> 0;
+  }
+  return h.toString(36) + '-' + Object.keys(byKey).length;
+}
+
 function montarSnapshot(result, records, headers) {
   var byKey = {};
   result.atribuidos.forEach(function (row) {
@@ -624,6 +639,7 @@ function montarSnapshot(result, records, headers) {
     ts: Date.now(),
     modo: result.modo || 'normal',
     total: Object.keys(byKey).length,
+    assinatura: assinaturaBase(byKey),
     byKey: byKey
   };
 }
@@ -649,6 +665,12 @@ function analisarFunil(records, headers, result, snapshot) {
     var k = clientKey(row, headers);
     if (k) atual[k] = row;
   });
+
+  // Rodar duas vezes o mesmo arquivo nao e um periodo: seria sempre 0%.
+  if (snapshot.assinatura && result.assinaturaAtual &&
+      snapshot.assinatura === result.assinaturaAtual) {
+    return { mesmaBase: true, desde: snapshot.ts };
+  }
 
   var porVendedor = {}, porUf = {};
   var convertidos = [], perdidosDeVista = 0, aindaAbertos = 0;
@@ -696,6 +718,15 @@ function analisarFunil(records, headers, result, snapshot) {
   var totalConv = vendedores.reduce(function (a, v) { return a + v.conversoes; }, 0);
   var totalValor = vendedores.reduce(function (a, v) { return a + v.valor; }, 0);
 
+  /* Cada cliente da rodada anterior teve um de tres destinos: converteu,
+     segue em aberto, ou sumiu da base nova. Se quase todos sumiram, as duas
+     bases nao falam dos mesmos clientes e dividir conversoes pela carteira
+     produz um numero sem significado -- foi assim que o app ja mostrou
+     "0% de aproveitamento" quando na verdade nao havia o que comparar. */
+  var fracaoSumida = totalCarteira ? perdidosDeVista / totalCarteira : 1;
+  var LIMITE_SUMIDOS = 1 / 3;
+  var confiavel = totalCarteira > 0 && fracaoSumida <= LIMITE_SUMIDOS;
+
   return {
     desde: snapshot.ts,
     vendedores: vendedores,
@@ -706,6 +737,9 @@ function analisarFunil(records, headers, result, snapshot) {
     totalValor: totalValor,
     taxaGeral: totalCarteira ? totalConv / totalCarteira : 0,
     perdidosDeVista: perdidosDeVista,
+    fracaoSumida: fracaoSumida,
+    confiavel: confiavel,
+    temValor: !!result.colValor && totalValor > 0,
     aindaAbertos: aindaAbertos
   };
 }
@@ -833,7 +867,10 @@ function pct(x) { return (x * 100).toFixed(1).replace('.', ',') + '%'; }
 
 function gerarInsights(result, funil) {
   var out = [];
-  if (funil && funil.incompativel) funil = null;   // rodadas nao comparaveis
+  // Rodadas nao comparaveis, mesma base repetida ou comparacao sem clientes
+  // em comum nao produzem numero de desempenho: as analises que dependem do
+  // funil ficam fora, em vez de sair um "0%" que culpa a equipe a toa.
+  if (funil && (funil.incompativel || funil.mesmaBase || !funil.confiavel)) funil = null;
   var colVal = result.colValor, colCat = result.colCategoria, colUf = result.colUf;
   var colInteg = findCol(result.headers, 'Integrador (CLI - Nome)') || findCol(result.headers, 'Integrador');
   var colCidade = findCol(result.headers, 'Cidade');
@@ -847,8 +884,12 @@ function gerarInsights(result, funil) {
     add(funil.taxaGeral >= 0.12 ? 'bom' : (funil.taxaGeral >= 0.06 ? 'neutro' : 'ruim'),
       'Aproveitamento do período: ' + pct(funil.taxaGeral),
       fmtInt(funil.totalConversoes) + ' de ' + fmtInt(funil.totalCarteira) +
-      ' clientes trabalhados voltaram a comprar, somando ' + fmtMoney(funil.totalValor) +
-      ' em faturamento reativado. Outros ' + fmtInt(funil.aindaAbertos) + ' seguem em aberto.',
+      ' clientes trabalhados voltaram a comprar' +
+      (funil.temValor ? ', somando ' + fmtMoney(funil.totalValor) + ' em faturamento reativado' : '') +
+      '. Outros ' + fmtInt(funil.aindaAbertos) + ' seguem em aberto' +
+      (funil.perdidosDeVista
+        ? ' e ' + fmtInt(funil.perdidosDeVista) + ' saíram da base.'
+        : '.'),
       funil.taxaGeral < 0.06
         ? 'Taxa baixa. Antes de distribuir de novo, cobre da equipe o registro do contato: carteira grande com pouca conversão costuma ser falta de tentativa, não falta de cliente.'
         : 'Use os convertidos como prova social na abordagem dos que seguem parados — mesma região, mesmo perfil.');
@@ -856,26 +897,34 @@ function gerarInsights(result, funil) {
 
   if (funil && funil.vendedores.length >= 3) {
     var elegiveis = funil.vendedores.filter(function (v) { return v.carteira >= 15; });
+    var travados = elegiveis.filter(function (v) { return v.conversoes === 0; });
+    // Quem zerou sai da disputa de destaque: sem isso o mesmo vendedor
+    // aparecia como "Destaque" e, logo abaixo, entre os que nao converteram.
+    var converteram = elegiveis.filter(function (v) { return v.conversoes > 0; });
 
     /* --- 2. destaque --- */
-    if (elegiveis.length) {
-      var top = elegiveis[0];
-      add('bom', 'Destaque: ' + top.vendedor,
-        'Converteu ' + fmtInt(top.conversoes) + ' de ' + fmtInt(top.carteira) +
-        ' clientes (' + pct(top.taxa) + ') em ' + top.uf + ', trazendo ' + fmtMoney(top.valor) + '.',
-        'Peça para ' + top.vendedor.split(' ')[0] + ' descrever a abordagem numa reunião de 15 min. O que funciona em ' +
-        top.uf + ' costuma funcionar nas outras UFs do Norte.');
+    if (converteram.length) {
+      var top = converteram[0];
+      // So e destaque quem converteu de verdade e ficou acima da media.
+      if (top.taxa > funil.taxaGeral) {
+        add('bom', 'Destaque: ' + top.vendedor,
+          'Converteu ' + fmtInt(top.conversoes) + ' de ' + fmtInt(top.carteira) +
+          ' clientes (' + pct(top.taxa) + ') em ' + top.uf +
+          (top.valor > 0 ? ', trazendo ' + fmtMoney(top.valor) : '') + '. ' +
+          'A média da equipe no período foi ' + pct(funil.taxaGeral) + '.',
+          'Peça para ' + top.vendedor.split(' ')[0] + ' descrever a abordagem numa reunião de 15 min ' +
+          'e leve o roteiro para os outros estados.');
+      }
     }
 
     /* --- 3. quem precisa de apoio --- */
-    var travados = elegiveis.filter(function (v) { return v.conversoes === 0; });
     if (travados.length) {
       add('ruim', fmtInt(travados.length) + (travados.length === 1 ? ' vendedor sem nenhuma conversão' : ' vendedores sem nenhuma conversão'),
         travados.map(function (v) { return v.vendedor + ' (' + v.carteira + ' clientes, ' + v.uf + ')'; }).join(' · ') +
         '. Carteira cheia e nenhum cliente reativado no período.',
         'Acompanhe uma ligação de cada um ainda esta semana. Se a carteira estiver sendo trabalhada e mesmo assim não converte, o problema é abordagem ou preço — não volume.');
-    } else if (elegiveis.length >= 4) {
-      var ultimo = elegiveis[elegiveis.length - 1];
+    } else if (converteram.length >= 4) {
+      var ultimo = converteram[converteram.length - 1];
       var media = funil.taxaGeral;
       if (ultimo.taxa < media * 0.5) {
         add('neutro', 'Abaixo da média: ' + ultimo.vendedor,
@@ -969,4 +1018,104 @@ function gerarInsights(result, funil) {
   }
 
   return out;
+}
+
+/* ==================================================================
+   HISTORICO DE CONVERSAO POR ESTADO
+
+   Cada rodada com comparacao valida vira uma linha do historico. O que
+   interessa acompanhar ao longo do tempo e a taxa de cada estado do Norte:
+   se PA melhorou de 9% para 14%, isso e o resultado do trabalho; um numero
+   solto de uma rodada nao diz nada sozinho.
+
+   Rodada nao confiavel (bases sem cliente em comum) e rodada repetida com
+   o mesmo arquivo NAO entram: poluiriam a serie com zeros falsos.
+   ================================================================== */
+
+var MAX_RODADAS_HISTORICO = 60;
+
+function novaEntradaHistorico(funil, result, origem) {
+  return {
+    ts: funil.desde ? Date.now() : Date.now(),
+    modo: result.modo || 'normal',
+    origem: origem || '',
+    totalCarteira: funil.totalCarteira,
+    totalConversoes: funil.totalConversoes,
+    totalValor: funil.totalValor,
+    temValor: !!funil.temValor,
+    taxaGeral: funil.taxaGeral,
+    ufs: funil.ufs.map(function (u) {
+      return { uf: u.uf, carteira: u.carteira, conversoes: u.conversoes, valor: u.valor, taxa: u.taxa };
+    }),
+    vendedores: funil.vendedores.map(function (v) {
+      return { vendedor: v.vendedor, uf: v.uf, carteira: v.carteira,
+               conversoes: v.conversoes, valor: v.valor, taxa: v.taxa };
+    })
+  };
+}
+
+/** Rodada que merece entrar na serie historica. */
+function rodadaHistoriavel(funil) {
+  return !!(funil && !funil.incompativel && !funil.mesmaBase &&
+            funil.confiavel && funil.totalCarteira > 0);
+}
+
+/** Serie de um estado ao longo das rodadas. uf vazio = a equipe toda. */
+function serieDoEstado(historico, uf) {
+  return historico.map(function (r) {
+    if (!uf) {
+      return { ts: r.ts, modo: r.modo, origem: r.origem, temValor: r.temValor,
+               carteira: r.totalCarteira, conversoes: r.totalConversoes,
+               valor: r.totalValor, taxa: r.taxaGeral };
+    }
+    var achado = (r.ufs || []).filter(function (u) { return u.uf === uf; })[0];
+    if (!achado) return null;
+    return { ts: r.ts, modo: r.modo, origem: r.origem, temValor: r.temValor,
+             carteira: achado.carteira, conversoes: achado.conversoes,
+             valor: achado.valor, taxa: achado.taxa };
+  }).filter(Boolean);
+}
+
+/** Estados presentes no historico, na ordem da Regiao Norte. */
+function estadosDoHistorico(historico) {
+  var vistos = {};
+  historico.forEach(function (r) {
+    (r.ufs || []).forEach(function (u) { vistos[u.uf] = (vistos[u.uf] || 0) + 1; });
+  });
+  return REGIAO_NORTE.filter(function (uf) { return vistos[uf]; })
+    .map(function (uf) { return { uf: uf, rodadas: vistos[uf] }; })
+    .concat(Object.keys(vistos)
+      .filter(function (uf) { return REGIAO_NORTE.indexOf(uf) === -1; })
+      .sort()
+      .map(function (uf) { return { uf: uf, rodadas: vistos[uf] }; }));
+}
+
+/** Resumo de uma serie: melhor, pior, media ponderada e tendencia. */
+function resumoDaSerie(serie) {
+  if (!serie.length) return null;
+  var carteira = serie.reduce(function (a, r) { return a + r.carteira; }, 0);
+  var conversoes = serie.reduce(function (a, r) { return a + r.conversoes; }, 0);
+  var valor = serie.reduce(function (a, r) { return a + r.valor; }, 0);
+  var taxas = serie.map(function (r) { return r.taxa; });
+
+  // Tendencia: ultima rodada contra a media das anteriores.
+  var ultima = serie[serie.length - 1];
+  var anteriores = serie.slice(0, -1);
+  var mediaAnterior = anteriores.length
+    ? anteriores.reduce(function (a, r) { return a + r.taxa; }, 0) / anteriores.length
+    : null;
+
+  return {
+    rodadas: serie.length,
+    carteira: carteira,
+    conversoes: conversoes,
+    valor: valor,
+    temValor: serie.some(function (r) { return r.temValor; }) && valor > 0,
+    taxaAcumulada: carteira ? conversoes / carteira : 0,
+    melhor: Math.max.apply(null, taxas),
+    pior: Math.min.apply(null, taxas),
+    ultima: ultima.taxa,
+    mediaAnterior: mediaAnterior,
+    variacao: mediaAnterior === null ? null : ultima.taxa - mediaAnterior
+  };
 }

@@ -342,6 +342,36 @@ select{max-width:260px;}
 .fbar{height:6px;background:var(--panel-3);border-radius:99px;overflow:hidden;}
 .fbar i{display:block;height:100%;border-radius:99px;background:var(--ok);}
 
+/* ---------------- historico por estado ---------------- */
+.pick .rd{display:inline-flex;align-items:center;gap:8px;}
+.hbars{
+  display:flex;align-items:flex-end;gap:6px;height:132px;
+  padding:12px 10px 0;background:var(--panel-2);border:1px solid var(--line);
+  border-radius:8px;overflow-x:auto;margin-bottom:16px;
+}
+.hbar{
+  flex:1 0 34px;min-width:34px;display:flex;flex-direction:column;
+  align-items:center;justify-content:flex-end;height:100%;gap:6px;
+}
+.hbar i{
+  display:block;width:100%;border-radius:4px 4px 0 0;background:var(--y);
+  min-height:3px;transition:background .14s;
+}
+.hbar[data-lvl="bom"] i{background:var(--ok);}
+.hbar[data-lvl="ruim"] i{background:var(--no);}
+.hbar b{
+  font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text-2);
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.hbar span{
+  font-family:var(--mono);font-size:9px;color:var(--text-3);white-space:nowrap;
+}
+.hbar:hover i{background:var(--y-hi);}
+.trend{font-family:var(--mono);font-size:12px;font-weight:600;}
+.trend[data-d="sobe"]{color:var(--ok);}
+.trend[data-d="desce"]{color:var(--no);}
+.trend[data-d="igual"]{color:var(--text-3);}
+
 /* ---------------- insights ---------------- */
 .insight{
   border:1px solid var(--line);border-left:3px solid var(--line-2);border-radius:8px;
@@ -668,6 +698,21 @@ select{max-width:260px;}
     <p class="sub" id="perfSub"></p>
 
     <div id="funil"></div>
+
+    <div class="panel" id="histPanel">
+      <div class="panel-head">
+        <h3>Histórico de conversão</h3>
+        <div class="btn-row">
+          <button class="btn btn-sm" id="copyHist">Copiar histórico</button>
+          <button class="btn btn-sm btn-ghost" id="limparHist">Limpar</button>
+        </div>
+      </div>
+      <div class="sub-block">
+        <span class="lbl">Estado</span>
+        <div id="histUfs" class="pick"></div>
+      </div>
+      <div id="histConteudo"></div>
+    </div>
 
     <div class="panel">
       <div class="panel-head">
