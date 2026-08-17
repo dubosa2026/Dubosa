@@ -50,7 +50,12 @@ with sync_playwright() as p:
         .map(e => e.textContent)""")
     qtdes = g.evaluate("""() => [...document.querySelectorAll('#publicarSaida .vuf')]
         .map(e => e.textContent)""")
-    ok(len(links) == 8, f"publicou os 8 vendedores da base (saíram {len(links)})")
+    # Publica os 22 cadastrados + quem aparece na base sem estar na equipe.
+    # Os que ficam sem cliente recebem publicacao vazia, que remove aquele
+    # tipo do link em vez de deixar a lista do mes passado no ar.
+    ok(len(links) >= 8, f"publicou todo mundo, não só os 8 da base (saíram {len(links)})")
+    comClientes = [n for n, q in zip(nomes, qtdes) if q != "0"]
+    ok(len(comClientes) == 8, f"8 com cliente nesta rodada (saíram {len(comClientes)})")
     ok(all(l.startswith(BASE + "/c/#") for l in links), "links no formato /c/#token")
     ok(len({l.split("#")[1] for l in links}) == len(links), "cada vendedor tem token único")
     print("     exemplo:", nomes[0], "->", links[0][:52] + "...")
@@ -68,8 +73,13 @@ with sync_playwright() as p:
     ok("Giovanna" in texto, "saúda pelo primeiro nome", texto[:80])
     ok("6 clientes" in texto, "mostra a quantidade certa", texto[:120])
 
-    linhasTela = v.evaluate("document.querySelectorAll('tbody tr').length")
-    ok(linhasTela == 6, f"tabela com 6 linhas (tem {linhasTela})")
+    # Cada tipo de rodada tem sua propria secao; conta so a que interessa.
+    linhasTela = v.evaluate("""()=>{
+      const p=[...document.querySelectorAll('.panel')].find(
+        p=>/Sem compras/.test(p.querySelector('h3').textContent));
+      return p ? p.querySelectorAll('tbody tr').length : -1;
+    }""")
+    ok(linhasTela == 6, f"seção Sem compras com 6 linhas (tem {linhasTela})")
 
     outros = [n for n in nomes if n != "GIOVANNA DO CARMO FUJIMOTO"]
     vazou = [n for n in outros if n in texto]
@@ -90,7 +100,10 @@ with sync_playwright() as p:
     ok(corretos, "cada token devolve exatamente o seu dono",
        [(n, d.get("vendedor")) for n, d in dados_por_token.items() if d.get("vendedor") != n])
 
-    contagens_ok = all(str(len(d.get("linhas", []))) == esperado[n] for n, d in dados_por_token.items())
+    def linhasDaRodada(d):
+        r = (d.get("rodadas") or {}).get("carteira") or {}
+        return len(r.get("linhas", []))
+    contagens_ok = all(str(linhasDaRodada(d)) == esperado[n] for n, d in dados_por_token.items())
     ok(contagens_ok, "quantidade por token bate com a do gestor")
 
     print("\n5. tokens inválidos")

@@ -238,13 +238,33 @@ A partir daí, todo push na branch republica o site sozinho.
    e-mail ou a uma planilha.
 
 O link de cada vendedor é **fixo**: nas rodadas seguintes continua o mesmo
-endereço, já com a lista nova. Você manda uma vez e pronto — nas próximas
-vezes basta publicar, e o que ele já tem salvo passa a mostrar a lista
-atualizada.
+endereço. Você manda uma vez e pronto.
 
-Vendedores que ficaram sem cliente na rodada também são publicados, com
-lista vazia. É proposital: assim ninguém fica vendo a lista do mês passado
-achando que ainda vale.
+### O link acumula uma lista de cada tipo
+
+Cada link guarda até três listas vivas ao mesmo tempo:
+
+| Tipo de rodada | Como aparece para o vendedor |
+|---|---|
+| Normal | Distribuição de carteira |
+| Ataque a um estado | Ataque a PA (ou o estado escolhido) |
+| Sem compras no mês | Sem compras no mês |
+
+**Publicar substitui apenas a lista do mesmo tipo.** Se o vendedor recebeu
+uma Distribuição em 17/08 e você publica um aviso de Sem compras em 20/08,
+ele passa a ver as duas — a Distribuição continua ali, intacta. Só uma nova
+Distribuição troca a Distribuição.
+
+A lista mais recente aparece no topo, cada uma com sua data, sua contagem e
+seus próprios botões de copiar e baixar. Quando o mesmo cliente cai em mais
+de uma lista, ele leva uma etiqueta **"também em ..."** nas duas, e o topo da
+página avisa quantos se repetem — assim o vendedor não liga duas vezes
+achando que são casos diferentes.
+
+Vendedor que ficou sem cliente naquele tipo **perde aquela seção** do link,
+em vez de continuar vendo a lista do mês passado como se valesse. As outras
+seções dele não são afetadas. Por isso a publicação percorre todos os
+vendedores cadastrados, e não só os que aparecem na base da rodada.
 
 ### O que o vendedor vê
 

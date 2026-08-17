@@ -23,6 +23,11 @@ sleep 2
 python3 netlify/testes/test_links.py
 ```
 
+São dois roteiros. O `test_acumulo.py` cobre o acúmulo de rodadas no link:
+publicar Distribuição e depois Sem compras deixa as duas no ar, publicar de
+novo troca só a do mesmo tipo, rodada vazia remove aquele tipo, e o cliente
+repetido entre listas recebe a etiqueta de aviso.
+
 O `test_links.py` (precisa de Playwright) percorre o fluxo inteiro pelo
 navegador: o gestor publica, cada vendedor abre o próprio link, e confere o
 que importa — que um token só devolve a carteira do seu dono, que token

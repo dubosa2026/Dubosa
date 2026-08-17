@@ -412,6 +412,12 @@ select{max-width:260px;}
    Tabela em tela pequena obriga a rolar para o lado e o vendedor perde de
    vista de quem e cada linha. Abaixo de 640px cada cliente vira um cartao,
    com o nome da coluna ao lado do valor. */
+.tag-rep{
+  display:inline-block;font-family:var(--mono);font-size:9.5px;font-weight:600;
+  letter-spacing:.04em;padding:2px 7px;border-radius:99px;white-space:nowrap;
+  background:var(--y-wash);border:1px solid var(--y-dim);color:var(--y);
+  vertical-align:middle;margin-left:6px;
+}
 .cartoes a{color:var(--y);text-decoration:none;border-bottom:1px solid var(--y-dim);}
 .cartoes a:hover{border-bottom-color:var(--y);}
 @media (max-width:640px){
@@ -620,71 +626,137 @@ function celula(coluna, valor) {
   return escapeHtml(texto);
 }
 
-function render(dados) {
-  var colunas = dados.colunas || [];
-  var linhas = dados.linhas || [];
-  var visiveis = colunasVisiveis(colunas);
-  var quando = new Date(dados.publicadoEm);
-
-  var cabecalho =
-    '<p class="kicker">Carteira de prospecção</p>' +
-    '<h2>Olá, ' + escapeHtml(primeiroNome(dados.vendedor)) + '</h2>' +
-    '<p class="sub">Você tem <strong>' + linhas.length +
-      (linhas.length === 1 ? ' cliente</strong> esperando contato' : ' clientes</strong> esperando contato') +
-    '. Lista de <strong>' + quando.toLocaleDateString('pt-BR') + '</strong>, às ' +
-    quando.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '.</p>';
-
-  if (!linhas.length) {
-    $('conteudo').innerHTML = cabecalho +
-      '<div class="panel"><p class="empty">Nenhum cliente pendente para você nesta rodada. ' +
-      'Assim que sair uma lista nova, ela aparece aqui neste mesmo link.</p></div>';
-    return;
+/* Identidade do cliente, para reconhecer quem aparece em mais de uma
+   rodada. Mesmo criterio do app do gestor: o codigo CLI-xxxx quando existe. */
+function chaveCliente(linha, colunas) {
+  var nome = '';
+  for (var i = 0; i < colunas.length; i++) {
+    if (/integrador/i.test(colunas[i])) { nome = String(linha[colunas[i]] || ''); break; }
   }
+  var m = nome.match(/CLI[-\s]?0*(\d+)/i);
+  return m ? 'CLI' + m[1] : nome.trim().toUpperCase();
+}
 
-  var linhasHtml = linhas.map(function (r) {
-    return '<tr>' + visiveis.map(function (c) {
-      // data-rotulo alimenta o layout de cartao no celular, onde o
-      // cabecalho da tabela nao aparece.
-      var conteudo = celula(c, r[c]);
-      // title no nome do cliente: encolhido com reticencias na tabela, mas
-      // o nome inteiro aparece ao passar o mouse.
+/* Em quantas rodadas cada cliente aparece. O vendedor precisa saber que o
+   cliente da lista de hoje ja estava na de ontem -- senao liga duas vezes
+   achando que sao casos diferentes. */
+function mapearRepetidos(rodadas) {
+  var onde = {};
+  rodadas.forEach(function (r) {
+    r.linhas.forEach(function (l) {
+      var k = chaveCliente(l, r.colunas);
+      if (!k) return;
+      if (!onde[k]) onde[k] = [];
+      if (onde[k].indexOf(r.rotulo) === -1) onde[k].push(r.rotulo);
+    });
+  });
+  return onde;
+}
+
+function secaoDaRodada(r, indice, repetidos) {
+  var visiveis = colunasVisiveis(r.colunas);
+  var quando = new Date(r.publicadoEm);
+  var idBase = 'r' + indice;
+
+  var linhasHtml = r.linhas.map(function (l) {
+    var k = chaveCliente(l, r.colunas);
+    var outras = (repetidos[k] || []).filter(function (x) { return x !== r.rotulo; });
+    return '<tr>' + visiveis.map(function (c, ci) {
+      var conteudo = celula(c, l[c]);
+      if (ci === 0 && outras.length) {
+        conteudo += ' <span class="tag-rep" title="Este cliente também está em: ' +
+          escapeHtml(outras.join(', ')) + '">também em ' + escapeHtml(outras[0]) + '</span>';
+      }
       var titulo = (c === visiveis[0] || /mail/i.test(c))
-        ? ' title="' + escapeHtml(r[c]) + '"' : '';
+        ? ' title="' + escapeHtml(l[c]) + '"' : '';
       return '<td data-rotulo="' + escapeHtml(c) + '"' + titulo + '>' + conteudo + '</td>';
     }).join('') + '</tr>';
   }).join('');
 
-  $('conteudo').innerHTML = cabecalho +
-    '<div class="panel">' +
+  return '<div class="panel">' +
       '<div class="panel-head">' +
-        '<h3>Meus clientes <span class="count-pill">' + linhas.length + '</span></h3>' +
+        '<h3>' + escapeHtml(r.rotulo) +
+          ' <span class="count-pill">' + r.linhas.length + '</span></h3>' +
         '<div class="btn-row">' +
-          '<button class="btn btn-sm" id="copiar">Copiar</button>' +
-          '<button class="btn btn-sm btn-primary" id="baixar">Baixar CSV</button>' +
+          '<button class="btn btn-sm" data-copiar="' + idBase + '">Copiar</button>' +
+          '<button class="btn btn-sm btn-primary" data-baixar="' + idBase + '">Baixar CSV</button>' +
         '</div>' +
       '</div>' +
+      '<p class="hint" style="margin-top:-8px;">Enviada em ' +
+        escapeHtml(quando.toLocaleDateString('pt-BR')) + ' às ' +
+        escapeHtml(quando.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })) +
+      '.</p>' +
       '<div class="tablewrap cartoes"><table><thead><tr>' +
         visiveis.map(function (c) { return '<th>' + escapeHtml(c) + '</th>'; }).join('') +
       '</tr></thead><tbody>' + linhasHtml + '</tbody></table></div>' +
-      '<p class="hint">A tela mostra as colunas principais. O arquivo baixado traz todas.</p>' +
     '</div>';
+}
 
-  $('copiar').addEventListener('click', function () {
-    var texto = paraTSV(linhas, colunas);
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(texto).then(
-        function () { toast('Lista copiada'); },
-        function () { toast('Não consegui copiar — use o botão Baixar CSV'); }
-      );
-    } else {
-      toast('Não consegui copiar — use o botão Baixar CSV');
-    }
-  });
+function render(dados) {
+  // Mais recente primeiro: e a rodada que o vendedor precisa ver ao abrir.
+  var rodadas = Object.keys(dados.rodadas || {})
+    .map(function (k) { return dados.rodadas[k]; })
+    .filter(function (r) { return r && r.linhas && r.linhas.length; })
+    .sort(function (a, b) { return b.publicadoEm - a.publicadoEm; });
 
-  $('baixar').addEventListener('click', function () {
-    baixarCSV(linhas, colunas,
-      'carteira-' + String(dados.vendedor).toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.csv');
+  var total = rodadas.reduce(function (a, r) { return a + r.linhas.length; }, 0);
+
+  var cabecalho =
+    '<p class="kicker">Carteira de prospecção</p>' +
+    '<h2>Olá, ' + escapeHtml(primeiroNome(dados.vendedor)) + '</h2>';
+
+  if (!rodadas.length) {
+    $('conteudo').innerHTML = cabecalho +
+      '<p class="sub">Nenhuma lista ativa para você no momento.</p>' +
+      '<div class="panel"><p class="empty">Assim que seu gestor publicar uma lista nova, ' +
+      'ela aparece aqui neste mesmo link — não precisa de link novo.</p></div>';
+    return;
+  }
+
+  var repetidos = mapearRepetidos(rodadas);
+  var quantosRepetem = Object.keys(repetidos).filter(function (k) {
+    return repetidos[k].length > 1;
+  }).length;
+
+  $('conteudo').innerHTML = cabecalho +
+    '<p class="sub">Você tem <strong>' + total +
+      (total === 1 ? ' cliente</strong>' : ' clientes</strong>') +
+      ' esperando contato, em ' +
+      (rodadas.length === 1 ? 'uma lista' : rodadas.length + ' listas') + '. ' +
+      (quantosRepetem
+        ? fmtRepetidos(quantosRepetem) + ' Cada lista tem seu motivo — confira o título de cada uma.'
+        : 'Cada lista tem seu motivo — confira o título de cada uma.') +
+    '</p>' +
+    rodadas.map(function (r, i) { return secaoDaRodada(r, i, repetidos); }).join('') +
+    '<p class="hint">A tela mostra as colunas principais. O arquivo baixado traz todas.</p>';
+
+  rodadas.forEach(function (r, i) {
+    var idBase = 'r' + i;
+    var bc = document.querySelector('[data-copiar="' + idBase + '"]');
+    var bb = document.querySelector('[data-baixar="' + idBase + '"]');
+    if (bc) bc.addEventListener('click', function () {
+      var texto = paraTSV(r.linhas, r.colunas);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texto).then(
+          function () { toast('Lista copiada'); },
+          function () { toast('Não consegui copiar — use o botão Baixar CSV'); }
+        );
+      } else {
+        toast('Não consegui copiar — use o botão Baixar CSV');
+      }
+    });
+    if (bb) bb.addEventListener('click', function () {
+      baixarCSV(r.linhas, r.colunas,
+        'carteira-' + String(dados.vendedor).toLowerCase().replace(/[^a-z0-9]+/g, '-') +
+        '-' + r.modo + '.csv');
+    });
   });
+}
+
+function fmtRepetidos(n) {
+  return n === 1
+    ? '<strong>1 cliente aparece em mais de uma lista</strong> — está marcado, para você não ligar duas vezes.'
+    : '<strong>' + n + ' clientes aparecem em mais de uma lista</strong> — estão marcados, para você não ligar duas vezes.';
 }
 
 async function carregar() {

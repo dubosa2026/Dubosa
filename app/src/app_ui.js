@@ -826,6 +826,13 @@ function linkDoVendedor(token) {
   return location.origin + '/c/#' + token;
 }
 
+/* Nome da rodada como o vendedor vai ler no link dele. */
+function rotuloDaRodada(r) {
+  if (r.modo === 'carteira') return 'Sem compras no mês';
+  if (r.modo === 'ataque' && r.ataque) return 'Ataque a ' + r.ataque;
+  return 'Distribuição de carteira';
+}
+
 $('publicar').addEventListener('click', async function () {
   var r = state.result;
   if (!r) { toast('Rode a distribuição primeiro'); return; }
@@ -837,10 +844,21 @@ $('publicar').addEventListener('click', async function () {
   var saida = $('publicarSaida');
   botao.disabled = true;
 
-  // Publica todos os vendedores do resumo, inclusive os que ficaram sem
-  // cliente: assim quem nao tem nada nesta rodada ve uma lista vazia e
-  // atual, em vez da lista antiga que continuaria no ar.
-  var fila = r.resumo;
+  // Publica todo o resumo E os vendedores cadastrados que ficaram de fora
+  // dele. Sem a segunda parte, quem recebeu uma lista deste tipo no mes
+  // passado e nao aparece na base de agora nunca recebe publicacao nenhuma,
+  // e continuaria vendo a lista vencida como se fosse a atual. Publicar
+  // vazio remove aquele tipo do link dele.
+  var noResumo = {};
+  r.resumo.forEach(function (v) { noResumo[v.vendedor] = true; });
+  var fila = r.resumo.concat(
+    state.equipe
+      .filter(function (v) { return norm(v.vendedor) && !noResumo[norm(v.vendedor)]; })
+      .map(function (v) {
+        return { vendedor: norm(v.vendedor), uf: norm(v.uf).toUpperCase(),
+                 email: norm(v.email), qtde: 0, linhas: [] };
+      })
+  );
   var prontos = [], falhas = [];
 
   for (var i = 0; i < fila.length; i++) {
@@ -855,6 +873,7 @@ $('publicar').addEventListener('click', async function () {
           vendedor: v.vendedor,
           uf: v.uf,
           modo: r.modo,
+          rotulo: rotuloDaRodada(r),
           origem: state.origem,
           colunas: r.headers,
           linhas: v.linhas
@@ -862,7 +881,8 @@ $('publicar').addEventListener('click', async function () {
       });
       var dados = await resposta.json();
       if (!resposta.ok) { falhas.push(v.vendedor + ': ' + (dados.erro || resposta.status)); continue; }
-      prontos.push({ vendedor: v.vendedor, qtde: dados.qtde, url: linkDoVendedor(dados.token) });
+      prontos.push({ vendedor: v.vendedor, qtde: dados.qtde,
+                     rodadas: dados.rodadasNoLink, url: linkDoVendedor(dados.token) });
     } catch (e) {
       falhas.push(v.vendedor + ': ' + e.message);
     }
@@ -886,11 +906,14 @@ function renderLinks(prontos, falhas) {
       : '') +
     '<div class="btn-row" style="margin:14px 0;">' +
       '<button class="btn btn-sm" id="copiarLinks">Copiar todos os links</button>' +
-      '<span class="hint">' + fmtInt(prontos.length) + ' publicados</span>' +
+      '<span class="hint">' + fmtInt(prontos.length) + ' publicados · ' +
+        fmtInt(prontos.filter(function (p) { return p.qtde; }).length) +
+        ' com clientes nesta rodada</span>' +
     '</div>' +
     '<div class="vend">' + prontos.map(function (p) {
       return '<div class="vrow">' +
-        '<span class="vuf">' + escapeHtml(String(p.qtde)) + '</span>' +
+        '<span class="vuf" title="' + escapeHtml(p.qtde + ' clientes nesta rodada · ' +
+          p.rodadas + ' lista(s) ativa(s) no link') + '">' + escapeHtml(String(p.qtde)) + '</span>' +
         '<span><span class="vname">' + escapeHtml(p.vendedor) + '</span>' +
           '<br><span class="vmail">' + escapeHtml(p.url) + '</span></span>' +
         '<span></span><span></span><span></span>' +

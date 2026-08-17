@@ -405,6 +405,12 @@ select{max-width:260px;}
    Tabela em tela pequena obriga a rolar para o lado e o vendedor perde de
    vista de quem e cada linha. Abaixo de 640px cada cliente vira um cartao,
    com o nome da coluna ao lado do valor. */
+.tag-rep{
+  display:inline-block;font-family:var(--mono);font-size:9.5px;font-weight:600;
+  letter-spacing:.04em;padding:2px 7px;border-radius:99px;white-space:nowrap;
+  background:var(--y-wash);border:1px solid var(--y-dim);color:var(--y);
+  vertical-align:middle;margin-left:6px;
+}
 .cartoes a{color:var(--y);text-decoration:none;border-bottom:1px solid var(--y-dim);}
 .cartoes a:hover{border-bottom-color:var(--y);}
 @media (max-width:640px){
@@ -676,9 +682,15 @@ select{max-width:260px;}
       </div>
       <p class="hint" style="margin-top:0;">
         Publica a lista de cada vendedor no site e devolve um link secreto por pessoa.
-        Cada link abre só a carteira daquele vendedor. O link é fixo: nas próximas
-        rodadas continua o mesmo, com a lista atualizada.
+        Cada link abre só a carteira daquele vendedor, e é fixo: você manda uma vez só.
       </p>
+      <div class="alert" data-t="info" style="margin:0 0 4px;">
+        O link guarda <strong>uma lista de cada tipo</strong>: Distribuição, Ataque e
+        Sem compras no mês. Publicar substitui apenas a do mesmo tipo — a Distribuição
+        que o vendedor já recebeu continua lá quando você enviar um aviso de sem-compras.
+        Vendedor sem cliente na rodada tem aquele tipo removido do link, para não ficar
+        vendo lista vencida.
+      </div>
       <div class="field" style="margin-top:16px;">
         <label for="senhaPub">Senha de publicação</label>
         <input type="password" id="senhaPub" placeholder="definida no Netlify em ADMIN_TOKEN"

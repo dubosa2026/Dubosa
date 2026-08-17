@@ -29,8 +29,25 @@ export default async function carteira(req) {
     return json({ erro: 'Link inválido.' }, 404);
   }
 
-  const dados = await lojaCarteiras().get(token, { type: 'json' });
-  if (!dados) return json({ erro: 'Link inválido ou ainda sem carteira publicada.' }, 404);
+  const bruto = await lojaCarteiras().get(token, { type: 'json' });
+  if (!bruto) return json({ erro: 'Link inválido ou ainda sem carteira publicada.' }, 404);
 
-  return json(dados);
+  // Documentos gravados antes da versao multi-rodada tinham uma lista so;
+  // aqui eles saem no mesmo formato dos novos, para a pagina nao precisar
+  // conhecer os dois.
+  if (bruto.rodadas) return json(bruto);
+  return json({
+    vendedor: bruto.vendedor,
+    rodadas: {
+      [bruto.modo === 'carteira' || bruto.modo === 'ataque' ? bruto.modo : 'normal']: {
+        modo: bruto.modo || 'normal',
+        rotulo: bruto.rotulo || 'Distribuição de carteira',
+        uf: bruto.uf || '',
+        origem: bruto.origem || '',
+        publicadoEm: bruto.publicadoEm || Date.now(),
+        colunas: bruto.colunas || [],
+        linhas: bruto.linhas || [],
+      },
+    },
+  });
 }
