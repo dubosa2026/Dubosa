@@ -18,7 +18,7 @@ var EQUIPE_PADRAO = [
 ].map(function (v) { return { vendedor: v[0], uf: v[1], email: '' }; });
 
 var STORE_KEY = 'belenergy-equipe-v2';
-var SNAP_KEY = 'belenergy-rodada-anterior-v1';
+var SNAP_KEY = 'belenergy-referencias-v2';   // agora por estado + tipo de rodada
 var GERENTE_PADRAO = 'EDUARDO LUIZ DOS SANTOS';
 
 var state = {
@@ -325,15 +325,18 @@ function opcoesRodada() {
   };
 }
 
-/* ---------- referencia da rodada anterior ---------- */
-function lerSnapshot() {
+/* ---------- referencias: uma por estado e tipo de rodada ----------
+   Uma base com os sete estados do Norte atualiza os sete; uma base so do PA
+   mexe so no PA e deixa os demais como estavam. */
+function lerReferencias() {
   try {
     var raw = localStorage.getItem(SNAP_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch (e) { return null; }
+    var obj = raw ? JSON.parse(raw) : {};
+    return (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+  } catch (e) { return {}; }
 }
-function salvarSnapshot(snap) {
-  try { localStorage.setItem(SNAP_KEY, JSON.stringify(snap)); } catch (e) { /* sem espaco */ }
+function salvarReferencias(refs) {
+  try { localStorage.setItem(SNAP_KEY, JSON.stringify(refs)); } catch (e) { /* sem espaco */ }
 }
 
 /* ---------- distribuir ---------- */
@@ -353,24 +356,22 @@ $('run').addEventListener('click', function () {
       if (!opts.ufs.length) { toast('Escolha ao menos um estado'); return; }
       if (!opts.categorias.length) { toast('Escolha ao menos uma categoria para distribuir'); return; }
     }
-    var anterior = lerSnapshot();
+    var referencias = lerReferencias();
 
     state.result = distribuir(state.records, state.headers, equipe, opts);
 
-    // A assinatura precisa existir antes da comparacao: e ela que denuncia
-    // que o arquivo carregado e o mesmo da rodada anterior.
-    var snapAtual = montarSnapshot(state.result, state.records, state.headers);
-    state.result.assinaturaAtual = snapAtual.assinatura;
-
-    // compara a base nova com a fotografia da rodada anterior ANTES de sobrescrever
-    state.funil = analisarFunil(state.records, state.headers, state.result, anterior);
+    // Compara ANTES de sobrescrever, e estado por estado: a rodada do TO e
+    // medida contra a ultima do TO, nao contra a ultima base que passou aqui.
+    state.funil = analisarFunil(state.records, state.headers, state.result, referencias);
     state.insights = gerarInsights(state.result, state.funil);
 
     if (rodadaHistoriavel(state.funil)) {
       gravarHistorico(novaEntradaHistorico(state.funil, state.result, state.origem));
     }
 
-    salvarSnapshot(snapAtual);
+    // Guarda a fotografia apenas dos estados desta rodada; os demais ficam
+    // com a referencia que ja tinham.
+    salvarReferencias(mesclarReferencias(referencias, state.funil.snapshot));
 
     $('s2').setAttribute('data-done', '1');
     $('s3').disabled = false;
@@ -575,59 +576,59 @@ function renderDesempenho() {
   var hoje = new Date();
   $('dataHoje').textContent = hoje.toLocaleDateString('pt-BR');
 
-  if (f && f.mesmaBase) {
-    $('perfSub').innerHTML =
-      'Esta é a <strong>mesma base</strong> da rodada anterior — mesmos clientes, mesmas ' +
-      'categorias. Entre duas leituras do mesmo arquivo não houve período nenhum, então não ' +
-      'há conversão a medir. Carregue a exportação seguinte do BI para ver o aproveitamento.';
-    $('funil').innerHTML = '';
-    renderHistorico();
-    renderInsights();
-    return;
-  }
-
-  if (f && !f.incompativel && !f.confiavel) {
-    $('perfSub').innerHTML =
-      '<strong>As duas bases não falam dos mesmos clientes.</strong> Dos ' +
-      fmtInt(f.totalCarteira) + ' clientes da rodada anterior, ' +
-      fmtInt(f.perdidosDeVista) + ' (' + pct(f.fracaoSumida) + ') não aparecem na base de agora. ' +
-      'Calcular aproveitamento em cima disso daria um número sem significado, então o funil ' +
-      'fica de fora desta vez. Normalmente é sinal de que as duas exportações usaram filtros ' +
-      'diferentes — de estado, de gerente ou de período.';
-    $('funil').innerHTML = '';
-    renderHistorico();
-    renderInsights();
-    return;
-  }
-
-  if (f && f.incompativel) {
-    var nomes = { carteira: 'sem compras no mês', normal: 'distribuição', ataque: 'distribuição' };
-    $('perfSub').innerHTML =
-      'A rodada guardada como referência era do tipo <strong>' + escapeHtml(nomes[f.modoAnterior]) +
-      '</strong> e esta é do tipo <strong>' + escapeHtml(nomes[f.modoAtual]) + '</strong>. ' +
-      'As duas saem de bases diferentes, com categorias diferentes, então comparar uma com a outra ' +
-      'daria um número sem significado — o funil fica de fora desta vez. ' +
-      'Esta rodada virou a nova referência: repita o mesmo tipo na próxima base para ver o aproveitamento.';
-    $('funil').innerHTML = '';
-    renderHistorico();
-    renderInsights();
-    return;
-  }
-
   if (!f) {
-    $('perfSub').innerHTML =
-      'Esta é a primeira rodada registrada, então ainda não há com o que comparar. ' +
-      'A carteira de agora ficou guardada como referência: <strong>na próxima base que você carregar</strong>, ' +
-      'o app mostra quem conseguiu transformar cliente parado em <strong>Ativo 30 dias</strong>.';
+    $('perfSub').textContent = 'Rode a distribuição na etapa 2 para ver o desempenho.';
     $('funil').innerHTML = '';
-  } else {
-    var desde = new Date(f.desde);
+    renderHistorico();
+    renderInsights();
+    return;
+  }
+
+  // Diagnostico por estado: o que entrou na conta e o que ficou de fora.
+  function notaEstados() {
+    var partes = [];
+    if (f.ufsSemReferencia && f.ufsSemReferencia.length) {
+      partes.push('<strong>' + escapeHtml(f.ufsSemReferencia.join(', ')) +
+        '</strong> ' + (f.ufsSemReferencia.length === 1 ? 'entrou' : 'entraram') +
+        ' agora e passa' + (f.ufsSemReferencia.length === 1 ? '' : 'm') +
+        ' a contar a partir da próxima rodada desse tipo');
+    }
+    if (f.ufsMesmaBase && f.ufsMesmaBase.length) {
+      var n = f.ufsMesmaBase.length;
+      partes.push('<strong>' + escapeHtml(f.ufsMesmaBase.join(', ')) +
+        '</strong> ' + (n === 1 ? 'recebeu' : 'receberam') +
+        ' a mesma base da rodada anterior, sem período a medir');
+    }
+    if (f.ufsNaoConfiaveis && f.ufsNaoConfiaveis.length) {
+      partes.push(f.ufsNaoConfiaveis.map(function (u) {
+        return '<strong>' + escapeHtml(u.uf) + '</strong> ficou de fora porque ' +
+          fmtInt(u.perdidos) + ' dos ' + fmtInt(u.carteira) +
+          ' clientes da rodada anterior não aparecem nesta base';
+      }).join('; '));
+    }
+    return partes.length ? ' ' + partes.join('. ') + '.' : '';
+  }
+
+  if (!f.confiavel) {
+    var motivo = notaEstados();
     $('perfSub').innerHTML =
-      'Comparando a base de agora com a rodada de <strong>' +
+      'Nenhum estado desta rodada tinha comparação possível, então não há aproveitamento a mostrar.' +
+      (motivo || ' Carregue a próxima exportação do mesmo tipo para começar a medir.') +
+      ' A rodada foi guardada como referência.';
+    $('funil').innerHTML = '';
+    renderHistorico();
+    renderInsights();
+    return;
+  }
+
+  var desde = new Date(f.desde);
+  $('perfSub').innerHTML =
+      'Aproveitamento de <strong>' + escapeHtml(f.ufsComparadas.join(', ')) +
+      '</strong>, comparando com a rodada de ' +
       desde.toLocaleDateString('pt-BR') + ' às ' +
       desde.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) +
-      '</strong>. Cliente que estava parado e agora aparece como Ativo 30 dias conta como conversão ' +
-      'de quem o tinha na carteira.';
+      '. Cada estado é comparado com a própria rodada anterior, não com a última base carregada.' +
+      notaEstados();
 
     var cards =
       '<div class="funil-grid">' +
@@ -685,7 +686,6 @@ function renderDesempenho() {
       });
       copyText(toTSV(rows, ['Vendedor', 'UF', 'Carteira anterior', 'Reativados', 'Taxa', 'Faturamento reativado']), cf, null);
     });
-  }
 
   renderHistorico();
   renderInsights();

@@ -62,6 +62,24 @@ parado com o vendedor X e agora aparece como `Ativo 30 dias` conta como
 **reativação de X** — porque foi ele quem trabalhou aquele cliente no
 período.
 
+### A referência é por estado
+
+Cada estado tem sua própria linha do tempo, e cada tipo de rodada também.
+Isso importa porque a operação costuma ser estado a estado: você carrega a
+base do PA, distribui, e depois carrega a do TO.
+
+- A rodada do **TO** é comparada com a **última rodada do TO**, não com a
+  última base que passou pelo app.
+- Rodar o TO **não apaga** a referência do PA. Cada estado espera a própria
+  próxima rodada.
+- Uma base com os sete estados do Norte compara e atualiza os sete de uma
+  vez; uma base só do PA mexe apenas no PA.
+
+Quando um estado aparece pela primeira vez, ele não tem com o que ser
+comparado: entra como referência e começa a contar na rodada seguinte. A
+etapa 4 diz, em cada rodada, quais estados entraram na conta e quais ficaram
+de fora — e por quê.
+
 A etapa 4 mostra:
 
 - taxa de aproveitamento geral, quantos clientes voltaram a comprar e quanto
@@ -69,30 +87,27 @@ A etapa 4 mostra:
 - ranking por vendedor: reativados / carteira anterior, taxa e valor;
 - o mesmo recorte por estado, para comparar regiões.
 
-Na primeira vez que você usa o app não há com o que comparar — a etapa 4
-avisa isso e guarda a rodada como referência. O funil aparece a partir da
-segunda base carregada.
-
 ### Quando o funil se recusa a dar um número
 
 Cada cliente da rodada anterior tem um de três destinos: **converteu**,
 **segue em aberto**, ou **saiu da base**. Os três somados dão a carteira, e é
 esse terceiro que decide se a conta faz sentido.
 
-- **Mais de um terço saiu da base** → as duas exportações não falam dos
-  mesmos clientes (filtro de estado, de gerente ou de período diferente). O
-  funil não é calculado; a tela diz quantos saíram e por quê. Sem isso, o app
-  dividia 0 por 573 e mostrava "0% de aproveitamento", como se a equipe
-  tivesse falhado.
-- **Mesma base carregada duas vezes** → entre duas leituras do mesmo arquivo
-  não houve período nenhum. O app reconhece o arquivo pela impressão digital
-  dos clientes e categorias, e avisa em vez de reportar 0%.
-- **Tipos de rodada diferentes** (distribuição × sem compras no mês) → bases e
-  categorias diferentes, comparação sem significado.
+Essa checagem é feita **estado a estado**, e um estado que não passa fica de
+fora sem derrubar os outros:
 
-Nos três casos a rodada **não entra no histórico**, para não sujar a série
-com zeros falsos, e a rodada vira a nova referência — o aproveitamento volta
-na próxima base compatível.
+- **Mais de um terço da carteira daquele estado saiu da base** → as duas
+  exportações não falam dos mesmos clientes. Sem isso, o app dividia 0 por
+  573 e mostrava "0% de aproveitamento", como se a equipe tivesse falhado.
+- **Mesma base carregada duas vezes** → entre duas leituras do mesmo arquivo
+  não houve período nenhum. O app reconhece pela impressão digital dos
+  clientes e categorias daquele estado.
+- **Estado sem referência ainda** → primeira vez que ele aparece naquele tipo
+  de rodada.
+
+Se nenhum estado passa, não há aproveitamento a mostrar e a rodada **não
+entra no histórico**, para não sujar a série com zeros falsos. Em todos os
+casos a fotografia é guardada, e a medição começa na rodada seguinte.
 
 ## Histórico de conversão por estado
 
@@ -320,6 +335,10 @@ Depois de mexer em qualquer um deles:
 ```bash
 python3 app/build_app.py
 ```
+
+`app/testes_por_estado.py` cobre o cenário real: base do PA, base do TO,
+segunda rodada de cada uma — conferindo que cada estado é comparado com a
+própria rodada anterior e que rodar um não afeta o outro.
 
 `app/testes_historico.py` (precisa de Playwright) percorre o funil e o
 histórico pelo navegador: gera bases com taxa de conversão conhecida, roda

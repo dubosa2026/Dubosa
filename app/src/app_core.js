@@ -623,42 +623,56 @@ function assinaturaBase(byKey) {
   return h.toString(36) + '-' + Object.keys(byKey).length;
 }
 
+/* Fotografia da rodada, SEPARADA POR ESTADO.
+ *
+ * O gestor trabalha um estado por vez: carrega a base do PA, distribui,
+ * depois carrega a do TO. Com uma referencia unica e global, a rodada do TO
+ * era comparada contra a fotografia do PA -- bases sem cliente em comum, a
+ * comparacao ia inteira para o lixo e o estado anterior perdia a
+ * referencia. Guardando por estado, cada UF tem sua propria linha do tempo
+ * e rodar o TO nao apaga nada do PA.
+ */
 function montarSnapshot(result, records, headers) {
-  var byKey = {};
+  var porUf = {};
   result.atribuidos.forEach(function (row) {
     var k = clientKey(row, headers);
     if (!k) return;
-    byKey[k] = {
+    var uf = norm(row[result.colUf]).toUpperCase() || '--';
+    if (!porUf[uf]) porUf[uf] = {};
+    porUf[uf][k] = {
       v: row.__vendedor,
-      uf: norm(row[result.colUf]).toUpperCase(),
       cat: norm(row[result.colCategoria]),
       val: result.colValor ? toNumber(row[result.colValor]) : 0
     };
   });
-  return {
-    ts: Date.now(),
-    modo: result.modo || 'normal',
-    total: Object.keys(byKey).length,
-    assinatura: assinaturaBase(byKey),
-    byKey: byKey
-  };
+
+  var agora = Date.now();
+  var modo = result.modo || 'normal';
+  var ufs = {};
+  Object.keys(porUf).forEach(function (uf) {
+    ufs[uf] = {
+      ts: agora,
+      modo: modo,
+      uf: uf,
+      total: Object.keys(porUf[uf]).length,
+      assinatura: assinaturaBase(porUf[uf]),
+      byKey: porUf[uf]
+    };
+  });
+  return { ts: agora, modo: modo, ufs: ufs };
 }
 
-/* Compara a base atual com a fotografia da rodada anterior. Um cliente que
-   estava com o vendedor X e nao era "Ativo 30 dias", e que agora aparece
-   como "Ativo 30 dias", conta como conversao de X. */
-function analisarFunil(records, headers, result, snapshot) {
-  if (!snapshot || !snapshot.byKey) return null;
+/** Chave da referencia: cada tipo de rodada tem sua serie em cada estado. */
+function chaveReferencia(modo, uf) { return (modo || 'normal') + '|' + uf; }
 
-  // A rodada de distribuicao e a de carteira saem de bases diferentes, com
-  // vocabulario de categoria diferente. Comparar uma com a outra daria um
-  // numero sem significado, entao aqui a comparacao para e explica o porque.
-  var modoAtual = result.modo || 'normal';
-  var modoAnterior = snapshot.modo || 'normal';
-  var comparaveis = (modoAtual === 'carteira') === (modoAnterior === 'carteira');
-  if (!comparaveis) {
-    return { incompativel: true, modoAnterior: modoAnterior, modoAtual: modoAtual, desde: snapshot.ts };
-  }
+/* Compara a base atual com a fotografia anterior DE CADA ESTADO.
+ *
+ * Um estado sem referencia ainda (primeira vez que aparece) nao entra na
+ * conta -- e reportado a parte, para o gestor saber que ele comeca a contar
+ * a partir da proxima rodada daquele estado. */
+function analisarFunil(records, headers, result, referencias) {
+  referencias = referencias || {};
+  var modo = result.modo || 'normal';
 
   var atual = {};
   records.forEach(function (row) {
@@ -666,69 +680,93 @@ function analisarFunil(records, headers, result, snapshot) {
     if (k) atual[k] = row;
   });
 
-  // Rodar duas vezes o mesmo arquivo nao e um periodo: seria sempre 0%.
-  if (snapshot.assinatura && result.assinaturaAtual &&
-      snapshot.assinatura === result.assinaturaAtual) {
-    return { mesmaBase: true, desde: snapshot.ts };
-  }
+  // Assinatura da rodada de agora, por estado, para reconhecer o mesmo
+  // arquivo carregado duas vezes -- por estado, nao no arquivo inteiro.
+  var snapAtual = montarSnapshot(result, records, headers);
 
   var porVendedor = {}, porUf = {};
-  var convertidos = [], perdidosDeVista = 0, aindaAbertos = 0;
+  var convertidos = [];
+  var semReferencia = [], mesmaBase = [], naoConfiaveis = [], comparados = [];
+  var perdidosTotal = 0, abertosTotal = 0;
 
-  function slotV(nome) {
-    if (!porVendedor[nome]) porVendedor[nome] = { vendedor: nome, carteira: 0, conversoes: 0, valor: 0, uf: '', clientes: [] };
+  function slotV(nome, uf) {
+    if (!porVendedor[nome]) {
+      porVendedor[nome] = { vendedor: nome, uf: uf, carteira: 0, conversoes: 0, valor: 0, clientes: [] };
+    }
     return porVendedor[nome];
   }
-  function slotU(uf) {
-    if (!porUf[uf]) porUf[uf] = { uf: uf, carteira: 0, conversoes: 0, valor: 0 };
-    return porUf[uf];
-  }
 
-  Object.keys(snapshot.byKey).forEach(function (k) {
-    var antes = snapshot.byKey[k];
-    var sv = slotV(antes.v), su = slotU(antes.uf);
-    sv.uf = antes.uf;
-    sv.carteira++; su.carteira++;
+  Object.keys(snapAtual.ufs).forEach(function (uf) {
+    var ref = referencias[chaveReferencia(modo, uf)];
 
-    var row = atual[k];
-    if (!row) { perdidosDeVista++; return; }   // cliente sumiu da base nova
-
-    if (ehJaComprou(row, result.colCategoria)) {
-      var valor = result.colValor ? toNumber(row[result.colValor]) : 0;
-      sv.conversoes++; sv.valor += valor;
-      su.conversoes++; su.valor += valor;
-      sv.clientes.push(row);
-      convertidos.push(Object.assign({ __vendedorAnterior: antes.v, __categoriaAnterior: antes.cat }, row));
-    } else {
-      aindaAbertos++;
+    if (!ref || !ref.byKey) { semReferencia.push(uf); return; }
+    if (ref.assinatura && ref.assinatura === snapAtual.ufs[uf].assinatura) {
+      mesmaBase.push(uf); return;
     }
+
+    var chaves = Object.keys(ref.byKey);
+    var carteira = 0, conversoes = 0, valor = 0, perdidos = 0, abertos = 0;
+
+    chaves.forEach(function (k) {
+      var antes = ref.byKey[k];
+      carteira++;
+      var sv = slotV(antes.v, uf);
+      sv.carteira++;
+
+      var row = atual[k];
+      if (!row) { perdidos++; return; }
+
+      if (ehJaComprou(row, result.colCategoria)) {
+        var v = result.colValor ? toNumber(row[result.colValor]) : 0;
+        conversoes++; valor += v;
+        sv.conversoes++; sv.valor += v;
+        sv.clientes.push(row);
+        convertidos.push(Object.assign({ __vendedorAnterior: antes.v, __uf: uf }, row));
+      } else {
+        abertos++;
+      }
+    });
+
+    // Estado cuja carteira anterior praticamente sumiu: as duas leituras
+    // nao falam dos mesmos clientes, entao esse estado fica fora da conta.
+    var fracaoSumida = carteira ? perdidos / carteira : 1;
+    if (!carteira || fracaoSumida > 1 / 3) {
+      naoConfiaveis.push({ uf: uf, carteira: carteira, perdidos: perdidos, fracao: fracaoSumida });
+      // desfaz o que este estado somou nos vendedores
+      Object.keys(porVendedor).forEach(function (nome) {
+        if (porVendedor[nome].uf === uf) delete porVendedor[nome];
+      });
+      convertidos = convertidos.filter(function (c) { return c.__uf !== uf; });
+      return;
+    }
+
+    perdidosTotal += perdidos;
+    abertosTotal += abertos;
+    comparados.push(uf);
+    porUf[uf] = {
+      uf: uf, carteira: carteira, conversoes: conversoes, valor: valor,
+      perdidos: perdidos, taxa: carteira ? conversoes / carteira : 0,
+      desde: ref.ts
+    };
   });
 
-  function taxa(o) { return o.carteira ? o.conversoes / o.carteira : 0; }
-
   var vendedores = Object.keys(porVendedor).map(function (n) {
-    var o = porVendedor[n]; o.taxa = taxa(o); return o;
+    var o = porVendedor[n];
+    o.taxa = o.carteira ? o.conversoes / o.carteira : 0;
+    return o;
   }).sort(function (a, b) { return b.taxa - a.taxa || b.conversoes - a.conversoes; });
 
-  var ufs = Object.keys(porUf).map(function (u) {
-    var o = porUf[u]; o.taxa = taxa(o); return o;
-  }).sort(function (a, b) { return b.taxa - a.taxa; });
+  var ufs = Object.keys(porUf).map(function (u) { return porUf[u]; })
+    .sort(function (a, b) { return b.taxa - a.taxa; });
 
-  var totalCarteira = vendedores.reduce(function (a, v) { return a + v.carteira; }, 0);
-  var totalConv = vendedores.reduce(function (a, v) { return a + v.conversoes; }, 0);
-  var totalValor = vendedores.reduce(function (a, v) { return a + v.valor; }, 0);
-
-  /* Cada cliente da rodada anterior teve um de tres destinos: converteu,
-     segue em aberto, ou sumiu da base nova. Se quase todos sumiram, as duas
-     bases nao falam dos mesmos clientes e dividir conversoes pela carteira
-     produz um numero sem significado -- foi assim que o app ja mostrou
-     "0% de aproveitamento" quando na verdade nao havia o que comparar. */
-  var fracaoSumida = totalCarteira ? perdidosDeVista / totalCarteira : 1;
-  var LIMITE_SUMIDOS = 1 / 3;
-  var confiavel = totalCarteira > 0 && fracaoSumida <= LIMITE_SUMIDOS;
+  var totalCarteira = ufs.reduce(function (a, u) { return a + u.carteira; }, 0);
+  var totalConv = ufs.reduce(function (a, u) { return a + u.conversoes; }, 0);
+  var totalValor = ufs.reduce(function (a, u) { return a + u.valor; }, 0);
+  var desde = ufs.length ? Math.min.apply(null, ufs.map(function (u) { return u.desde; })) : null;
 
   return {
-    desde: snapshot.ts,
+    modo: modo,
+    desde: desde,
     vendedores: vendedores,
     ufs: ufs,
     convertidos: convertidos,
@@ -736,129 +774,30 @@ function analisarFunil(records, headers, result, snapshot) {
     totalConversoes: totalConv,
     totalValor: totalValor,
     taxaGeral: totalCarteira ? totalConv / totalCarteira : 0,
-    perdidosDeVista: perdidosDeVista,
-    fracaoSumida: fracaoSumida,
-    confiavel: confiavel,
+    perdidosDeVista: perdidosTotal,
+    aindaAbertos: abertosTotal,
     temValor: !!result.colValor && totalValor > 0,
-    aindaAbertos: aindaAbertos
+    // diagnostico por estado, para a tela poder explicar o que ficou de fora
+    ufsComparadas: comparados,
+    ufsSemReferencia: semReferencia,
+    ufsMesmaBase: mesmaBase,
+    ufsNaoConfiaveis: naoConfiaveis,
+    ufsNaRodada: Object.keys(snapAtual.ufs),
+    confiavel: comparados.length > 0 && totalCarteira > 0,
+    snapshot: snapAtual
   };
 }
 
-/* ---------- EXPORTACAO ---------- */
-
-function cellOut(v) {
-  if (v === null || v === undefined) return '';
-  return String(v);
-}
-
-/* TSV: cola direto no Google Sheets / Excel sem passar por download. */
-function toTSV(rows, headers) {
-  var out = [headers.join('\t')];
-  rows.forEach(function (r) {
-    out.push(headers.map(function (h) {
-      return cellOut(r[h]).replace(/[\t\n\r]/g, ' ');
-    }).join('\t'));
+/* Junta a fotografia nova as referencias existentes, trocando SO os estados
+   que apareceram nesta rodada. Rodar o TO nao pode apagar a referencia do
+   PA -- foi exatamente esse o defeito da versao anterior. */
+function mesclarReferencias(referencias, snapshot) {
+  var saida = {};
+  Object.keys(referencias || {}).forEach(function (k) { saida[k] = referencias[k]; });
+  Object.keys(snapshot.ufs).forEach(function (uf) {
+    saida[chaveReferencia(snapshot.modo, uf)] = snapshot.ufs[uf];
   });
-  return out.join('\n');
-}
-
-/* CSV com ; e BOM — o Excel em pt-BR abre com as colunas separadas. */
-function toCSV(rows, headers) {
-  function esc(v) {
-    var s = cellOut(v);
-    return /[";\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-  }
-  var out = [headers.map(esc).join(';')];
-  rows.forEach(function (r) {
-    out.push(headers.map(function (h) { return esc(r[h]); }).join(';'));
-  });
-  return '﻿' + out.join('\r\n');
-}
-
-/* ---------- ZIP: escrita (metodo STORE, sem compressao) ---------- */
-
-var CRC_TABLE = (function () {
-  var t = new Uint32Array(256);
-  for (var n = 0; n < 256; n++) {
-    var c = n;
-    for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
-    t[n] = c >>> 0;
-  }
-  return t;
-})();
-
-function crc32(bytes) {
-  var c = 0xFFFFFFFF;
-  for (var i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
-  return (c ^ 0xFFFFFFFF) >>> 0;
-}
-
-function buildZip(entries) {
-  var enc = new TextEncoder();
-  var parts = [], central = [], offset = 0;
-
-  entries.forEach(function (e) {
-    var nameBytes = enc.encode(e.name);
-    var data = enc.encode(e.content);
-    var crc = crc32(data);
-
-    var local = new Uint8Array(30 + nameBytes.length);
-    var lv = new DataView(local.buffer);
-    lv.setUint32(0, 0x04034b50, true);
-    lv.setUint16(4, 20, true);
-    lv.setUint16(6, 0x0800, true);      // nomes em UTF-8
-    lv.setUint16(8, 0, true);           // sem compressao
-    lv.setUint32(14, crc, true);
-    lv.setUint32(18, data.length, true);
-    lv.setUint32(22, data.length, true);
-    lv.setUint16(26, nameBytes.length, true);
-    local.set(nameBytes, 30);
-
-    parts.push(local, data);
-
-    var cd = new Uint8Array(46 + nameBytes.length);
-    var cv = new DataView(cd.buffer);
-    cv.setUint32(0, 0x02014b50, true);
-    cv.setUint16(4, 20, true);
-    cv.setUint16(6, 20, true);
-    cv.setUint16(8, 0x0800, true);
-    cv.setUint16(10, 0, true);
-    cv.setUint32(16, crc, true);
-    cv.setUint32(20, data.length, true);
-    cv.setUint32(24, data.length, true);
-    cv.setUint16(28, nameBytes.length, true);
-    cv.setUint32(42, offset, true);
-    cd.set(nameBytes, 46);
-    central.push(cd);
-
-    offset += local.length + data.length;
-  });
-
-  var centralSize = central.reduce(function (a, b) { return a + b.length; }, 0);
-  var end = new Uint8Array(22);
-  var ev = new DataView(end.buffer);
-  ev.setUint32(0, 0x06054b50, true);
-  ev.setUint16(8, entries.length, true);
-  ev.setUint16(10, entries.length, true);
-  ev.setUint32(12, centralSize, true);
-  ev.setUint32(16, offset, true);
-
-  return new Blob(parts.concat(central, [end]), { type: 'application/zip' });
-}
-
-function download(blob, filename) {
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-}
-
-function safeName(s) {
-  return String(s).replace(/[\\/*?:"<>|]/g, '-').replace(/\s+/g, ' ').trim();
+  return saida;
 }
 
 /* ---------- ANALISES: leitura dos numeros + acao sugerida ---------- */
@@ -867,10 +806,11 @@ function pct(x) { return (x * 100).toFixed(1).replace('.', ',') + '%'; }
 
 function gerarInsights(result, funil) {
   var out = [];
-  // Rodadas nao comparaveis, mesma base repetida ou comparacao sem clientes
-  // em comum nao produzem numero de desempenho: as analises que dependem do
-  // funil ficam fora, em vez de sair um "0%" que culpa a equipe a toa.
-  if (funil && (funil.incompativel || funil.mesmaBase || !funil.confiavel)) funil = null;
+  // O funil ja chega filtrado: so entram os estados que tinham referencia e
+  // cujas duas leituras falam dos mesmos clientes. Se nenhum estado passou,
+  // nao ha numero de desempenho a dar -- melhor calar do que publicar um
+  // "0%" que culpa a equipe a toa.
+  if (funil && !funil.confiavel) funil = null;
   var colVal = result.colValor, colCat = result.colCategoria, colUf = result.colUf;
   var colInteg = findCol(result.headers, 'Integrador (CLI - Nome)') || findCol(result.headers, 'Integrador');
   var colCidade = findCol(result.headers, 'Cidade');
@@ -882,7 +822,8 @@ function gerarInsights(result, funil) {
   /* --- 1. resultado do periodo (so com rodada anterior salva) --- */
   if (funil && funil.totalCarteira) {
     add(funil.taxaGeral >= 0.12 ? 'bom' : (funil.taxaGeral >= 0.06 ? 'neutro' : 'ruim'),
-      'Aproveitamento do período: ' + pct(funil.taxaGeral),
+      'Aproveitamento do período: ' + pct(funil.taxaGeral) +
+        ' (' + funil.ufsComparadas.join(', ') + ')',
       fmtInt(funil.totalConversoes) + ' de ' + fmtInt(funil.totalCarteira) +
       ' clientes trabalhados voltaram a comprar' +
       (funil.temValor ? ', somando ' + fmtMoney(funil.totalValor) + ' em faturamento reativado' : '') +
@@ -1045,7 +986,8 @@ function novaEntradaHistorico(funil, result, origem) {
     temValor: !!funil.temValor,
     taxaGeral: funil.taxaGeral,
     ufs: funil.ufs.map(function (u) {
-      return { uf: u.uf, carteira: u.carteira, conversoes: u.conversoes, valor: u.valor, taxa: u.taxa };
+      return { uf: u.uf, carteira: u.carteira, conversoes: u.conversoes,
+               valor: u.valor, taxa: u.taxa };
     }),
     vendedores: funil.vendedores.map(function (v) {
       return { vendedor: v.vendedor, uf: v.uf, carteira: v.carteira,
@@ -1056,8 +998,7 @@ function novaEntradaHistorico(funil, result, origem) {
 
 /** Rodada que merece entrar na serie historica. */
 function rodadaHistoriavel(funil) {
-  return !!(funil && !funil.incompativel && !funil.mesmaBase &&
-            funil.confiavel && funil.totalCarteira > 0);
+  return !!(funil && funil.confiavel && funil.totalCarteira > 0);
 }
 
 /** Serie de um estado ao longo das rodadas. uf vazio = a equipe toda. */

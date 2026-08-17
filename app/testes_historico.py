@@ -65,14 +65,19 @@ with sync_playwright() as p:
     print("\n1. primeira rodada — nada com que comparar")
     rodar(pg, f"{S}/data_2.xlsx")
     pg.click("#s4"); pg.wait_for_timeout(600)
-    ok(pg.evaluate("state.funil") is None, "funil vazio na primeira rodada")
-    ok("primeira rodada" in pg.inner_text("#perfSub"), "explica que é a primeira")
+    # O funil agora sempre existe; o que muda e quais estados entraram na
+    # conta. Na primeira rodada, nenhum tem referencia ainda.
+    ok(pg.evaluate("state.funil.ufsComparadas.length") == 0, "nenhum estado comparado")
+    ok(pg.evaluate("state.funil.ufsSemReferencia.length") == 7, "os 7 estados sem referência")
+    ok("passam a contar" in pg.inner_text("#perfSub"), "explica que começam a contar agora")
     ok(pg.evaluate("lerHistorico().length") == 0, "histórico ainda vazio")
 
     print("\n2. mesma base de novo — não é um período")
     rodar(pg, f"{S}/data_2.xlsx")
     pg.click("#s4"); pg.wait_for_timeout(600)
-    ok(pg.evaluate("!!(state.funil && state.funil.mesmaBase)"), "detectou a mesma base")
+    ok(pg.evaluate("state.funil.ufsMesmaBase.length") == 7,
+       "detectou a mesma base nos 7 estados",
+       pg.evaluate("state.funil.ufsMesmaBase"))
     ok("mesma base" in pg.inner_text("#perfSub"), "explica na tela", pg.inner_text("#perfSub")[:90])
     ok(pg.evaluate("lerHistorico().length") == 0, "não gravou no histórico")
     titulos = pg.evaluate("state.insights.map(i=>i.titulo)")
@@ -144,14 +149,15 @@ with sync_playwright() as p:
 
     print("\n6. bases que não se cruzam")
     rodar(pg, f"{S}/base_mes.xlsx")   # base de PA, modo normal: clientes diferentes
-    f = pg.evaluate("state.funil && {inc:!!state.funil.incompativel,conf:state.funil.confiavel,"
+    f = pg.evaluate("state.funil && {conf:state.funil.confiavel,"
+                    "naoConf:(state.funil.ufsNaoConfiaveis||[]).map(u=>u.uf),"
                     "perd:state.funil.perdidosDeVista,cart:state.funil.totalCarteira}")
     pg.click("#s4"); pg.wait_for_timeout(600)
     sub = pg.inner_text("#perfSub")
     print("     funil:", f)
     print("     aviso:", sub[:130])
     ok(f and not f["conf"], "marcou a comparação como não confiável")
-    ok("não falam dos mesmos clientes" in sub, "explica o motivo em vez de mostrar 0%", sub[:90])
+    ok("ficou de fora porque" in sub, "explica por estado em vez de mostrar 0%", sub[:120])
     ok(pg.evaluate("lerHistorico().length") == 3, "não sujou o histórico")
     titulos = pg.evaluate("state.insights.map(i=>i.titulo)")
     ok(not any("Aproveitamento" in t for t in titulos), "sem cartão de aproveitamento", titulos)
