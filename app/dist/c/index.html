@@ -349,6 +349,27 @@ select{max-width:260px;}
 .fbar{height:6px;background:var(--panel-3);border-radius:99px;overflow:hidden;}
 .fbar i{display:block;height:100%;border-radius:99px;background:var(--ok);}
 
+/* ---------------- situacao dos links ---------------- */
+.sit-vend{
+  border:1px solid var(--line);border-radius:9px;padding:14px 16px;margin-bottom:10px;
+  background:var(--panel-2);
+}
+.sit-topo{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.sit-nome{font-size:13.5px;font-weight:600;}
+.sit-uf{
+  font-family:var(--mono);font-size:10px;font-weight:600;color:var(--y);
+  background:var(--y-wash);border:1px solid var(--y-dim);border-radius:4px;
+  padding:2px 7px;margin-right:8px;
+}
+.sit-lista{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding:8px 0;border-top:1px solid var(--line);margin-top:10px;font-size:13px;
+}
+.sit-lista .quando{font-family:var(--mono);font-size:11px;color:var(--text-3);}
+.sit-vazio{color:var(--text-3);font-size:13px;margin-top:8px;}
+.btn-perigo{border-color:var(--no);color:var(--no);}
+.btn-perigo:hover:not(:disabled){background:var(--no-wash);border-color:var(--no);}
+
 /* ---------------- historico por estado ---------------- */
 .pick .rd{display:inline-flex;align-items:center;gap:8px;}
 .hbars{

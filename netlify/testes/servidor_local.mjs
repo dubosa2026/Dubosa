@@ -5,8 +5,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const DIST = '/home/user/Dubosa/app/dist';
-const publicar = (await import('./netlify/functions/publicar.mjs')).default;
-const carteira = (await import('./netlify/functions/carteira.mjs')).default;
+// Cada funcao declara sua rota em `export const config`. Aqui o roteamento
+// e montado a partir disso, para nao precisar lembrar de registrar cada uma
+// -- foi o que quebrou quando /api/situacao caiu no handler da carteira.
+const ROTAS = {};
+for (const arquivo of ['publicar', 'carteira', 'situacao', 'apagar']) {
+  const mod = await import(`./netlify/functions/${arquivo}.mjs`);
+  const rota = (mod.config && mod.config.path) || `/api/${arquivo}`;
+  ROTAS[rota] = mod.default;
+}
 
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css' };
 
@@ -21,7 +28,8 @@ http.createServer(async (req, res) => {
         method: req.method, headers: req.headers,
         body: ['GET', 'HEAD'].includes(req.method) ? undefined : corpo,
       });
-      const fn = url.pathname === '/api/publicar' ? publicar : carteira;
+      const fn = ROTAS[url.pathname];
+      if (!fn) { res.writeHead(404); res.end('rota desconhecida: ' + url.pathname); return; }
       const resposta = await fn(pedido);
       res.writeHead(resposta.status, Object.fromEntries(resposta.headers));
       res.end(await resposta.text());

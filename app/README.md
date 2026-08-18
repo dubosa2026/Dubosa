@@ -276,10 +276,36 @@ de uma lista, ele leva uma etiqueta **"também em ..."** nas duas, e o topo da
 página avisa quantos se repetem — assim o vendedor não liga duas vezes
 achando que são casos diferentes.
 
-Vendedor que ficou sem cliente naquele tipo **perde aquela seção** do link,
-em vez de continuar vendo a lista do mês passado como se valesse. As outras
-seções dele não são afetadas. Por isso a publicação percorre todos os
-vendedores cadastrados, e não só os que aparecem na base da rodada.
+### Você escolhe quem recebe, e nada é apagado sozinho
+
+Antes de publicar, a etapa 3 mostra a lista de vendedores com caixas de
+seleção. Já vêm marcados os que têm cliente na rodada; desmarque quem não
+deve receber agora.
+
+**Quem não está marcado não é tocado.** O link dele fica exatamente como
+estava — mesma lista, mesma data. Isso importa porque a operação é estado a
+estado: publicar a rodada do Tocantins não pode encostar no que os
+vendedores do Pará já receberam.
+
+Publicar **nunca remove** nada. Se um vendedor ficou sem cliente na base
+nova, a lista antiga dele permanece; ele só deixa de ver aquela lista quando
+você mandar apagar. A remoção acontece apenas pelo painel **Situação dos
+links**.
+
+### Situação dos links
+
+Um painel na etapa 3 consulta o site e mostra o que **cada vendedor está
+vendo agora**: quais listas tem, de que data e com quantos clientes. Sem
+isso, a única forma de saber seria abrir os links um a um.
+
+De lá saem as três ações:
+
+- **Copiar link** do vendedor, para reenviar.
+- **Apagar** uma lista específica — some só ela, as outras continuam.
+- **Limpar tudo** — o vendedor passa a ver "nenhuma lista ativa". O link
+  continua válido, então a próxima publicação volta a preenchê-lo.
+
+As duas remoções pedem confirmação e não têm como desfazer.
 
 ### O que o vendedor vê
 

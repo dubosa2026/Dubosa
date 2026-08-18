@@ -16,3 +16,6 @@ credentials*.json
 
 # Dependencias das funcoes do Netlify (instaladas no build)
 node_modules/
+
+# Capturas de tela dos roteiros de teste (podem conter nomes de clientes)
+*.png

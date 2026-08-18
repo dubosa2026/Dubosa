@@ -379,6 +379,8 @@ $('run').addEventListener('click', function () {
     renderResultado();
     renderDesempenho();
     $('publicarSaida').innerHTML = '';
+    $('situacaoSaida').innerHTML = '';
+    renderSelecaoVendedores();
     ajustarPainelPublicar();
     goStep(2);
   } catch (err) {
@@ -820,6 +822,7 @@ $('senhaPub').addEventListener('input', function () {
 function ajustarPainelPublicar() {
   var naWeb = location.protocol === 'http:' || location.protocol === 'https:';
   $('publicarPanel').hidden = !naWeb;
+  $('situacaoPanel').hidden = !naWeb;
 }
 
 function linkDoVendedor(token) {
@@ -844,21 +847,24 @@ $('publicar').addEventListener('click', async function () {
   var saida = $('publicarSaida');
   botao.disabled = true;
 
-  // Publica todo o resumo E os vendedores cadastrados que ficaram de fora
-  // dele. Sem a segunda parte, quem recebeu uma lista deste tipo no mes
-  // passado e nao aparece na base de agora nunca recebe publicacao nenhuma,
-  // e continuaria vendo a lista vencida como se fosse a atual. Publicar
-  // vazio remove aquele tipo do link dele.
-  var noResumo = {};
-  r.resumo.forEach(function (v) { noResumo[v.vendedor] = true; });
-  var fila = r.resumo.concat(
-    state.equipe
-      .filter(function (v) { return norm(v.vendedor) && !noResumo[norm(v.vendedor)]; })
-      .map(function (v) {
-        return { vendedor: norm(v.vendedor), uf: norm(v.uf).toUpperCase(),
-                 email: norm(v.email), qtde: 0, linhas: [] };
-      })
-  );
+  // Publica exatamente quem esta marcado, e ninguem mais. Quem nao entra na
+  // fila nao e tocado: o link dele fica como estava. A versao anterior
+  // percorria a equipe inteira e apagava a lista de quem ficou sem cliente
+  // -- publicando o Tocantins, os vendedores do Para perdiam o que ja
+  // tinham recebido.
+  var marcados = {};
+  $('selVend').querySelectorAll('input[data-vend]:checked').forEach(function (i) {
+    marcados[i.getAttribute('data-vend')] = true;
+  });
+  var fila = r.resumo.filter(function (v) { return marcados[v.vendedor] && v.qtde > 0; });
+
+  if (!fila.length) {
+    saida.innerHTML = '<div class="alert">Nenhum vendedor marcado com cliente nesta rodada. ' +
+      'Marque quem deve receber acima.</div>';
+    botao.disabled = false;
+    return;
+  }
+
   var prontos = [], falhas = [];
 
   for (var i = 0; i < fila.length; i++) {
@@ -1096,4 +1102,186 @@ $('limparHist').addEventListener('click', function () {
   histUfEscolhida = '';
   renderHistorico();
   toast('Histórico apagado');
+});
+
+/* ---------- Quem recebe a rodada ---------- */
+
+function renderSelecaoVendedores() {
+  var alvo = $('selVend');
+  var r = state.result;
+  if (!r) { alvo.innerHTML = ''; return; }
+
+  // Ordem: quem tem cliente primeiro, porque e neles que a decisao recai.
+  var lista = r.resumo.slice().sort(function (a, b) {
+    if (!!a.qtde !== !!b.qtde) return a.qtde ? -1 : 1;
+    return b.qtde - a.qtde;
+  });
+
+  alvo.innerHTML = lista.map(function (v) {
+    var temCliente = v.qtde > 0;
+    return '<label' + (temCliente ? '' : ' title="Sem cliente nesta rodada — não há o que publicar"') + '>' +
+      '<input type="checkbox" data-vend="' + escapeHtml(v.vendedor) + '"' +
+        (temCliente ? ' checked' : ' disabled') + '>' +
+      '<span>' + escapeHtml(v.vendedor) + '</span>' +
+      '<span class="n">' + (temCliente ? fmtInt(v.qtde) : '—') + '</span></label>';
+  }).join('');
+}
+
+$('selTodos').addEventListener('click', function () {
+  $('selVend').querySelectorAll('input[data-vend]:not(:disabled)').forEach(function (i) {
+    i.checked = true;
+  });
+});
+$('selNenhum').addEventListener('click', function () {
+  $('selVend').querySelectorAll('input[data-vend]').forEach(function (i) { i.checked = false; });
+});
+
+/* ---------- Situacao dos links, e a remocao ---------- */
+
+function nomesParaConsulta() {
+  var nomes = {};
+  state.equipe.forEach(function (v) { if (norm(v.vendedor)) nomes[norm(v.vendedor)] = true; });
+  // Inclui quem aparece so na base: na modalidade sem-compras o dono vem da
+  // planilha, e pode nao estar no cadastro da etapa 2.
+  if (state.result) {
+    state.result.resumo.forEach(function (v) { nomes[v.vendedor] = true; });
+  }
+  return Object.keys(nomes).sort();
+}
+
+async function chamarAdmin(caminho, corpo) {
+  var senha = norm($('senhaPub').value);
+  if (!senha) { toast('Informe a senha de publicação'); $('senhaPub').focus(); return null; }
+  var resposta = await fetch(caminho, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-admin-token': senha },
+    body: JSON.stringify(corpo)
+  });
+  var dados = await resposta.json();
+  if (!resposta.ok) { toast(dados.erro || ('Erro ' + resposta.status)); return null; }
+  return dados;
+}
+
+$('verSituacao').addEventListener('click', async function () {
+  var botao = $('verSituacao');
+  var saida = $('situacaoSaida');
+  botao.disabled = true;
+  saida.innerHTML = '<p class="hint">Consultando…</p>';
+  try {
+    var dados = await chamarAdmin('/api/situacao', { vendedores: nomesParaConsulta() });
+    if (dados) renderSituacao(dados.itens);
+    else saida.innerHTML = '';
+  } catch (e) {
+    saida.innerHTML = '<div class="alert">Não consegui consultar: ' + escapeHtml(e.message) + '</div>';
+  }
+  botao.disabled = false;
+});
+
+var situacaoAtual = [];
+
+function renderSituacao(itens) {
+  situacaoAtual = itens || [];
+  var saida = $('situacaoSaida');
+  var ufDe = {};
+  state.equipe.forEach(function (v) { ufDe[norm(v.vendedor)] = norm(v.uf).toUpperCase(); });
+
+  var comLista = situacaoAtual.filter(function (i) { return i.rodadas && i.rodadas.length; });
+  var semLista = situacaoAtual.filter(function (i) { return !i.rodadas || !i.rodadas.length; });
+
+  if (!comLista.length) {
+    saida.innerHTML = '<p class="empty">Nenhum vendedor tem lista publicada no momento.</p>';
+    return;
+  }
+
+  saida.innerHTML =
+    '<p class="hint">' + fmtInt(comLista.length) + ' com lista publicada' +
+      (semLista.length ? ' · ' + fmtInt(semLista.length) + ' sem nada no link' : '') + '</p>' +
+    comLista.map(function (i) {
+      return '<div class="sit-vend">' +
+        '<div class="sit-topo">' +
+          '<span><span class="sit-uf">' + escapeHtml(ufDe[i.vendedor] || '--') + '</span>' +
+            '<span class="sit-nome">' + escapeHtml(i.vendedor) + '</span></span>' +
+          '<div class="btn-row">' +
+            '<button class="btn btn-sm" data-copialink="' + escapeHtml(i.token) + '">Copiar link</button>' +
+            '<button class="btn btn-sm btn-perigo" data-limpar="' + escapeHtml(i.vendedor) + '">Limpar tudo</button>' +
+          '</div>' +
+        '</div>' +
+        i.rodadas.map(function (r) {
+          return '<div class="sit-lista">' +
+            '<span>' + escapeHtml(r.rotulo) + ' <span class="count-pill">' + fmtInt(r.qtde) + '</span>' +
+              ' <span class="quando">' +
+              (r.publicadoEm ? escapeHtml(new Date(r.publicadoEm).toLocaleDateString('pt-BR') + ' às ' +
+                new Date(r.publicadoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })) : '') +
+              '</span></span>' +
+            '<button class="btn btn-sm btn-perigo" data-apagar="' + escapeHtml(i.vendedor) +
+              '" data-modo="' + escapeHtml(r.modo) + '">Apagar</button>' +
+          '</div>';
+        }).join('') +
+      '</div>';
+    }).join('') +
+    (semLista.length
+      ? '<p class="hint" style="margin-top:14px;">Sem nada no link: ' +
+        semLista.map(function (i) { return escapeHtml(i.vendedor); }).join(', ') + '</p>'
+      : '');
+
+  saida.querySelectorAll('[data-copialink]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      copyText(linkDoVendedor(b.getAttribute('data-copialink')), b, null);
+    });
+  });
+
+  saida.querySelectorAll('[data-apagar]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      apagarLista(b.getAttribute('data-apagar'), b.getAttribute('data-modo'));
+    });
+  });
+
+  saida.querySelectorAll('[data-limpar]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      apagarLista(b.getAttribute('data-limpar'), null);
+    });
+  });
+}
+
+async function apagarLista(vendedor, modo) {
+  var item = situacaoAtual.filter(function (i) { return i.vendedor === vendedor; })[0];
+  var alvo = modo
+    ? (item ? (item.rodadas.filter(function (r) { return r.modo === modo; })[0] || {}).rotulo : modo)
+    : null;
+
+  // Remover e irreversivel: o vendedor perde a lista na hora.
+  var pergunta = modo
+    ? 'Apagar a lista "' + alvo + '" de ' + vendedor + '?\n\n' +
+      'Ele deixa de ver essa lista imediatamente. As outras listas dele continuam.'
+    : 'Limpar TODAS as listas de ' + vendedor + '?\n\n' +
+      'O link continua válido, mas ele passa a ver "nenhuma lista ativa". Não tem como desfazer.';
+  if (!confirm(pergunta)) return;
+
+  var dados = await chamarAdmin('/api/apagar',
+    modo ? { vendedor: vendedor, modo: modo } : { vendedor: vendedor });
+  if (!dados) return;
+
+  toast(modo ? 'Lista apagada' : 'Link limpo');
+  $('verSituacao').click();
+}
+
+$('copiarSituacao').addEventListener('click', function () {
+  if (!situacaoAtual.length) { toast('Consulte a situação primeiro'); return; }
+  var linhas = [];
+  situacaoAtual.forEach(function (i) {
+    if (!i.rodadas || !i.rodadas.length) {
+      linhas.push({ Vendedor: i.vendedor, Lista: '(nada publicado)', Clientes: 0,
+                    Publicada: '', Link: i.token ? linkDoVendedor(i.token) : '' });
+      return;
+    }
+    i.rodadas.forEach(function (r) {
+      linhas.push({
+        Vendedor: i.vendedor, Lista: r.rotulo, Clientes: r.qtde,
+        Publicada: r.publicadoEm ? new Date(r.publicadoEm).toLocaleString('pt-BR') : '',
+        Link: linkDoVendedor(i.token)
+      });
+    });
+  });
+  copyText(toTSV(linhas, ['Vendedor', 'Lista', 'Clientes', 'Publicada', 'Link']),
+    $('copiarSituacao'), null);
 });

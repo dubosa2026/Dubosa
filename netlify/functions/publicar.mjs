@@ -11,8 +11,11 @@
  * perde a distribuicao que recebeu quando chega um aviso de sem-compras --
  * era o comportamento antigo, em que cada publicacao apagava a anterior.
  *
- * Rodada sem nenhum cliente remove aquele tipo do link, em vez de deixar
- * uma secao vazia ou, pior, manter no ar a lista antiga ja vencida.
+ * NADA e apagado automaticamente. Publicar uma rodada sem clientes para um
+ * vendedor nao remove a lista que ele ja tem -- a remocao acontece so pelo
+ * comando explicito do gestor, em /api/apagar. A versao anterior apagava
+ * sozinha, e como o gestor publica um estado por vez, a rodada do Tocantins
+ * ia apagando as listas ja entregues aos vendedores do Para.
  *
  * Protegido pela senha de publicacao (variavel ADMIN_TOKEN do site).
  */
@@ -94,19 +97,24 @@ export default async function publicar(req) {
   const doc = normalizar(await carteiras.get(token, { type: 'json' })) || { vendedor, rodadas: {} };
   doc.vendedor = vendedor;
 
-  if (linhas.length) {
-    doc.rodadas[modo] = {
-      modo,
-      rotulo: String(corpo.rotulo || '').trim() || 'Distribuição de carteira',
-      uf: String(corpo.uf || ''),
-      origem: String(corpo.origem || ''),
-      publicadoEm: Date.now(),
-      colunas: Array.isArray(corpo.colunas) ? corpo.colunas : [],
-      linhas,
-    };
-  } else {
-    delete doc.rodadas[modo];
+  if (!linhas.length) {
+    // Sem clientes nao ha o que publicar, e apagar aqui seria destruir
+    // trabalho ja entregue. Devolve o estado atual sem tocar em nada.
+    return json({
+      vendedor, token, qtde: 0, semAlteracao: true,
+      rodadasNoLink: Object.keys(doc.rodadas).length,
+    });
   }
+
+  doc.rodadas[modo] = {
+    modo,
+    rotulo: String(corpo.rotulo || '').trim() || 'Distribuição de carteira',
+    uf: String(corpo.uf || ''),
+    origem: String(corpo.origem || ''),
+    publicadoEm: Date.now(),
+    colunas: Array.isArray(corpo.colunas) ? corpo.colunas : [],
+    linhas,
+  };
 
   await carteiras.setJSON(token, doc);
 

@@ -79,13 +79,27 @@ ok("NOVA" in doc["rodadas"]["normal"]["linhas"][0]["Integrador (CLI - Nome)"],
 ok(len(doc["rodadas"]["carteira"]["linhas"]) == 2, "Sem compras NÃO foi tocada",
    len(doc["rodadas"]["carteira"]["linhas"]))
 
-print("\n3. rodada vazia remove aquele tipo, sem afetar os outros")
+print("\n3. rodada vazia NÃO apaga nada — só o gestor apaga")
+antes = len(doc["rodadas"]["normal"]["linhas"])
 _, r3 = publicar("TESTE ACUMULO" + SUF, "normal", "Distribuição de carteira", [])
 _, doc = ler(tok)
-ok("normal" not in doc["rodadas"], "Distribuição removida quando vem vazia",
-   list(doc["rodadas"].keys()))
+ok("normal" in doc["rodadas"], "Distribuição continua no ar", list(doc["rodadas"].keys()))
+ok(len(doc["rodadas"]["normal"]["linhas"]) == antes,
+   "com as mesmas linhas de antes", len(doc["rodadas"]["normal"]["linhas"]))
 ok("carteira" in doc["rodadas"], "Sem compras sobreviveu")
-ok(r3["rodadasNoLink"] == 1, "contagem devolvida bate", r3)
+ok(r3.get("semAlteracao") is True, "a resposta avisa que nada mudou", r3)
+ok(r3["rodadasNoLink"] == 2, "contagem devolvida bate", r3)
+
+print("\n3b. apagar é um comando à parte")
+st, ra = api("/api/apagar", {"vendedor": "TESTE ACUMULO" + SUF, "modo": "normal"}, admin=True)
+_, doc = ler(tok)
+ok(st == 200 and "normal" not in doc["rodadas"],
+   "apagar remove a Distribuição", (st, list(doc["rodadas"].keys())))
+ok("carteira" in doc["rodadas"], "e não encosta na Sem compras")
+# devolve o estado para o resto do roteiro
+publicar("TESTE ACUMULO" + SUF, "normal", "Distribuição de carteira",
+         [{"Integrador (CLI - Nome)": "CLI-0000000009 - REPOSTA"}])
+_, doc = ler(tok)
 
 print("\n4. tipo desconhecido não cria chave solta")
 api("/api/publicar", {"vendedor": "TESTE ACUMULO" + SUF, "modo": "hackeado",
