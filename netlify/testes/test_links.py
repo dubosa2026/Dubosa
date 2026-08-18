@@ -50,9 +50,8 @@ with sync_playwright() as p:
         .map(e => e.textContent)""")
     qtdes = g.evaluate("""() => [...document.querySelectorAll('#publicarSaida .vuf')]
         .map(e => e.textContent)""")
-    # Publica os 22 cadastrados + quem aparece na base sem estar na equipe.
-    # Os que ficam sem cliente recebem publicacao vazia, que remove aquele
-    # tipo do link em vez de deixar a lista do mes passado no ar.
+    # Publica quem esta marcado na etapa 3 e tem cliente nesta rodada. Quem
+    # fica de fora nao e tocado: o link dele continua como estava.
     ok(len(links) >= 8, f"publicou todo mundo, não só os 8 da base (saíram {len(links)})")
     comClientes = [n for n, q in zip(nomes, qtdes) if q != "0"]
     ok(len(comClientes) == 8, f"8 com cliente nesta rodada (saíram {len(comClientes)})")
@@ -68,10 +67,15 @@ with sync_playwright() as p:
     v.on("pageerror", lambda e: verrs.append(str(e)))
 
     alvo = nomes.index("GIOVANNA DO CARMO FUJIMOTO")
+    # A quantidade sai da propria tela do gestor. Fixar um numero aqui quebra
+    # a cada mudanca de regra -- o que importa e a tela do vendedor bater com
+    # o que o gestor publicou.
+    qtdEsperada = int(esperado["GIOVANNA DO CARMO FUJIMOTO"])
     v.goto(links[alvo]); v.wait_for_timeout(1800)
     texto = v.inner_text("#conteudo")
     ok("Giovanna" in texto, "saúda pelo primeiro nome", texto[:80])
-    ok("6 clientes" in texto, "mostra a quantidade certa", texto[:120])
+    ok(f"{qtdEsperada} clientes" in texto,
+       f"mostra a quantidade certa ({qtdEsperada})", texto[:120])
 
     # Cada tipo de rodada tem sua propria secao; conta so a que interessa.
     linhasTela = v.evaluate("""()=>{
@@ -79,7 +83,8 @@ with sync_playwright() as p:
         p=>/Sem compras/.test(p.querySelector('h3').textContent));
       return p ? p.querySelectorAll('tbody tr').length : -1;
     }""")
-    ok(linhasTela == 6, f"seção Sem compras com 6 linhas (tem {linhasTela})")
+    ok(linhasTela == qtdEsperada,
+       f"seção Sem compras com {qtdEsperada} linhas (tem {linhasTela})")
 
     outros = [n for n in nomes if n != "GIOVANNA DO CARMO FUJIMOTO"]
     vazou = [n for n in outros if n in texto]

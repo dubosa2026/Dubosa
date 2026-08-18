@@ -225,6 +225,12 @@ td.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-num
 .vname{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
 .vmail{font-family:var(--mono);font-size:10.5px;color:var(--text-3);}
 .vmail[data-alerta="1"]{color:var(--no);}
+/* Marca quantos clientes chegaram de vendedor de fora da equipe. */
+.tag-repasse{
+  font-family:var(--mono);font-size:10px;color:var(--y);
+  border:1px solid var(--y);border-radius:99px;padding:1px 6px;
+  white-space:nowrap;vertical-align:middle;
+}
 .vbar{height:6px;background:var(--panel-3);border-radius:99px;overflow:hidden;}
 .vbar i{display:block;height:100%;background:var(--y);border-radius:99px;}
 .vqt{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;text-align:right;}
@@ -619,17 +625,25 @@ select{max-width:260px;}
             <span><strong>Ataque a um estado</strong> — a rodada inteira se concentra em um estado</span></label>
           <label class="radio"><input type="radio" name="modo" value="carteira">
             <span><strong>Sem compras no mês</strong> — cada cliente continua com o vendedor
-            que já o atende. Serve para avisar cada um de quem ainda não comprou.</span></label>
+            da sua equipe que já o atende. Quem está com vendedor de fora passa para a sua
+            equipe. Serve para avisar cada um de quem ainda não comprou.</span></label>
         </div>
       </div>
 
       <div id="carteiraBox" hidden style="margin-top:14px;padding-left:26px;">
         <div class="alert" data-t="info" style="margin:0 0 18px;">
-          Nesta modalidade <strong>nada é redistribuído</strong>. O cliente permanece na
-          carteira de quem já o atende, conforme a coluna <strong>Vendedor</strong> da base.
-          Se um cliente de Rondônia está com o Diego, ele continua com o Diego — a lista
-          existe para você avisar que há um cliente ali esperando contato.
-          Vale para <strong>todos os estados</strong>, não só a Região Norte.
+          Esta modalidade segue <strong>duas regras, nesta ordem</strong>:
+          <br><br>
+          <strong>1. O cliente é de alguém da sua equipe</strong> — ele fica onde está.
+          Se um cliente de Rondônia está com o Diego, continua com o Diego, e a lista existe
+          para você avisar que há um cliente ali esperando contato.
+          <br><br>
+          <strong>2. O cliente está com vendedor de fora da sua equipe</strong> — ele passa
+          para um vendedor da sua equipe naquele estado, dividido por rodízio. Ninguém de fora
+          da equipe da etapa 2 entra na publicação nem recebe link.
+          <br><br>
+          Vale para <strong>todos os estados</strong>, não só a Região Norte. Onde você não
+          tiver vendedor cadastrado, o cliente da regra 2 fica de fora e aparece no relatório.
         </div>
 
         <div class="sub-block">
@@ -668,8 +682,8 @@ select{max-width:260px;}
       <div class="alert" data-t="info" style="margin:20px 0 0;">
         <strong>Regra fixa da distribuição:</strong> nas rodadas Normal e Ataque, só a Região
         Norte (AC, AM, AP, PA, RO, RR, TO) é redistribuída. Clientes de qualquer outro estado
-        permanecem com o vendedor que já os atende. A modalidade "Sem compras no mês" não
-        redistribui ninguém, por isso atende o Brasil inteiro.
+        permanecem com o vendedor que já os atende. A modalidade "Sem compras no mês" atende o
+        Brasil inteiro e só move o cliente quando ele está com vendedor de fora da sua equipe.
       </div>
     </div>
 
@@ -1255,9 +1269,33 @@ function distribuir(records, headers, equipe, opts) {
     .filter(function (v) { return v.vendedor && ehNorte(v.uf); })
     .map(function (v) { return v.vendedor; });
 
+  // Quem e da equipe, pelo cadastro da etapa 2. Serve para reconhecer, na
+  // coluna Vendedor da base, quem e da casa e quem e de fora.
+  var nomesEquipe = {};
+  equipe.forEach(function (v) {
+    var n = norm(v.vendedor);
+    if (n) nomesEquipe[n.toUpperCase()] = n;
+  });
+  var chavesEquipe = Object.keys(nomesEquipe);
+  var grafiasAceitas = {};
+
+  /* Devolve o nome cadastrado do vendedor, ou null se ele nao for da equipe.
+     A comparacao aceita pequena diferenca de grafia: o mesmo vendedor escrito
+     de dois jeitos nao pode ser tratado como estranho e perder o cliente. */
+  function vendedorDaEquipe(nome) {
+    var chave = norm(nome).toUpperCase();
+    if (!chave) return null;
+    if (nomesEquipe[chave]) return nomesEquipe[chave];
+    var perto = nomeParecido(chave, chavesEquipe);
+    if (!perto) return null;
+    grafiasAceitas[nome] = nomesEquipe[perto];
+    return nomesEquipe[perto];
+  }
+
   var excluidos = [], semUf = [], foraNorte = [], outraGerencia = [],
       semVendedor = [], retidoAtaque = [], foraDoFiltro = [], rodape = [],
-      semDono = [], grupos = {}, todasUf = [], carteira = [];
+      semDono = [], grupos = {}, todasUf = [], carteira = [],
+      semEquipeNaUf = [], repasse = {};
 
   records.forEach(function (row) {
     // 0) rodape com o texto dos filtros da exportacao -- nao e cliente
@@ -1280,13 +1318,30 @@ function distribuir(records, headers, equipe, opts) {
       outraGerencia.push(row); return;
     }
 
-    // 4) modo carteira: nada e redistribuido. O cliente continua com quem ja
-    //    o atende, e a lista serve para avisar cada vendedor de quem ainda
-    //    nao comprou. Vale para o Brasil inteiro, nao so para o Norte.
+    // 4) modo carteira (sem compras no mes). Duas regras, nesta ordem:
+    //
+    //    1a) o cliente ja e de um vendedor DA EQUIPE -> continua com ele.
+    //        Nada e redistribuido; a lista serve para avisar o vendedor de
+    //        que ha um cliente da carteira dele parado no mes.
+    //
+    //    2a) o cliente esta com alguem de FORA da equipe -> ninguem de fora
+    //        pode entrar na publicacao, entao ele passa para um vendedor da
+    //        equipe naquele estado, que sera avisado de que o cliente esta
+    //        sem compras no mes.
+    //
+    //    Vale para o Brasil inteiro, nao so para o Norte.
     if (modo === 'carteira') {
       if (ufsAceitas && !ufsAceitas[uf]) { foraDoFiltro.push(row); return; }
-      if (!colVendedorBase || !norm(row[colVendedorBase])) { semDono.push(row); return; }
-      carteira.push(row);
+      var dono = colVendedorBase ? norm(row[colVendedorBase]) : '';
+      if (!dono) { semDono.push(row); return; }
+
+      var daCasa = vendedorDaEquipe(dono);
+      if (daCasa) { carteira.push({ row: row, dono: daCasa }); return; }
+
+      // Sem ninguem da equipe naquele estado nao ha para quem repassar.
+      if (!porUf[uf]) { semEquipeNaUf.push(row); return; }
+      if (!repasse[uf]) repasse[uf] = [];
+      repasse[uf].push(row);
       return;
     }
 
@@ -1307,11 +1362,26 @@ function distribuir(records, headers, equipe, opts) {
   });
 
   var atribuidos = [];
-  // No modo carteira nao ha rodizio: o dono e quem ja consta na base.
-  carteira.forEach(function (row) {
-    var copia = Object.assign({}, row);
-    copia.__vendedor = norm(row[colVendedorBase]);
+  // Regra 1: quem ja e da equipe fica com o cliente, sem rodizio.
+  carteira.forEach(function (item) {
+    var copia = Object.assign({}, item.row);
+    copia.__vendedor = item.dono;
+    copia.__origemCarteira = 'mantido';
     atribuidos.push(copia);
+  });
+  // Regra 2: o que estava com gente de fora e rateado entre os vendedores da
+  // equipe naquele estado. A coluna Vendedor da linha passa a trazer o novo
+  // responsavel -- a lista que o vendedor recebe tem de mostrar o nome dele,
+  // e o nome de quem e de outra equipe nao precisa ir junto.
+  var repassados = 0;
+  Object.keys(repasse).forEach(function (uf) {
+    repassados += repasse[uf].length;
+    dividirRodizio(repasse[uf], porUf[uf], headers).forEach(function (copia) {
+      copia.__origemCarteira = 'repassado';
+      copia.__donoAnterior = colVendedorBase ? norm(copia[colVendedorBase]) : '';
+      if (colVendedorBase) copia[colVendedorBase] = copia.__vendedor;
+      atribuidos.push(copia);
+    });
   });
   if (todasUf.length) atribuidos = atribuidos.concat(dividirRodizio(todasUf, todosVendedores, headers));
   Object.keys(grupos).forEach(function (uf) {
@@ -1356,6 +1426,10 @@ function distribuir(records, headers, equipe, opts) {
         return porUfDoVendedor[b] - porUfDoVendedor[a];
       });
 
+      var repassadosDele = linhas.filter(function (r) {
+        return r.__origemCarteira === 'repassado';
+      }).length;
+
       return {
         vendedor: nome,
         uf: ufs[0] || '',
@@ -1364,6 +1438,8 @@ function distribuir(records, headers, equipe, opts) {
         naEquipe: !!cadastrado,
         sugestaoNome: cadastrado ? null : nomeParecido(nome, nomesCadastro),
         qtde: linhas.length,
+        mantidos: linhas.length - repassadosDele,
+        repassados: repassadosDele,
         valor: valores[nome] || 0,
         linhas: linhas
       };
@@ -1396,6 +1472,9 @@ function distribuir(records, headers, equipe, opts) {
     foraDoFiltro: foraDoFiltro,
     rodape: rodape,
     semDono: semDono,
+    semEquipeNaUf: semEquipeNaUf,
+    repassados: repassados,
+    grafiasAceitas: grafiasAceitas,
     resumo: resumo,
     modo: modo,
     ataque: ataque,
@@ -2265,8 +2344,15 @@ function renderResultado() {
   $('resSub').innerHTML = ehCarteira
     ? 'Base de <strong>' + fmtInt(r.totalLido) + '</strong> linhas &mdash; ' +
       escapeHtml(state.origem) + '. Estados: <strong>' + escapeHtml(r.ufsFiltro.join(', ')) +
-      '</strong>. Nada foi redistribuído: cada cliente está na lista de quem já o atende, ' +
-      'para você avisar o vendedor de que há um cliente esperando contato.'
+      '</strong>. Quem já é da sua equipe fica com o próprio cliente, para você avisar que ' +
+      'há um cliente parado no mês.' +
+      (r.repassados
+        ? ' <strong>' + fmtInt(r.repassados) + '</strong> ' +
+          (r.repassados === 1 ? 'cliente estava' : 'clientes estavam') +
+          ' com vendedor de fora da equipe e ' +
+          (r.repassados === 1 ? 'passou' : 'passaram') +
+          ' para a sua equipe, divididos por estado.'
+        : ' Nenhum cliente estava com vendedor de fora da equipe.')
     : 'Base de <strong>' + fmtInt(r.totalLido) + '</strong> linhas &mdash; ' +
       escapeHtml(state.origem) + '. Cada rodada recalcula a divisão do zero.' +
       (r.modo === 'ataque' && r.ataque
@@ -2274,11 +2360,13 @@ function renderResultado() {
         : '');
 
   var retidos = r.semUf.length + r.semVendedor.length + r.retidoAtaque.length +
-                r.outraGerencia.length + r.foraDoFiltro.length + r.semDono.length;
+                r.outraGerencia.length + r.foraDoFiltro.length + r.semDono.length +
+                (r.semEquipeNaUf ? r.semEquipeNaUf.length : 0);
   $('stats').innerHTML = ehCarteira
     ? stat('go', r.atribuidos.length, 'clientes a cobrar') +
       stat('out', r.excluidos.length, 'já compraram') +
       stat('hold', r.resumo.length, 'vendedores a avisar') +
+      stat(r.repassados ? 'go' : 'hold', r.repassados || 0, 'vindos de fora da equipe') +
       stat('hold', retidos, 'fora do filtro')
     : stat('go', r.atribuidos.length, 'distribuídos') +
       stat('out', r.excluidos.length, 'ativos 30 dias') +
@@ -2292,10 +2380,11 @@ function renderResultado() {
   list.innerHTML = '';
 
   var foraDoCadastro = r.resumo.filter(function (v) { return v.naEquipe === false; });
-  var avisoEquipe = $('avisoEquipe');
+  var grafias = Object.keys(r.grafiasAceitas || {});
+  var avisos = [];
+
   if (foraDoCadastro.length) {
-    avisoEquipe.hidden = false;
-    avisoEquipe.innerHTML =
+    avisos.push(
       '<strong>' + fmtInt(foraDoCadastro.length) +
       (foraDoCadastro.length === 1 ? ' vendedor aparece' : ' vendedores aparecem') +
       ' na base mas não estão na equipe da etapa 2:</strong> ' +
@@ -2304,11 +2393,24 @@ function renderResultado() {
           (v.sugestaoNome ? ' (grafia parecida com <em>' + escapeHtml(v.sugestaoNome) + '</em>)' : '');
       }).join(' · ') +
       '. A lista deles foi gerada assim mesmo, mas sem e-mail cadastrado. ' +
-      'Se for a mesma pessoa com o nome escrito de outro jeito, acerte a grafia na etapa 2.';
-  } else {
-    avisoEquipe.hidden = true;
-    avisoEquipe.innerHTML = '';
+      'Se for a mesma pessoa com o nome escrito de outro jeito, acerte a grafia na etapa 2.');
   }
+
+  // Nome quase igual ao do cadastro conta como da equipe -- senao uma letra
+  // trocada na base tiraria o cliente do vendedor certo. Fica registrado
+  // aqui para o gestor conferir se o palpite está correto.
+  if (grafias.length) {
+    avisos.push(
+      '<strong>Nomes reconhecidos como da equipe apesar da grafia diferente:</strong> ' +
+      grafias.map(function (n) {
+        return escapeHtml(n) + ' &rarr; <em>' + escapeHtml(r.grafiasAceitas[n]) + '</em>';
+      }).join(' · ') +
+      '. Se alguma dessas duplas não for a mesma pessoa, acerte o nome na etapa 2 e rode de novo.');
+  }
+
+  var avisoEquipe = $('avisoEquipe');
+  avisoEquipe.hidden = !avisos.length;
+  avisoEquipe.innerHTML = avisos.join('<br><br>');
 
   r.resumo.slice().sort(function (a, b) {
     return a.uf === b.uf ? b.qtde - a.qtde : (a.uf < b.uf ? -1 : 1);
@@ -2323,6 +2425,10 @@ function renderResultado() {
         (v.ufsAtendidas && v.ufsAtendidas.length > 1 ? '+' + (v.ufsAtendidas.length - 1) : '') +
       '</span>' +
       '<span><span class="vname">' + escapeHtml(v.vendedor) + '</span>' +
+        (v.repassados
+          ? ' <span class="tag-repasse" title="Estavam com vendedor de fora da equipe">+' +
+            fmtInt(v.repassados) + ' de fora</span>'
+          : '') +
         (v.naEquipe === false
           ? '<br><span class="vmail" data-alerta="1">fora do cadastro da etapa 2' +
             (v.sugestaoNome ? ' &mdash; lá consta ' + escapeHtml(v.sugestaoNome) : '') + '</span>'
@@ -2375,6 +2481,10 @@ function renderBuckets() {
      'Clientes em estados que você não marcou nesta rodada.'],
     ['Sem vendedor na base', r.semDono,
      'A coluna Vendedor está vazia nessas linhas, então não há a quem avisar. Corrija na origem.'],
+    ['Estado sem ninguém da sua equipe', r.semEquipeNaUf || [],
+     'Estavam com vendedor de fora da equipe, e nesse estado você não tem vendedor cadastrado ' +
+     'na etapa 2 — não há para quem repassar. Cadastre alguém para o estado e rode de novo, ' +
+     'ou deixe como está: eles seguem com quem já os atende.'],
     ['Rodapé da exportação &mdash; descartado', r.rodape,
      'Linha com o texto dos filtros aplicados, que o BI escreve no fim do arquivo. Não é cliente.'],
     ['Fora do Norte &mdash; mantidos com o vendedor atual', r.foraNorte,

@@ -218,6 +218,12 @@ td.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-num
 .vname{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
 .vmail{font-family:var(--mono);font-size:10.5px;color:var(--text-3);}
 .vmail[data-alerta="1"]{color:var(--no);}
+/* Marca quantos clientes chegaram de vendedor de fora da equipe. */
+.tag-repasse{
+  font-family:var(--mono);font-size:10px;color:var(--y);
+  border:1px solid var(--y);border-radius:99px;padding:1px 6px;
+  white-space:nowrap;vertical-align:middle;
+}
 .vbar{height:6px;background:var(--panel-3);border-radius:99px;overflow:hidden;}
 .vbar i{display:block;height:100%;background:var(--y);border-radius:99px;}
 .vqt{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;text-align:right;}
@@ -609,17 +615,25 @@ select{max-width:260px;}
             <span><strong>Ataque a um estado</strong> — a rodada inteira se concentra em um estado</span></label>
           <label class="radio"><input type="radio" name="modo" value="carteira">
             <span><strong>Sem compras no mês</strong> — cada cliente continua com o vendedor
-            que já o atende. Serve para avisar cada um de quem ainda não comprou.</span></label>
+            da sua equipe que já o atende. Quem está com vendedor de fora passa para a sua
+            equipe. Serve para avisar cada um de quem ainda não comprou.</span></label>
         </div>
       </div>
 
       <div id="carteiraBox" hidden style="margin-top:14px;padding-left:26px;">
         <div class="alert" data-t="info" style="margin:0 0 18px;">
-          Nesta modalidade <strong>nada é redistribuído</strong>. O cliente permanece na
-          carteira de quem já o atende, conforme a coluna <strong>Vendedor</strong> da base.
-          Se um cliente de Rondônia está com o Diego, ele continua com o Diego — a lista
-          existe para você avisar que há um cliente ali esperando contato.
-          Vale para <strong>todos os estados</strong>, não só a Região Norte.
+          Esta modalidade segue <strong>duas regras, nesta ordem</strong>:
+          <br><br>
+          <strong>1. O cliente é de alguém da sua equipe</strong> — ele fica onde está.
+          Se um cliente de Rondônia está com o Diego, continua com o Diego, e a lista existe
+          para você avisar que há um cliente ali esperando contato.
+          <br><br>
+          <strong>2. O cliente está com vendedor de fora da sua equipe</strong> — ele passa
+          para um vendedor da sua equipe naquele estado, dividido por rodízio. Ninguém de fora
+          da equipe da etapa 2 entra na publicação nem recebe link.
+          <br><br>
+          Vale para <strong>todos os estados</strong>, não só a Região Norte. Onde você não
+          tiver vendedor cadastrado, o cliente da regra 2 fica de fora e aparece no relatório.
         </div>
 
         <div class="sub-block">
@@ -658,8 +672,8 @@ select{max-width:260px;}
       <div class="alert" data-t="info" style="margin:20px 0 0;">
         <strong>Regra fixa da distribuição:</strong> nas rodadas Normal e Ataque, só a Região
         Norte (AC, AM, AP, PA, RO, RR, TO) é redistribuída. Clientes de qualquer outro estado
-        permanecem com o vendedor que já os atende. A modalidade "Sem compras no mês" não
-        redistribui ninguém, por isso atende o Brasil inteiro.
+        permanecem com o vendedor que já os atende. A modalidade "Sem compras no mês" atende o
+        Brasil inteiro e só move o cliente quando ele está com vendedor de fora da sua equipe.
       </div>
     </div>
 

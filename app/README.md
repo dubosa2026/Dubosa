@@ -31,8 +31,8 @@ do Drive para o time todo usar.
    Cliente de qualquer outro estado nunca é redistribuído: continua com o
    vendedor que já o atende na base. A regra é fixa; não depende de quem
    está cadastrado na etapa 2. Ela vale para as rodadas Normal e Ataque; a
-   modalidade "Sem compras no mês" não redistribui ninguém, por isso atende
-   o Brasil inteiro.
+   modalidade "Sem compras no mês" atende o Brasil inteiro e só move o
+   cliente quando ele está com vendedor de fora da equipe.
 3. Dentro de cada UF, os clientes são divididos igualmente entre os
    vendedores daquele estado (diferença máxima de 1 cliente). A ordem é
    determinística: rodar duas vezes na mesma base dá o mesmo resultado.
@@ -163,15 +163,35 @@ A terceira modalidade da etapa 2, para a base mensal — a que usa
 "Sem Compras este Mês", "Comprador neste Mês" e "Comprador Habitual" em vez
 de "Ativo 30 dias" e "Inativo".
 
-**Nada é redistribuído aqui.** Cada cliente permanece na carteira de quem já
-o atende, conforme a coluna `Vendedor` da própria base. A lista existe para
-você avisar cada vendedor de que há um cliente dele parado no mês: se um
-cliente de Rondônia está com o Diego, ele continua com o Diego, e o Diego é
-quem recebe o aviso. O mesmo vale para todos os vendedores e todos os
-estados.
+O destino de cada cliente segue **duas regras, nesta ordem**, olhando a
+coluna `Vendedor` da própria base:
 
-Por isso esta modalidade **atende o Brasil inteiro**, não só a Região Norte:
-como ninguém é redistribuído, a regra de região não se aplica.
+**1. O cliente já é de um vendedor da equipe → fica com ele.** Nada é
+redistribuído. A lista existe para você avisar o vendedor de que há um
+cliente dele parado no mês: se um cliente de Rondônia está com o Diego, ele
+continua com o Diego, e o Diego é quem recebe o aviso.
+
+**2. O cliente está com vendedor de fora da equipe → passa para a equipe.**
+Ninguém que não está na etapa 2 entra na publicação nem recebe link. Esses
+clientes são divididos por rodízio entre os vendedores da equipe **daquele
+estado**, com diferença máxima de 1 cliente, e a linha publicada passa a
+trazer o nome do novo responsável — o nome do vendedor de outra equipe não
+vai junto na lista.
+
+Na tela, quem recebeu clientes pela regra 2 ganha uma etiqueta `+N de fora`
+ao lado do nome, e o resumo diz quantos clientes mudaram de mão.
+
+Se o cliente está com alguém de fora **e** você não tem vendedor cadastrado
+naquele estado, não há para quem repassar: ele fica de fora e aparece no
+relatório em "Estado sem ninguém da sua equipe". Cadastre alguém para o
+estado e rode de novo, ou deixe como está — ele segue com quem já o atende.
+
+Esta modalidade **atende o Brasil inteiro**, não só a Região Norte.
+
+Nome com grafia diferente conta como da equipe: "CRISTIANE LUIS" e
+"CRISTIANE LUIZ" são tratados como a mesma pessoa, e o cliente não sai da
+mão dela por causa de uma letra. Toda dupla reconhecida assim aparece num
+aviso acima do resultado, para você conferir se o palpite está certo.
 
 Dois filtros aparecem quando você escolhe essa modalidade, ambos montados a
 partir da base carregada, com a contagem de cada item:
@@ -188,10 +208,8 @@ A coluna UF do resultado mostra o estado onde estão os clientes pendentes
 daquele vendedor, não o estado em que ele é cadastrado. Quando há clientes em
 mais de um estado, aparece o principal com um `+N` ao lado.
 
-Se algum nome da coluna `Vendedor` não existir na equipe da etapa 2, a lista
-dele é gerada mesmo assim e um aviso aparece acima do resultado — inclusive
-sugerindo a grafia parecida, quando é só diferença de escrita (por exemplo
-"CRISTIANE LUIZ" contra "CRISTIANE LUIS").
+Linhas com a coluna `Vendedor` vazia não são repassadas: aparecem no
+relatório em "Sem vendedor na base", para você corrigir na origem.
 
 ## Modo ataque
 

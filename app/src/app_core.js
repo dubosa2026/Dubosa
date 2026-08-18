@@ -454,9 +454,33 @@ function distribuir(records, headers, equipe, opts) {
     .filter(function (v) { return v.vendedor && ehNorte(v.uf); })
     .map(function (v) { return v.vendedor; });
 
+  // Quem e da equipe, pelo cadastro da etapa 2. Serve para reconhecer, na
+  // coluna Vendedor da base, quem e da casa e quem e de fora.
+  var nomesEquipe = {};
+  equipe.forEach(function (v) {
+    var n = norm(v.vendedor);
+    if (n) nomesEquipe[n.toUpperCase()] = n;
+  });
+  var chavesEquipe = Object.keys(nomesEquipe);
+  var grafiasAceitas = {};
+
+  /* Devolve o nome cadastrado do vendedor, ou null se ele nao for da equipe.
+     A comparacao aceita pequena diferenca de grafia: o mesmo vendedor escrito
+     de dois jeitos nao pode ser tratado como estranho e perder o cliente. */
+  function vendedorDaEquipe(nome) {
+    var chave = norm(nome).toUpperCase();
+    if (!chave) return null;
+    if (nomesEquipe[chave]) return nomesEquipe[chave];
+    var perto = nomeParecido(chave, chavesEquipe);
+    if (!perto) return null;
+    grafiasAceitas[nome] = nomesEquipe[perto];
+    return nomesEquipe[perto];
+  }
+
   var excluidos = [], semUf = [], foraNorte = [], outraGerencia = [],
       semVendedor = [], retidoAtaque = [], foraDoFiltro = [], rodape = [],
-      semDono = [], grupos = {}, todasUf = [], carteira = [];
+      semDono = [], grupos = {}, todasUf = [], carteira = [],
+      semEquipeNaUf = [], repasse = {};
 
   records.forEach(function (row) {
     // 0) rodape com o texto dos filtros da exportacao -- nao e cliente
@@ -479,13 +503,30 @@ function distribuir(records, headers, equipe, opts) {
       outraGerencia.push(row); return;
     }
 
-    // 4) modo carteira: nada e redistribuido. O cliente continua com quem ja
-    //    o atende, e a lista serve para avisar cada vendedor de quem ainda
-    //    nao comprou. Vale para o Brasil inteiro, nao so para o Norte.
+    // 4) modo carteira (sem compras no mes). Duas regras, nesta ordem:
+    //
+    //    1a) o cliente ja e de um vendedor DA EQUIPE -> continua com ele.
+    //        Nada e redistribuido; a lista serve para avisar o vendedor de
+    //        que ha um cliente da carteira dele parado no mes.
+    //
+    //    2a) o cliente esta com alguem de FORA da equipe -> ninguem de fora
+    //        pode entrar na publicacao, entao ele passa para um vendedor da
+    //        equipe naquele estado, que sera avisado de que o cliente esta
+    //        sem compras no mes.
+    //
+    //    Vale para o Brasil inteiro, nao so para o Norte.
     if (modo === 'carteira') {
       if (ufsAceitas && !ufsAceitas[uf]) { foraDoFiltro.push(row); return; }
-      if (!colVendedorBase || !norm(row[colVendedorBase])) { semDono.push(row); return; }
-      carteira.push(row);
+      var dono = colVendedorBase ? norm(row[colVendedorBase]) : '';
+      if (!dono) { semDono.push(row); return; }
+
+      var daCasa = vendedorDaEquipe(dono);
+      if (daCasa) { carteira.push({ row: row, dono: daCasa }); return; }
+
+      // Sem ninguem da equipe naquele estado nao ha para quem repassar.
+      if (!porUf[uf]) { semEquipeNaUf.push(row); return; }
+      if (!repasse[uf]) repasse[uf] = [];
+      repasse[uf].push(row);
       return;
     }
 
@@ -506,11 +547,26 @@ function distribuir(records, headers, equipe, opts) {
   });
 
   var atribuidos = [];
-  // No modo carteira nao ha rodizio: o dono e quem ja consta na base.
-  carteira.forEach(function (row) {
-    var copia = Object.assign({}, row);
-    copia.__vendedor = norm(row[colVendedorBase]);
+  // Regra 1: quem ja e da equipe fica com o cliente, sem rodizio.
+  carteira.forEach(function (item) {
+    var copia = Object.assign({}, item.row);
+    copia.__vendedor = item.dono;
+    copia.__origemCarteira = 'mantido';
     atribuidos.push(copia);
+  });
+  // Regra 2: o que estava com gente de fora e rateado entre os vendedores da
+  // equipe naquele estado. A coluna Vendedor da linha passa a trazer o novo
+  // responsavel -- a lista que o vendedor recebe tem de mostrar o nome dele,
+  // e o nome de quem e de outra equipe nao precisa ir junto.
+  var repassados = 0;
+  Object.keys(repasse).forEach(function (uf) {
+    repassados += repasse[uf].length;
+    dividirRodizio(repasse[uf], porUf[uf], headers).forEach(function (copia) {
+      copia.__origemCarteira = 'repassado';
+      copia.__donoAnterior = colVendedorBase ? norm(copia[colVendedorBase]) : '';
+      if (colVendedorBase) copia[colVendedorBase] = copia.__vendedor;
+      atribuidos.push(copia);
+    });
   });
   if (todasUf.length) atribuidos = atribuidos.concat(dividirRodizio(todasUf, todosVendedores, headers));
   Object.keys(grupos).forEach(function (uf) {
@@ -555,6 +611,10 @@ function distribuir(records, headers, equipe, opts) {
         return porUfDoVendedor[b] - porUfDoVendedor[a];
       });
 
+      var repassadosDele = linhas.filter(function (r) {
+        return r.__origemCarteira === 'repassado';
+      }).length;
+
       return {
         vendedor: nome,
         uf: ufs[0] || '',
@@ -563,6 +623,8 @@ function distribuir(records, headers, equipe, opts) {
         naEquipe: !!cadastrado,
         sugestaoNome: cadastrado ? null : nomeParecido(nome, nomesCadastro),
         qtde: linhas.length,
+        mantidos: linhas.length - repassadosDele,
+        repassados: repassadosDele,
         valor: valores[nome] || 0,
         linhas: linhas
       };
@@ -595,6 +657,9 @@ function distribuir(records, headers, equipe, opts) {
     foraDoFiltro: foraDoFiltro,
     rodape: rodape,
     semDono: semDono,
+    semEquipeNaUf: semEquipeNaUf,
+    repassados: repassados,
+    grafiasAceitas: grafiasAceitas,
     resumo: resumo,
     modo: modo,
     ataque: ataque,

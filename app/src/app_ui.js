@@ -401,8 +401,15 @@ function renderResultado() {
   $('resSub').innerHTML = ehCarteira
     ? 'Base de <strong>' + fmtInt(r.totalLido) + '</strong> linhas &mdash; ' +
       escapeHtml(state.origem) + '. Estados: <strong>' + escapeHtml(r.ufsFiltro.join(', ')) +
-      '</strong>. Nada foi redistribuído: cada cliente está na lista de quem já o atende, ' +
-      'para você avisar o vendedor de que há um cliente esperando contato.'
+      '</strong>. Quem já é da sua equipe fica com o próprio cliente, para você avisar que ' +
+      'há um cliente parado no mês.' +
+      (r.repassados
+        ? ' <strong>' + fmtInt(r.repassados) + '</strong> ' +
+          (r.repassados === 1 ? 'cliente estava' : 'clientes estavam') +
+          ' com vendedor de fora da equipe e ' +
+          (r.repassados === 1 ? 'passou' : 'passaram') +
+          ' para a sua equipe, divididos por estado.'
+        : ' Nenhum cliente estava com vendedor de fora da equipe.')
     : 'Base de <strong>' + fmtInt(r.totalLido) + '</strong> linhas &mdash; ' +
       escapeHtml(state.origem) + '. Cada rodada recalcula a divisão do zero.' +
       (r.modo === 'ataque' && r.ataque
@@ -410,11 +417,13 @@ function renderResultado() {
         : '');
 
   var retidos = r.semUf.length + r.semVendedor.length + r.retidoAtaque.length +
-                r.outraGerencia.length + r.foraDoFiltro.length + r.semDono.length;
+                r.outraGerencia.length + r.foraDoFiltro.length + r.semDono.length +
+                (r.semEquipeNaUf ? r.semEquipeNaUf.length : 0);
   $('stats').innerHTML = ehCarteira
     ? stat('go', r.atribuidos.length, 'clientes a cobrar') +
       stat('out', r.excluidos.length, 'já compraram') +
       stat('hold', r.resumo.length, 'vendedores a avisar') +
+      stat(r.repassados ? 'go' : 'hold', r.repassados || 0, 'vindos de fora da equipe') +
       stat('hold', retidos, 'fora do filtro')
     : stat('go', r.atribuidos.length, 'distribuídos') +
       stat('out', r.excluidos.length, 'ativos 30 dias') +
@@ -428,10 +437,11 @@ function renderResultado() {
   list.innerHTML = '';
 
   var foraDoCadastro = r.resumo.filter(function (v) { return v.naEquipe === false; });
-  var avisoEquipe = $('avisoEquipe');
+  var grafias = Object.keys(r.grafiasAceitas || {});
+  var avisos = [];
+
   if (foraDoCadastro.length) {
-    avisoEquipe.hidden = false;
-    avisoEquipe.innerHTML =
+    avisos.push(
       '<strong>' + fmtInt(foraDoCadastro.length) +
       (foraDoCadastro.length === 1 ? ' vendedor aparece' : ' vendedores aparecem') +
       ' na base mas não estão na equipe da etapa 2:</strong> ' +
@@ -440,11 +450,24 @@ function renderResultado() {
           (v.sugestaoNome ? ' (grafia parecida com <em>' + escapeHtml(v.sugestaoNome) + '</em>)' : '');
       }).join(' · ') +
       '. A lista deles foi gerada assim mesmo, mas sem e-mail cadastrado. ' +
-      'Se for a mesma pessoa com o nome escrito de outro jeito, acerte a grafia na etapa 2.';
-  } else {
-    avisoEquipe.hidden = true;
-    avisoEquipe.innerHTML = '';
+      'Se for a mesma pessoa com o nome escrito de outro jeito, acerte a grafia na etapa 2.');
   }
+
+  // Nome quase igual ao do cadastro conta como da equipe -- senao uma letra
+  // trocada na base tiraria o cliente do vendedor certo. Fica registrado
+  // aqui para o gestor conferir se o palpite está correto.
+  if (grafias.length) {
+    avisos.push(
+      '<strong>Nomes reconhecidos como da equipe apesar da grafia diferente:</strong> ' +
+      grafias.map(function (n) {
+        return escapeHtml(n) + ' &rarr; <em>' + escapeHtml(r.grafiasAceitas[n]) + '</em>';
+      }).join(' · ') +
+      '. Se alguma dessas duplas não for a mesma pessoa, acerte o nome na etapa 2 e rode de novo.');
+  }
+
+  var avisoEquipe = $('avisoEquipe');
+  avisoEquipe.hidden = !avisos.length;
+  avisoEquipe.innerHTML = avisos.join('<br><br>');
 
   r.resumo.slice().sort(function (a, b) {
     return a.uf === b.uf ? b.qtde - a.qtde : (a.uf < b.uf ? -1 : 1);
@@ -459,6 +482,10 @@ function renderResultado() {
         (v.ufsAtendidas && v.ufsAtendidas.length > 1 ? '+' + (v.ufsAtendidas.length - 1) : '') +
       '</span>' +
       '<span><span class="vname">' + escapeHtml(v.vendedor) + '</span>' +
+        (v.repassados
+          ? ' <span class="tag-repasse" title="Estavam com vendedor de fora da equipe">+' +
+            fmtInt(v.repassados) + ' de fora</span>'
+          : '') +
         (v.naEquipe === false
           ? '<br><span class="vmail" data-alerta="1">fora do cadastro da etapa 2' +
             (v.sugestaoNome ? ' &mdash; lá consta ' + escapeHtml(v.sugestaoNome) : '') + '</span>'
@@ -511,6 +538,10 @@ function renderBuckets() {
      'Clientes em estados que você não marcou nesta rodada.'],
     ['Sem vendedor na base', r.semDono,
      'A coluna Vendedor está vazia nessas linhas, então não há a quem avisar. Corrija na origem.'],
+    ['Estado sem ninguém da sua equipe', r.semEquipeNaUf || [],
+     'Estavam com vendedor de fora da equipe, e nesse estado você não tem vendedor cadastrado ' +
+     'na etapa 2 — não há para quem repassar. Cadastre alguém para o estado e rode de novo, ' +
+     'ou deixe como está: eles seguem com quem já os atende.'],
     ['Rodapé da exportação &mdash; descartado', r.rodape,
      'Linha com o texto dos filtros aplicados, que o BI escreve no fim do arquivo. Não é cliente.'],
     ['Fora do Norte &mdash; mantidos com o vendedor atual', r.foraNorte,
