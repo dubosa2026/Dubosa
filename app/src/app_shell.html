@@ -493,6 +493,127 @@ select{max-width:260px;}
   main{padding:24px 16px 80px;}
   .topbar-in,.steps-in{padding-left:16px;padding-right:16px;}
 }
+
+/* ================= roteiro de ligacao (pagina do vendedor) =================
+   Duas colunas: as listas a esquerda, o roteiro numa coluna fixa a direita
+   que acompanha a rolagem. Clicar num cliente da tabela faz o roteiro usar
+   os dados dele. Tudo com prefixo rt- para nao encostar no app do gestor,
+   que divide esta mesma folha de estilo. */
+.rt-work{display:grid;gap:18px;align-items:start;grid-template-columns:minmax(0,1fr) 400px;}
+.rt-listas{min-width:0;display:flex;flex-direction:column;gap:18px;}
+.rt-lado{min-width:0;position:sticky;top:16px;max-height:calc(100vh - 40px);overflow:auto;}
+.rt-painel{border-color:var(--y-wash);border-left:3px solid var(--y);}
+.rt-conta-itens{font-family:var(--mono);font-size:11.5px;color:var(--text-3);}
+
+/* a linha clicavel e a que esta escolhida */
+.rt-listas tbody tr{cursor:pointer;}
+.rt-listas tbody tr[data-rtsel="1"]{background:var(--y-wash);box-shadow:inset 3px 0 0 var(--y);}
+
+.rt-dica{font-size:12.6px;color:var(--text-3);margin:0 0 14px;}
+.rt-escolhido{background:var(--panel-3);border-radius:8px;padding:11px 13px;margin-bottom:15px;}
+.rt-quem{font-family:var(--dp);font-weight:600;font-size:13.5px;overflow-wrap:anywhere;}
+.rt-dados{font-family:var(--mono);font-size:11.5px;color:var(--text-2);margin-top:5px;line-height:1.75;}
+.rt-dados b{color:var(--y);}
+
+.rt-tabs{display:flex;gap:5px;border-bottom:1px solid var(--line);margin-bottom:15px;flex-wrap:wrap;}
+.rt-tab{
+  appearance:none;background:none;border:0;cursor:pointer;
+  font-family:var(--dp);font-weight:600;font-size:13.5px;color:var(--text-3);
+  padding:9px 12px;border-bottom:2px solid transparent;margin-bottom:-1px;
+}
+.rt-tab:hover{color:var(--text-2);}
+.rt-tab[aria-selected="true"]{color:var(--y);border-bottom-color:var(--y);}
+.rt-tab:focus-visible{outline:2px solid var(--y);outline-offset:-2px;}
+
+.rt-seg{display:inline-flex;border:1px solid var(--line-2);border-radius:7px;overflow:hidden;margin-bottom:15px;}
+.rt-seg button{
+  appearance:none;background:var(--panel-2);border:0;cursor:pointer;color:var(--text-3);
+  font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.04em;
+  text-transform:uppercase;padding:7px 12px;
+}
+.rt-seg button + button{border-left:1px solid var(--line-2);}
+.rt-seg button[aria-pressed="true"]{background:var(--y);color:#0A0A0B;}
+.rt-seg button:focus-visible{outline:2px solid var(--y);outline-offset:-2px;}
+
+.rt-busca{
+  width:100%;background:var(--panel-2);border:1px solid var(--line-2);border-radius:7px;
+  color:var(--text);font-family:inherit;font-size:13.5px;padding:10px 13px;margin-bottom:14px;
+}
+.rt-busca::placeholder{color:var(--text-3);}
+.rt-busca:focus{outline:2px solid var(--y);outline-offset:1px;border-color:var(--y);}
+
+#rtCards{display:flex;flex-direction:column;gap:12px;}
+.rt-card{
+  background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+  padding:14px 15px;display:flex;flex-direction:column;gap:10px;
+}
+.rt-nome{font-family:var(--dp);font-weight:600;font-size:14px;}
+.rt-fala{
+  border-left:2px solid var(--y);background:var(--y-wash);
+  padding:10px 13px;border-radius:0 6px 6px 0;font-size:13.4px;line-height:1.62;
+}
+.rt-fala em{color:var(--y-hi);font-style:normal;font-weight:600;}
+.rt-fill{border-bottom:1px dashed var(--text-3);color:var(--text-3);}
+.rt-nota{color:var(--text-3);}
+.rt-porque{font-size:12.4px;color:var(--text-2);margin:0;}
+
+.rt-grupo{
+  font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--text-3);
+  margin:18px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--line);
+}
+.rt-grupo:first-child{margin-top:0;}
+.rt-obj{border:1px solid var(--line);border-radius:8px;background:var(--panel-2);margin-bottom:7px;overflow:hidden;}
+.rt-obj-topo{
+  width:100%;appearance:none;background:none;border:0;cursor:pointer;text-align:left;
+  color:inherit;display:flex;align-items:center;gap:10px;padding:11px 13px;font-size:13.4px;
+}
+.rt-obj-topo:hover{background:var(--panel-3);}
+.rt-obj-topo:focus-visible{outline:2px solid var(--y);outline-offset:-2px;}
+.rt-n{
+  font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--y);
+  background:var(--y-wash);border-radius:5px;padding:2px 6px;flex:none;
+}
+.rt-obj-txt{flex:1;font-weight:500;}
+.rt-seta{color:var(--text-3);flex:none;transition:transform .18s;font-size:11px;}
+.rt-obj[data-aberto="1"] .rt-seta{transform:rotate(90deg);}
+.rt-obj-corpo{display:none;padding:0 13px 14px;border-top:1px solid var(--line);}
+.rt-obj[data-aberto="1"] .rt-obj-corpo{display:block;}
+.rt-portras{font-size:12.4px;color:var(--text-2);margin:12px 0;padding-left:10px;border-left:2px solid var(--line-2);}
+.rt-etapa{
+  font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--text-3);margin:13px 0 6px;
+}
+.rt-cuidado{
+  border-left:3px solid var(--no);background:var(--no-wash);
+  padding:10px 13px;border-radius:0 6px 6px 0;font-size:12.4px;margin-top:12px;
+}
+.rt-cuidado b{color:var(--no);}
+.rt-contawrap{overflow-x:auto;margin:12px 0;border:1px solid var(--line);border-radius:7px;}
+.rt-contawrap table{min-width:300px;}
+.rt-gap{
+  font-family:var(--mono);font-size:12px;background:var(--panel-3);
+  border-radius:7px;padding:11px 13px;margin:12px 0;line-height:1.85;
+}
+.rt-gap .rt-bom{color:var(--y);font-weight:600;}
+.rt-gap .rt-ruim{color:var(--no);font-weight:600;}
+
+/* barra de rolagem visivel: a lista tem altura propria e precisa mostrar
+   que ha mais coisa abaixo */
+.rt-listas .tablewrap{max-height:420px;}
+.rt-lado::-webkit-scrollbar,.rt-listas .tablewrap::-webkit-scrollbar{width:11px;height:11px;}
+.rt-lado::-webkit-scrollbar-track,.rt-listas .tablewrap::-webkit-scrollbar-track{background:var(--panel-2);border-radius:99px;}
+.rt-lado::-webkit-scrollbar-thumb,.rt-listas .tablewrap::-webkit-scrollbar-thumb{
+  background:var(--line-2);border-radius:99px;border:2px solid var(--panel-2);
+}
+.rt-lado,.rt-listas .tablewrap{scrollbar-color:var(--line-2) var(--panel-2);scrollbar-width:thin;}
+
+/* lado a lado nao cabe em tela estreita: o roteiro vai para cima da lista,
+   ja com o cliente escolhido em destaque */
+@media (max-width:1080px){
+  .rt-work{grid-template-columns:minmax(0,1fr);}
+  .rt-lado{position:static;max-height:none;order:-1;}
+}
 </style>
 
 <header class="topbar">

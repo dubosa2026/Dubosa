@@ -129,7 +129,10 @@ with sync_playwright() as p:
     pg.goto(link)
     pg.wait_for_timeout(1800)
 
-    titulos = pg.evaluate("()=>[...document.querySelectorAll('.panel-head h3')].map(h=>h.textContent.trim())")
+    # So os paineis de lista. O roteiro de ligacao tambem e um .panel, mas
+    # vive na coluna ao lado e nao conta como secao de carteira.
+    titulos = pg.evaluate(
+        "()=>[...document.querySelectorAll('.rt-listas .panel-head h3')].map(h=>h.textContent.trim())")
     print("     seções:", titulos)
     ok(len(titulos) == 2, "duas seções na página", titulos)
     ok(any("Sem compras" in t for t in titulos), "seção Sem compras presente")

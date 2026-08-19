@@ -152,10 +152,11 @@ function secaoDaRodada(r, indice, repetidos) {
   var quando = new Date(r.publicadoEm);
   var idBase = 'r' + indice;
 
-  var linhasHtml = r.linhas.map(function (l) {
+  var linhasHtml = r.linhas.map(function (l, li) {
     var k = chaveCliente(l, r.colunas);
     var outras = (repetidos[k] || []).filter(function (x) { return x !== r.rotulo; });
-    return '<tr>' + visiveis.map(function (c, ci) {
+    return '<tr data-rodada="' + indice + '" data-linha="' + li + '">' +
+      visiveis.map(function (c, ci) {
       var conteudo = celula(c, l[c]);
       if (ci === 0 && outras.length) {
         conteudo += ' <span class="tag-rep" title="Este cliente também está em: ' +
@@ -221,8 +222,16 @@ function render(dados) {
         ? fmtRepetidos(quantosRepetem) + ' Cada lista tem seu motivo — confira o título de cada uma.'
         : 'Cada lista tem seu motivo — confira o título de cada uma.') +
     '</p>' +
-    rodadas.map(function (r, i) { return secaoDaRodada(r, i, repetidos); }).join('') +
-    '<p class="hint">A tela mostra as colunas principais. O arquivo baixado traz todas.</p>';
+    '<div class="rt-work">' +
+      '<div class="rt-listas">' +
+        rodadas.map(function (r, i) { return secaoDaRodada(r, i, repetidos); }).join('') +
+        '<p class="hint">A tela mostra as colunas principais. O arquivo baixado traz todas.</p>' +
+      '</div>' +
+      '<aside class="rt-lado">' + Roteiro.html() + '</aside>' +
+    '</div>';
+
+  Roteiro.iniciar(primeiroNome(dados.vendedor));
+  ligarSelecao(rodadas);
 
   rodadas.forEach(function (r, i) {
     var idBase = 'r' + i;
@@ -245,6 +254,31 @@ function render(dados) {
         '-' + r.modo + '.csv');
     });
   });
+}
+
+/* Clicar numa linha faz o roteiro falar daquele cliente. A linha continua
+   sendo uma linha de tabela: quem só quer ler a lista não perde nada, e quem
+   vai ligar ganha a fala com a data e o histórico certos. */
+function ligarSelecao(rodadas) {
+  var linhas = document.querySelectorAll('.rt-listas tbody tr[data-rodada]');
+  for (var i = 0; i < linhas.length; i++) {
+    (function (tr) {
+      tr.addEventListener('click', function () {
+        // Vale tambem quando o clique cai no telefone: quem toca no numero e
+        // exatamente quem vai ligar, e e nessa hora que o roteiro precisa
+        // estar pronto. O link continua funcionando -- nada e cancelado aqui.
+        var r = rodadas[Number(tr.getAttribute('data-rodada'))];
+        var linha = r && r.linhas[Number(tr.getAttribute('data-linha'))];
+        if (!linha) return;
+
+        var antes = document.querySelectorAll('.rt-listas tr[data-rtsel="1"]');
+        for (var k = 0; k < antes.length; k++) antes[k].removeAttribute('data-rtsel');
+        tr.setAttribute('data-rtsel', '1');
+
+        Roteiro.selecionar(Roteiro.daLinha(linha, r.colunas, r.modo));
+      });
+    })(linhas[i]);
+  }
 }
 
 function fmtRepetidos(n) {

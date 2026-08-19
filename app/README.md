@@ -359,15 +359,48 @@ um código novo e o antigo para de funcionar na hora. Hoje isso é feito pela
 API (`POST /api/publicar` com `"rotacionar": true`); se virar rotina, vale
 um botão na tela.
 
-## Editar o app## Editar o app
+## Roteiro de ligação
+
+Na página do vendedor, ao lado da lista, há um painel com o que falar ao
+telefone. A lista fica à esquerda com rolagem própria; o roteiro fica numa
+coluna à direita que acompanha a rolagem. Em tela estreita os dois empilham,
+com o roteiro em cima.
+
+O painel tem duas abas:
+
+- **Como abrir** — seis aberturas de ligação, em dois conjuntos: prospecção
+  (Distribuição e Ataque) e Sem compras no mês.
+- **Se ele disser que…** — dezessete objeções agrupadas por tema, fechadas em
+  sanfona, com um campo de busca. Digitar "frete", "concorrente" ou "margem"
+  filtra na hora — é o que torna o painel utilizável durante uma ligação.
+
+**Clicar num cliente da lista preenche a fala com os dados dele.** A abertura
+passa a dizer a data da última compra, há quanto tempo está parado, a cidade
+e o histórico de pedidos daquele integrador. Clicar no telefone também
+seleciona, porque quem toca no número é justamente quem vai ligar.
+
+O conjunto de aberturas segue o cliente: escolher alguém da lista de
+Sem compras troca para as aberturas daquela modalidade.
+
+Onde a base não tem o dado, aparece um rótulo cinza no lugar — "a data da
+última compra", "o valor". **Nada é inventado**: um número errado dito ao
+cliente custa mais caro que uma frase incompleta. Os trechos que dependem de
+informação comercial que o programa não conhece (prazo de entrega por estado,
+nome e ano do prêmio, condição do mês) também aparecem assim, para o vendedor
+completar com o que for verdade.
+
+## Editar o app
 
 O arquivo publicado é gerado a partir de `src/`:
 
 ```
-src/app_shell.html   estrutura e estilos
-src/app_core.js      leitura de arquivos, regras, funil, análises
-src/app_ui.js        ligação com a tela
-src/fonts/           fontes embutidas no build
+src/app_shell.html     estrutura e estilos (o vendedor reaproveita o <style>)
+src/app_core.js        leitura de arquivos, regras, funil, análises
+src/app_ui.js          ligação com a tela do gestor
+src/carteira_body.html estrutura da página do vendedor
+src/carteira.js        página do vendedor: lê o token e monta as listas
+src/roteiro.js         conteúdo e comportamento do roteiro de ligação
+src/fonts/             fontes embutidas no build
 ```
 
 O build gera dois arquivos com o mesmo conteúdo:
