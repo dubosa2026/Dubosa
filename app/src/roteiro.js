@@ -222,14 +222,10 @@ var Roteiro = (function () {
     var cPedidos = acharCol(colunas, /pedido/i);
     var cValor = acharCol(colunas, /valor|faturad/i);
 
+    // moeda() e inteiro() vivem em carteira.js e sao a unica leitura de
+    // numero desta pagina. Ler aqui por conta propria foi o que produziu
+    // R$ 9.586.270.100.000.000 no lugar de R$ 958.627.
     var dias = cUltima ? diasDesde(linha[cUltima]) : null;
-    var valor = null;
-    if (cValor) {
-      var n = Number(String(linha[cValor]).replace(/[^\d.,-]/g, '').replace(/\./g, '').replace(',', '.'));
-      if (!isNaN(n) && n > 0) {
-        valor = n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
-      }
-    }
 
     return {
       rotulo: cNome ? nomeCurto(linha[cNome]) : '',
@@ -238,8 +234,8 @@ var Roteiro = (function () {
       '{CIDADE}': cCidade ? String(linha[cCidade] || '').trim() : '',
       '{ULTIMA}': cUltima ? String(linha[cUltima] || '').trim() : '',
       '{DIAS}': textoDias(dias),
-      '{PEDIDOS}': cPedidos ? String(linha[cPedidos] || '').trim() : '',
-      '{VALOR}': valor
+      '{PEDIDOS}': cPedidos ? inteiro(linha[cPedidos]) : null,
+      '{VALOR}': cValor ? moeda(linha[cValor]) : null
     };
   }
 

@@ -82,6 +82,12 @@ function aspas(v) {
   return '"' + s.replace(/"/g, '""') + '"';
 }
 
+/* Numero vindo da planilha. A base traz valores como "958627.0100000000":
+   ponto decimal e muitas casas. Quem apagar todos os pontos transforma isso
+   em 9586270100000000 -- foi o que aconteceu no cartao do roteiro. So se
+   apaga o ponto quando ele e separador de milhar, isto e, quando existe
+   tambem uma virgula ("958.627,01"). Esta e a unica funcao que le numero
+   nesta pagina; nao duplicar. */
 function paraNumero(v) {
   if (typeof v === 'number') return v;
   var s = String(v == null ? '' : v).replace(/[R$\s]/g, '');
@@ -92,6 +98,23 @@ function paraNumero(v) {
   return isNaN(n) ? NaN : n;
 }
 
+/* Dinheiro sem centavos: numa carteira que passa do milhao, centavo e ruido.
+   Devolve null quando nao ha valor, para quem chama poder omitir a linha. */
+function moeda(v) {
+  var n = paraNumero(v);
+  if (isNaN(n) || n <= 0) return null;
+  return n.toLocaleString('pt-BR', {
+    style: 'currency', currency: 'BRL', maximumFractionDigits: 0
+  });
+}
+
+/* Contagem inteira com separador de milhar: "1.040", nao "1040.0". */
+function inteiro(v) {
+  var n = paraNumero(v);
+  if (isNaN(n) || n <= 0) return null;
+  return Math.round(n).toLocaleString('pt-BR');
+}
+
 /* Telefone e e-mail viram link (um toque liga ou escreve) e valor vira
    moeda -- "2382309.77" nao diz nada a quem esta olhando a lista. */
 function celula(coluna, valor) {
@@ -99,12 +122,8 @@ function celula(coluna, valor) {
   if (!texto) return '';
 
   if (/valor|faturad/i.test(coluna)) {
-    var n = paraNumero(texto);
-    if (!isNaN(n)) {
-      return escapeHtml(n.toLocaleString('pt-BR', {
-        style: 'currency', currency: 'BRL', maximumFractionDigits: 0
-      }));
-    }
+    var emReais = moeda(texto);
+    if (emReais) return escapeHtml(emReais);
   }
 
   if (/telefone|celular|fone/i.test(coluna)) {

@@ -209,7 +209,66 @@ with sync_playwright() as p:
     ok(pg.evaluate("!!document.querySelector('link[rel=icon]')"),
        "a página declara favicon — sem isso o navegador pede /favicon.ico e leva 404")
 
-    print("\n11. link vazio não quebra")
+    print("\n11. os valores dos cartões, nos formatos que a base produz")
+    # A exportacao entrega numero como texto com ponto decimal e muitas casas
+    # ("958627.0100000000"). Apagar todos os pontos transformava isso em
+    # 9586270100000000 no cartao do roteiro. Cada caso abaixo ja apareceu.
+    casos = [
+        ("958627.0100000000", "R$ 958.627", "ponto decimal com muitas casas"),
+        ("14776416.886399996", "R$ 14.776.417", "milhoes com dizimas (arredonda)"),
+        ("958.627,01",         "R$ 958.627",    "formato brasileiro"),
+        (4880200,              "R$ 4.880.200",  "numero puro"),
+        ("R$ 1.234,56",        "R$ 1.235",      "ja formatado na origem"),
+    ]
+    VAL = "VALORES" + SUF
+    _, rv = api("/api/publicar", {
+        "vendedor": VAL, "uf": "PA", "modo": "normal",
+        "rotulo": "Distribuição de carteira", "colunas": COLUNAS,
+        "linhas": [
+            dict(cli("CLI-020%d - TESTE %d" % (i, i), "BELÉM", "12/03/2026", 1040, bruto))
+            for i, (bruto, _, _) in enumerate(casos)
+        ] + [
+            cli("CLI-0299 - SEM VALOR", "BELÉM", "12/03/2026", 1040, ""),
+            cli("CLI-0298 - VALOR ZERO", "BELÉM", "12/03/2026", 1040, "0"),
+        ]}, admin=True)
+
+    pv = b.new_context(viewport={"width": 1500, "height": 1000}).new_page()
+    everr = []
+    pv.on("pageerror", lambda e: everr.append(str(e)))
+    pv.goto(f"{BASE}/c/#{rv['token']}")
+    pv.wait_for_timeout(1600)
+
+    def cartaoDe(nome):
+        pv.click(".rt-listas tbody tr:has(td:text-matches('" + nome + "')) td:nth-child(1)")
+        pv.wait_for_timeout(350)
+        return pv.inner_text("#rtEscolhido")
+
+    for i, (bruto, esperado, descricao) in enumerate(casos):
+        texto = cartaoDe("TESTE %d" % i)
+        linha = [l for l in texto.split("\n") if "R$" in l]
+        achado = linha[0].strip() if linha else "(sem valor)"
+        print("     %-22s %-18s -> %s" % (descricao, str(bruto), achado))
+        ok(achado.replace("\xa0", " ") == esperado, "valor certo: " + descricao,
+           f"{bruto} virou {achado}, esperado {esperado}")
+
+    ok("1.040" in cartaoDe("SEM VALOR"), "pedidos com separador de milhar",
+       cartaoDe("SEM VALOR"))
+    ok("R$" not in cartaoDe("SEM VALOR"), "sem faturamento, a linha some do cartão",
+       cartaoDe("SEM VALOR"))
+    ok("R$" not in cartaoDe("VALOR ZERO"), "faturamento zero também não vira linha",
+       cartaoDe("VALOR ZERO"))
+
+    # a tabela e o cartao precisam concordar
+    naTabela = pv.evaluate("""() => {
+      const tr = [...document.querySelectorAll('.rt-listas tbody tr')]
+        .find(t => t.textContent.includes('TESTE 0'));
+      return [...tr.children].map(td => td.textContent.trim()).find(t => t.startsWith('R$'));
+    }""")
+    ok(naTabela and naTabela.replace("\xa0", " ") == "R$ 958.627",
+       "tabela e cartão mostram o mesmo valor", naTabela)
+    ok(not everr, "sem erro de console na página de valores", everr)
+
+    print("\n12. link vazio não quebra")
     v = b.new_context().new_page()
     v.goto(f"{BASE}/c/#" + "0" * 48)
     v.wait_for_timeout(1200)
