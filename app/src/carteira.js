@@ -51,69 +51,10 @@ function colunasVisiveis(colunas) {
   return achadas.length ? achadas : colunas.slice(0, 6);
 }
 
-function paraTSV(linhas, colunas) {
-  var saida = [colunas.join('\t')];
-  linhas.forEach(function (r) {
-    saida.push(colunas.map(function (c) {
-      return String(r[c] === undefined || r[c] === null ? '' : r[c]).replace(/[\t\r\n]+/g, ' ');
-    }).join('\t'));
-  });
-  return saida.join('\n');
-}
-
-function baixarCSV(linhas, colunas, nome) {
-  var csv = [colunas.map(aspas).join(';')];
-  linhas.forEach(function (r) {
-    csv.push(colunas.map(function (c) { return aspas(r[c]); }).join(';'));
-  });
-  // BOM para o Excel abrir os acentos corretamente
-  var blob = new Blob(['﻿' + csv.join('\r\n')], { type: 'text/csv;charset=utf-8' });
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = nome;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
-}
-
-function aspas(v) {
-  var s = String(v === undefined || v === null ? '' : v);
-  return '"' + s.replace(/"/g, '""') + '"';
-}
-
-/* Numero vindo da planilha. A base traz valores como "958627.0100000000":
-   ponto decimal e muitas casas. Quem apagar todos os pontos transforma isso
-   em 9586270100000000 -- foi o que aconteceu no cartao do roteiro. So se
-   apaga o ponto quando ele e separador de milhar, isto e, quando existe
-   tambem uma virgula ("958.627,01"). Esta e a unica funcao que le numero
-   nesta pagina; nao duplicar. */
-function paraNumero(v) {
-  if (typeof v === 'number') return v;
-  var s = String(v == null ? '' : v).replace(/[R$\s]/g, '');
-  if (!s) return NaN;
-  if (s.indexOf(',') > -1 && s.indexOf('.') > -1) s = s.replace(/\./g, '').replace(',', '.');
-  else if (s.indexOf(',') > -1) s = s.replace(',', '.');
-  var n = parseFloat(s);
-  return isNaN(n) ? NaN : n;
-}
-
-/* Dinheiro sem centavos: numa carteira que passa do milhao, centavo e ruido.
-   Devolve null quando nao ha valor, para quem chama poder omitir a linha. */
-function moeda(v) {
-  var n = paraNumero(v);
-  if (isNaN(n) || n <= 0) return null;
-  return n.toLocaleString('pt-BR', {
-    style: 'currency', currency: 'BRL', maximumFractionDigits: 0
-  });
-}
-
-/* Contagem inteira com separador de milhar: "1.040", nao "1040.0". */
-function inteiro(v) {
-  var n = paraNumero(v);
-  if (isNaN(n) || n <= 0) return null;
-  return Math.round(n).toLocaleString('pt-BR');
-}
+/* paraNumero, moeda, inteiro, toCSV, toTSV, safeName e download vem de
+   formato.js, que entra neste mesmo <script>. E a unica leitura de numero
+   das duas paginas -- foi ter uma segunda que produziu o valor errado no
+   cartao do roteiro. */
 
 /* Telefone e e-mail viram link (um toque liga ou escreve) e valor vira
    moeda -- "2382309.77" nao diz nada a quem esta olhando a lista. */
@@ -257,7 +198,7 @@ function render(dados) {
     var bc = document.querySelector('[data-copiar="' + idBase + '"]');
     var bb = document.querySelector('[data-baixar="' + idBase + '"]');
     if (bc) bc.addEventListener('click', function () {
-      var texto = paraTSV(r.linhas, r.colunas);
+      var texto = toTSV(r.linhas, r.colunas);
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(texto).then(
           function () { toast('Lista copiada'); },
@@ -268,7 +209,7 @@ function render(dados) {
       }
     });
     if (bb) bb.addEventListener('click', function () {
-      baixarCSV(r.linhas, r.colunas,
+      download(new Blob([toCSV(r.linhas, r.colunas)], { type: 'text/csv;charset=utf-8' }),
         'carteira-' + String(dados.vendedor).toLowerCase().replace(/[^a-z0-9]+/g, '-') +
         '-' + r.modo + '.csv');
     });

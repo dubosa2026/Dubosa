@@ -818,9 +818,25 @@ $('zipAll').addEventListener('click', function () {
       return { Vendedor: v.vendedor, UF: v.uf, 'E-mail': v.email, Clientes: v.qtde, 'Valor Faturado': v.valor };
     }), ['Vendedor', 'UF', 'E-mail', 'Clientes', 'Valor Faturado'])
   });
-  if (r.semUf.length) entries.push({ name: 'NAO DISTRIBUIDO - sem UF.csv', content: toCSV(r.semUf, r.headers) });
-  if (r.foraEscopo.length) entries.push({ name: 'NAO DISTRIBUIDO - fora de escopo.csv', content: toCSV(r.foraEscopo, r.headers) });
-  if (r.excluidos.length) entries.push({ name: 'EXCLUIDOS - ativo 30 dias.csv', content: toCSV(r.excluidos, r.headers) });
+  // Todo cliente que ficou de fora entra no arquivo, cada motivo no seu
+  // CSV. Assim a rodada inteira cabe num zip so, e ninguem some sem deixar
+  // rastro. (A lista antiga citava r.foraEscopo, que nao existe no
+  // resultado -- bastava clicar aqui para a geracao inteira quebrar.)
+  [
+    ['NAO DISTRIBUIDO - sem UF', r.semUf],
+    ['NAO DISTRIBUIDO - fora do Norte', r.foraNorte],
+    ['NAO DISTRIBUIDO - UF sem vendedor', r.semVendedor],
+    ['NAO DISTRIBUIDO - sem vendedor na base', r.semDono],
+    ['NAO DISTRIBUIDO - estado sem equipe', r.semEquipeNaUf],
+    ['NAO DISTRIBUIDO - outra gerencia', r.outraGerencia],
+    ['NAO DISTRIBUIDO - retido pelo ataque', r.retidoAtaque],
+    ['NAO DISTRIBUIDO - estado fora do filtro', r.foraDoFiltro],
+    ['EXCLUIDOS - ja compraram', r.excluidos]
+  ].forEach(function (b) {
+    if (b[1] && b[1].length) {
+      entries.push({ name: b[0] + '.csv', content: toCSV(b[1], r.headers) });
+    }
+  });
 
   var d = new Date();
   var stamp = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');

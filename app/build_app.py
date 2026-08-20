@@ -68,6 +68,8 @@ def main() -> None:
     for marcador, fonte in SUBSTITUICOES.items():
         shell = shell.replace(marcador, b64(fonte))
 
+    # formato.js e a leitura/escrita de numero usada pelas DUAS paginas.
+    formato = (SRC / "formato.js").read_text(encoding="utf-8")
     core = (SRC / "app_core.js").read_text(encoding="utf-8")
     ui = (SRC / "app_ui.js").read_text(encoding="utf-8")
 
@@ -77,7 +79,7 @@ def main() -> None:
 
     html = ESQUELETO.format(
         cabeca=cabeca,
-        corpo=corpo + "\n<script>\n" + core + "\n" + ui + "\n</script>",
+        corpo=corpo + "\n<script>\n" + formato + "\n" + core + "\n" + ui + "\n</script>",
     )
 
     SAIDA.write_text(html, encoding="utf-8")
@@ -94,7 +96,9 @@ def main() -> None:
     # roteiro.js define o objeto Roteiro que carteira.js usa ao desenhar a
     # pagina, entao vem antes.
     js_vendedor = (
-        (SRC / "roteiro.js").read_text(encoding="utf-8")
+        formato
+        + "\n"
+        + (SRC / "roteiro.js").read_text(encoding="utf-8")
         + "\n"
         + (SRC / "carteira.js").read_text(encoding="utf-8")
     )

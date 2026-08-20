@@ -395,6 +395,7 @@ O arquivo publicado é gerado a partir de `src/`:
 
 ```
 src/app_shell.html     estrutura e estilos (o vendedor reaproveita o <style>)
+src/formato.js         leitura e escrita de valor — entra nas DUAS páginas
 src/app_core.js        leitura de arquivos, regras, funil, análises
 src/app_ui.js          ligação com a tela do gestor
 src/carteira_body.html estrutura da página do vendedor
@@ -402,6 +403,32 @@ src/carteira.js        página do vendedor: lê o token e monta as listas
 src/roteiro.js         conteúdo e comportamento do roteiro de ligação
 src/fonts/             fontes embutidas no build
 ```
+
+### Uma regra sobre números
+
+`src/formato.js` é a **única** leitura e escrita de valor do projeto, e entra
+nos dois arquivos gerados. Nenhum outro arquivo converte número por conta
+própria.
+
+A regra existe por causa de um erro real: havia duas leituras diferentes, e
+uma delas apagava todos os pontos de `958627.0100000000`. O ponto decimal
+sumia junto com os separadores de milhar, o resultado passava de 2^53 e a
+tela mostrava `R$ 9.586.270.100.000.000` no lugar de `R$ 958.627`.
+
+O que cada função faz:
+
+- `paraNumero` entende os quatro formatos que o BI produz — número puro,
+  texto com ponto decimal, texto brasileiro e valor já formatado. O ponto só
+  é separador de milhar quando existe vírgula na mesma string.
+- `moeda` e `inteiro` formatam para a **tela**: sem centavos, com separador
+  de milhar, e `null` quando não há valor — para quem chama poder omitir a
+  linha em vez de mostrar `R$ 0`.
+- `valorExport` formata para **arquivo**: dinheiro com vírgula decimal e duas
+  casas (`14776416,89`), que é o que o Excel em português lê como número;
+  texto sai exatamente como veio.
+- `toCSV`, `toTSV`, `safeName`, `download` e `buildZip` são a exportação. O
+  CSV sai com `;` e BOM, que é como o Excel em português abre sem perguntar
+  nada e sem trocar os acentos.
 
 O build gera dois arquivos com o mesmo conteúdo:
 `belenergy-distribuicao.html` (para baixar e abrir com dois cliques) e
