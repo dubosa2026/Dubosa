@@ -229,14 +229,29 @@ with sync_playwright() as p:
     ok(pg.evaluate("document.querySelectorAll('.falei-box:checked').length") == 1,
        "e sobrevive a recarregar a página")
 
-    print("\n13. dois cliques abrem o caderno")
+    print("\n13. dois cliques abrem o caderno, e ele abre EM BRANCO")
+    ok(pg.evaluate("document.getElementById('rtTabNotas').hidden"),
+       "sem cliente escolhido, a aba nem aparece")
+
     pg.dblclick(".rt-listas tbody tr:nth-child(2) td:nth-child(2)")
     pg.wait_for_timeout(600)
+    ok(not pg.evaluate("document.getElementById('rtTabNotas').hidden"),
+       "o duplo clique faz a aba aparecer")
     ok(pg.evaluate("document.getElementById('rtTabNotas').getAttribute('aria-selected')") == "true",
-       "abriu a aba Anotações")
-    ok(pg.is_visible(".rt-notas"), "com a tabela de anotações")
-    ok("nem para o seu gestor" in pg.inner_text("#rtNotas"),
-       "o aviso de privacidade está correto", pg.inner_text("#rtNotas")[-140:])
+       "e já abre nela")
+    ok(pg.is_visible(".rt-notas"), "com a linha para escrever")
+
+    # Em branco quer dizer em branco: nada de cabecalho de tabela, nada de
+    # aviso, nada de texto explicando que esta vazio.
+    ok(pg.evaluate("document.querySelectorAll('.rt-notas thead').length") == 0,
+       "sem cabeçalho de tabela enquanto não há anotação")
+    ok(pg.evaluate("document.querySelectorAll('.rt-privado').length") == 0,
+       "sem o aviso de privacidade enquanto não há anotação")
+    ok(pg.evaluate("document.querySelectorAll('.rt-notas tbody tr').length") == 1,
+       "só a linha em branco",
+       pg.evaluate("document.querySelectorAll('.rt-notas tbody tr').length"))
+    ok("Nenhuma anotação" not in pg.inner_text("#rtNotas"),
+       "sem texto avisando que está vazio", pg.inner_text("#rtNotas")[:140])
 
     pg.fill(".rt-notas tr[data-rtnova='1'] .rt-nota-txt", "Ligou de volta. Fecha em setembro.")
     pg.click("#rtNotas button.btn-primary")
@@ -244,6 +259,10 @@ with sync_playwright() as p:
     ok(pg.evaluate("document.querySelectorAll('.rt-notas tbody tr').length") == 2,
        "1 anotação + a linha em branco nova",
        pg.evaluate("document.querySelectorAll('.rt-notas tbody tr').length"))
+    ok(pg.evaluate("document.querySelectorAll('.rt-notas thead').length") == 1,
+       "aí sim o cabeçalho aparece")
+    ok("nem para o seu gestor" in pg.inner_text("#rtNotas"),
+       "e o aviso de privacidade também", pg.inner_text("#rtNotas")[-140:])
     ok("1 anotação" in pg.inner_text(".rt-listas"), "a etiqueta apareceu na lista",
        pg.inner_text(".rt-listas")[:200])
 

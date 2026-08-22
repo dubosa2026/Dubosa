@@ -448,10 +448,19 @@ var Roteiro = (function () {
     document.getElementById('rtNotas').hidden = qual !== 'notas';
   }
 
+  /* A aba so existe quando ha um cliente escolhido: anotacao e sempre de
+     alguem. Sem cliente, o botao some -- em vez de abrir um painel vazio
+     pedindo que o vendedor faca outra coisa antes. */
   function contarNotas() {
     var t = document.getElementById('rtTabNotas');
     if (!t) return;
-    var n = (atual && ponte.notasDe) ? ponte.notasDe(atual.cliente).length : 0;
+    var tem = !!(atual && atual.cliente);
+    t.hidden = !tem;
+    if (!tem) {
+      if (t.getAttribute('aria-selected') === 'true') trocarAba('abrir');
+      return;
+    }
+    var n = ponte.notasDe ? ponte.notasDe(atual.cliente).length : 0;
     t.innerHTML = 'Anotações' + (n ? '<span class="rt-pip">' + n + '</span>' : '');
   }
 
@@ -460,22 +469,18 @@ var Roteiro = (function () {
     if (!alvo) return;
     alvo.innerHTML = '';
 
-    if (!atual || !atual.cliente) {
-      alvo.appendChild(el('p', 'rt-dica',
-        'Escolha um cliente na lista para ver e escrever anotações.'));
-      return;
-    }
+    if (!atual || !atual.cliente) return;
 
     var cliente = atual.cliente;
     var lista = ponte.notasDe ? ponte.notasDe(cliente) : [];
 
-    if (!lista.length) {
-      alvo.appendChild(el('p', 'rt-notas-vazio',
-        'Nenhuma anotação sua para este cliente ainda. Escreva a primeira abaixo.'));
-    }
-
-    var tabela = el('table', 'rt-notas',
-      '<thead><tr><th style="width:96px">Data</th><th>Anotação</th><th style="width:34px"></th></tr></thead>');
+    /* Cliente sem anotacao abre em branco: so a linha de escrever. Nada de
+       cabecalho de tabela nem aviso explicando que esta vazio -- o vazio ja
+       se explica sozinho. O historico so aparece depois que existir. */
+    var tabela = el('table', 'rt-notas', lista.length
+      ? '<thead><tr><th style="width:96px">Data</th><th>Anotação</th>' +
+        '<th style="width:34px"></th></tr></thead>'
+      : '');
     var corpo = document.createElement('tbody');
 
     // Mais recente primeiro: e a conversa que interessa antes de ligar.
@@ -524,7 +529,8 @@ var Roteiro = (function () {
     nova.setAttribute('data-rtnova', '1');
     nova.innerHTML =
       '<td class="dt"><input class="rt-nota-data" value="' + hojeBR() + '"></td>' +
-      '<td><textarea class="rt-nota-txt" rows="2" placeholder="O que aconteceu nessa conversa…"></textarea></td>' +
+      '<td><textarea class="rt-nota-txt" rows="2" placeholder="O que aconteceu nessa conversa… ' +
+        '(só você lê isto)"></textarea></td>' +
       '<td></td>';
     corpo.appendChild(nova);
     tabela.appendChild(corpo);
@@ -551,6 +557,8 @@ var Roteiro = (function () {
     linha.append(salvar, recado);
     alvo.appendChild(linha);
 
+    // A explicacao inteira so depois que existir o que proteger.
+    if (!lista.length) return;
     alvo.appendChild(el('div', 'rt-privado',
       '<b>Só você vê isto.</b> Suas anotações não aparecem para nenhum outro vendedor, ' +
       'nem para o seu gestor. Ficam guardadas com o seu nome e o código do cliente: se ele ' +

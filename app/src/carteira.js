@@ -122,7 +122,7 @@ function secaoDaRodada(r, indice, repetidos) {
       var conteudo = celula(c, l[c]);
       if (ci === 0) {
         if (quantasNotas) {
-          conteudo += ' <span class="tag-nota" title="Suas anotações deste cliente">' +
+          conteudo += ' <span class="tag-nota" title="Abrir suas anotações deste cliente">' +
             quantasNotas + (quantasNotas === 1 ? ' anotação' : ' anotações') + '</span>';
         }
         if (outras.length) {
@@ -380,7 +380,14 @@ function ligarSelecao(rodadas) {
         Roteiro.selecionar(Roteiro.daLinha(linha, r.colunas, r.modo));
         return linha;
       }
-      tr.addEventListener('click', escolher);
+      tr.addEventListener('click', function (ev) {
+        var linha = escolher();
+        // A etiqueta "2 anotações" e um atalho: um toque nela ja abre o
+        // caderno. Serve o celular, onde o toque duplo e mais desajeitado.
+        if (linha && ev.target && ev.target.classList.contains('tag-nota')) {
+          Roteiro.abrirNotas();
+        }
+      });
       // Dois cliques abrem o caderno daquele cliente, ja na aba certa.
       tr.addEventListener('dblclick', function () {
         if (escolher()) Roteiro.abrirNotas();

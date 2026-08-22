@@ -508,8 +508,11 @@ select{max-width:260px;}
 .rt-painel{border-color:var(--y-wash);border-left:3px solid var(--y);}
 .rt-conta-itens{font-family:var(--mono);font-size:11.5px;color:var(--text-3);}
 
-/* a linha clicavel e a que esta escolhida */
-.rt-listas tbody tr{cursor:pointer;}
+/* a linha clicavel e a que esta escolhida.
+   touch-action:manipulation desliga o zoom por toque duplo em cima da linha --
+   sem isso, no celular o segundo toque vira zoom e o duplo clique nunca chega
+   ao caderno de anotacoes. O zoom do resto da pagina continua livre. */
+.rt-listas tbody tr{cursor:pointer;touch-action:manipulation;}
 .rt-listas tbody tr[data-rtsel="1"]{background:var(--y-wash);box-shadow:inset 3px 0 0 var(--y);}
 
 .rt-dica{font-size:12.6px;color:var(--text-3);margin:0 0 14px;}
@@ -527,6 +530,7 @@ select{max-width:260px;}
 .rt-tab:hover{color:var(--text-2);}
 .rt-tab[aria-selected="true"]{color:var(--y);border-bottom-color:var(--y);}
 .rt-tab:focus-visible{outline:2px solid var(--y);outline-offset:-2px;}
+.rt-tab[hidden]{display:none;}
 
 .rt-seg{display:inline-flex;border:1px solid var(--line-2);border-radius:7px;overflow:hidden;margin-bottom:15px;}
 .rt-seg button{
@@ -629,7 +633,9 @@ tr[data-falei="1"] td:not(.col-falei){color:var(--text-3);}
 .tag-nota{
   font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.05em;
   border:1px solid var(--y);color:var(--y);border-radius:99px;padding:1px 6px;white-space:nowrap;
+  cursor:pointer;touch-action:manipulation;
 }
+.tag-nota:hover{background:var(--y-wash);}
 
 /* ---- aba de anotacoes ---- */
 .rt-pip{
