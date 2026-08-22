@@ -31,8 +31,15 @@
     X-Robots-Tag = "noindex, nofollow"
 
 # O HTML e regerado a cada deploy, entao nao pode ficar em cache: senao o
-# time continua vendo a versao antiga depois de uma correcao.
+# time continua vendo a versao antiga depois de uma correcao. A pagina do
+# vendedor (/c/) precisa disto mais do que a do gestor: ele abre o link no
+# celular uma vez e volta nele a semana inteira.
 [[headers]]
   for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/c/*"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"

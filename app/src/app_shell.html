@@ -530,7 +530,19 @@ select{max-width:260px;}
 .rt-tab:hover{color:var(--text-2);}
 .rt-tab[aria-selected="true"]{color:var(--y);border-bottom-color:var(--y);}
 .rt-tab:focus-visible{outline:2px solid var(--y);outline-offset:-2px;}
-.rt-tab[hidden]{display:none;}
+
+/* o caderno: os clientes em que ja se escreveu alguma coisa */
+.rt-caderno{display:flex;flex-direction:column;gap:7px;}
+.rt-caderno-item{
+  appearance:none;text-align:left;cursor:pointer;width:100%;
+  background:var(--panel-3);border:1px solid var(--line);border-radius:8px;
+  padding:9px 11px;display:grid;gap:2px;color:inherit;font:inherit;
+}
+.rt-caderno-item:hover{border-color:var(--y);}
+.rt-caderno-item:focus-visible{outline:2px solid var(--y);outline-offset:2px;}
+.rt-cad-nome{font-family:var(--dp);font-weight:600;font-size:13px;overflow-wrap:anywhere;}
+.rt-cad-quantas{font-family:var(--mono);font-size:10px;color:var(--y);letter-spacing:.04em;}
+.rt-cad-ultima{font-size:12px;color:var(--text-3);overflow-wrap:anywhere;}
 
 .rt-seg{display:inline-flex;border:1px solid var(--line-2);border-radius:7px;overflow:hidden;margin-bottom:15px;}
 .rt-seg button{

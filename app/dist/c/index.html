@@ -538,7 +538,19 @@ select{max-width:260px;}
 .rt-tab:hover{color:var(--text-2);}
 .rt-tab[aria-selected="true"]{color:var(--y);border-bottom-color:var(--y);}
 .rt-tab:focus-visible{outline:2px solid var(--y);outline-offset:-2px;}
-.rt-tab[hidden]{display:none;}
+
+/* o caderno: os clientes em que ja se escreveu alguma coisa */
+.rt-caderno{display:flex;flex-direction:column;gap:7px;}
+.rt-caderno-item{
+  appearance:none;text-align:left;cursor:pointer;width:100%;
+  background:var(--panel-3);border:1px solid var(--line);border-radius:8px;
+  padding:9px 11px;display:grid;gap:2px;color:inherit;font:inherit;
+}
+.rt-caderno-item:hover{border-color:var(--y);}
+.rt-caderno-item:focus-visible{outline:2px solid var(--y);outline-offset:2px;}
+.rt-cad-nome{font-family:var(--dp);font-weight:600;font-size:13px;overflow-wrap:anywhere;}
+.rt-cad-quantas{font-family:var(--mono);font-size:10px;color:var(--y);letter-spacing:.04em;}
+.rt-cad-ultima{font-size:12px;color:var(--text-3);overflow-wrap:anywhere;}
 
 .rt-seg{display:inline-flex;border:1px solid var(--line-2);border-radius:7px;overflow:hidden;margin-bottom:15px;}
 .rt-seg button{
@@ -1403,20 +1415,44 @@ var Roteiro = (function () {
     document.getElementById('rtNotas').hidden = qual !== 'notas';
   }
 
-  /* A aba so existe quando ha um cliente escolhido: anotacao e sempre de
-     alguem. Sem cliente, o botao some -- em vez de abrir um painel vazio
-     pedindo que o vendedor faca outra coisa antes. */
+  /* A aba fica sempre no cabecalho. O numero ao lado e o do cliente
+     escolhido quando ha um; sem cliente, e quantos clientes ja tem
+     anotacao. Zero nao mostra numero nenhum. */
   function contarNotas() {
     var t = document.getElementById('rtTabNotas');
     if (!t) return;
-    var tem = !!(atual && atual.cliente);
-    t.hidden = !tem;
-    if (!tem) {
-      if (t.getAttribute('aria-selected') === 'true') trocarAba('abrir');
-      return;
-    }
-    var n = ponte.notasDe ? ponte.notasDe(atual.cliente).length : 0;
+    var n = (atual && atual.cliente && ponte.notasDe)
+      ? ponte.notasDe(atual.cliente).length
+      : (ponte.notasTodas ? ponte.notasTodas().length : 0);
     t.innerHTML = 'Anotações' + (n ? '<span class="rt-pip">' + n + '</span>' : '');
+  }
+
+  /* Sem cliente escolhido, a aba e o caderno do vendedor: so os clientes em
+     que ele ja escreveu alguma coisa. Enquanto nao escrever nada, nao ha
+     nada para mostrar -- e a aba abre em branco de proposito, sem lista de
+     cliente nenhum. */
+  function desenharCaderno(alvo) {
+    var tudo = ponte.notasTodas ? ponte.notasTodas() : [];
+    if (!tudo.length) return;
+
+    alvo.appendChild(el('p', 'rt-dica',
+      'Clientes em que você já escreveu. Toque para abrir.'));
+
+    var caixa = el('div', 'rt-caderno');
+    tudo.forEach(function (item) {
+      var ultima = item.notas[item.notas.length - 1] || {};
+      var linha = el('button', 'rt-caderno-item',
+        '<span class="rt-cad-nome">' + rtEsc(item.nome) + '</span>' +
+        '<span class="rt-cad-quantas">' + item.notas.length +
+          (item.notas.length === 1 ? ' anotação' : ' anotações') + '</span>' +
+        '<span class="rt-cad-ultima">' + rtEsc(ultima.data || '') + ' · ' +
+          rtEsc(String(ultima.texto || '').slice(0, 90)) + '</span>');
+      linha.addEventListener('click', function () {
+        if (ponte.irParaCliente) ponte.irParaCliente(item.cliente);
+      });
+      caixa.appendChild(linha);
+    });
+    alvo.appendChild(caixa);
   }
 
   function desenharNotas() {
@@ -1424,10 +1460,13 @@ var Roteiro = (function () {
     if (!alvo) return;
     alvo.innerHTML = '';
 
-    if (!atual || !atual.cliente) return;
+    if (!atual || !atual.cliente) { desenharCaderno(alvo); return; }
 
     var cliente = atual.cliente;
     var lista = ponte.notasDe ? ponte.notasDe(cliente) : [];
+
+    alvo.appendChild(el('p', 'rt-dica',
+      'Anotações de <b>' + rtEsc(atual.rotulo) + '</b>'));
 
     /* Cliente sem anotacao abre em branco: so a linha de escrever. Nada de
        cabecalho de tabela nem aviso explicando que esta vazio -- o vazio ja
@@ -1908,6 +1947,8 @@ function render(dados) {
   estado.rodadas = rodadas;
   Roteiro.iniciar(primeiroNome(dados.vendedor), {
     notasDe: function (cliente) { return estado.notas[cliente] || []; },
+    notasTodas: notasTodas,
+    irParaCliente: irParaCliente,
     salvarNota: salvarNota,
     editarNota: editarNota,
     apagarNota: apagarNota,
@@ -2052,6 +2093,62 @@ async function perguntarIa(acao, pergunta) {
   return chamar('/api/duvida', { acao: acao, pergunta: pergunta });
 }
 
+/* O caderno da aba Anotações: só os clientes em que o vendedor escreveu
+   alguma coisa, do mais recente para o mais antigo. Enquanto ele não
+   escrever nada, isto devolve lista vazia e a aba abre em branco. */
+function notasTodas() {
+  var fora = [];
+  Object.keys(estado.notas).forEach(function (k) {
+    var notas = estado.notas[k] || [];
+    if (!notas.length) return;
+    fora.push({
+      cliente: k,
+      nome: nomeDoCliente(k) || k,
+      notas: notas,
+      quando: Math.max.apply(null, notas.map(function (n) { return Number(n.ts) || 0; }))
+    });
+  });
+  fora.sort(function (a, b) { return b.quando - a.quando; });
+  return fora;
+}
+
+/* Do código do cliente de volta ao nome que está na lista. Se ele saiu da
+   carteira nesta rodada, o nome não existe mais aqui -- a anotação continua
+   guardada, e o código serve de rótulo. */
+function nomeDoCliente(chave) {
+  for (var i = 0; i < estado.rodadas.length; i++) {
+    var r = estado.rodadas[i];
+    for (var j = 0; j < r.linhas.length; j++) {
+      if (chaveCliente(r.linhas[j], r.colunas) !== chave) continue;
+      for (var c = 0; c < r.colunas.length; c++) {
+        if (/integrador/i.test(r.colunas[c])) return String(r.linhas[j][r.colunas[c]] || '');
+      }
+    }
+  }
+  return '';
+}
+
+/* Do caderno de volta ao cliente: seleciona a linha dele na lista, para o
+   roteiro e o editor de anotações passarem a falar daquele cliente. */
+function irParaCliente(chave) {
+  for (var i = 0; i < estado.rodadas.length; i++) {
+    var r = estado.rodadas[i];
+    for (var j = 0; j < r.linhas.length; j++) {
+      if (chaveCliente(r.linhas[j], r.colunas) !== chave) continue;
+      var tr = document.querySelector(
+        '.rt-listas tbody tr[data-rodada="' + i + '"][data-linha="' + j + '"]');
+      if (tr) {
+        var antes = document.querySelectorAll('.rt-listas tr[data-rtsel="1"]');
+        for (var k = 0; k < antes.length; k++) antes[k].removeAttribute('data-rtsel');
+        tr.setAttribute('data-rtsel', '1');
+      }
+      Roteiro.selecionar(Roteiro.daLinha(r.linhas[j], r.colunas, r.modo));
+      return true;
+    }
+  }
+  return false;
+}
+
 /* Clicar numa linha faz o roteiro falar daquele cliente. A linha continua
    sendo uma linha de tabela: quem só quer ler a lista não perde nada, e quem
    vai ligar ganha a fala com a data e o histórico certos. */
@@ -2082,9 +2179,31 @@ function ligarSelecao(rodadas) {
           Roteiro.abrirNotas();
         }
       });
+
       // Dois cliques abrem o caderno daquele cliente, ja na aba certa.
       tr.addEventListener('dblclick', function () {
         if (escolher()) Roteiro.abrirNotas();
+      });
+
+      /* O toque duplo do Android contado por nos.
+         O evento dblclick existe no papel em todo navegador de celular, mas
+         nao chega de forma confiavel: dependendo da versao e do teclado de
+         gestos, o segundo toque vira zoom, rolagem ou selecao de texto e o
+         dblclick some. Entao aqui a conta e nossa -- dois toques na MESMA
+         linha dentro de 450 ms abrem o caderno, sem depender de o navegador
+         sintetizar coisa alguma. O mouse continua no dblclick de cima. */
+      var toqueAnterior = 0;
+      tr.addEventListener('pointerup', function (ev) {
+        if (ev.pointerType === 'mouse') return;
+        if (ev.target && ev.target.closest &&
+            ev.target.closest('a, .col-falei, .tag-nota')) return;
+        var agora = Date.now();
+        if (agora - toqueAnterior < 450) {
+          toqueAnterior = 0;
+          if (escolher()) Roteiro.abrirNotas();
+        } else {
+          toqueAnterior = agora;
+        }
       });
     })(linhas[i]);
   }

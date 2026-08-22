@@ -448,20 +448,44 @@ var Roteiro = (function () {
     document.getElementById('rtNotas').hidden = qual !== 'notas';
   }
 
-  /* A aba so existe quando ha um cliente escolhido: anotacao e sempre de
-     alguem. Sem cliente, o botao some -- em vez de abrir um painel vazio
-     pedindo que o vendedor faca outra coisa antes. */
+  /* A aba fica sempre no cabecalho. O numero ao lado e o do cliente
+     escolhido quando ha um; sem cliente, e quantos clientes ja tem
+     anotacao. Zero nao mostra numero nenhum. */
   function contarNotas() {
     var t = document.getElementById('rtTabNotas');
     if (!t) return;
-    var tem = !!(atual && atual.cliente);
-    t.hidden = !tem;
-    if (!tem) {
-      if (t.getAttribute('aria-selected') === 'true') trocarAba('abrir');
-      return;
-    }
-    var n = ponte.notasDe ? ponte.notasDe(atual.cliente).length : 0;
+    var n = (atual && atual.cliente && ponte.notasDe)
+      ? ponte.notasDe(atual.cliente).length
+      : (ponte.notasTodas ? ponte.notasTodas().length : 0);
     t.innerHTML = 'Anotações' + (n ? '<span class="rt-pip">' + n + '</span>' : '');
+  }
+
+  /* Sem cliente escolhido, a aba e o caderno do vendedor: so os clientes em
+     que ele ja escreveu alguma coisa. Enquanto nao escrever nada, nao ha
+     nada para mostrar -- e a aba abre em branco de proposito, sem lista de
+     cliente nenhum. */
+  function desenharCaderno(alvo) {
+    var tudo = ponte.notasTodas ? ponte.notasTodas() : [];
+    if (!tudo.length) return;
+
+    alvo.appendChild(el('p', 'rt-dica',
+      'Clientes em que você já escreveu. Toque para abrir.'));
+
+    var caixa = el('div', 'rt-caderno');
+    tudo.forEach(function (item) {
+      var ultima = item.notas[item.notas.length - 1] || {};
+      var linha = el('button', 'rt-caderno-item',
+        '<span class="rt-cad-nome">' + rtEsc(item.nome) + '</span>' +
+        '<span class="rt-cad-quantas">' + item.notas.length +
+          (item.notas.length === 1 ? ' anotação' : ' anotações') + '</span>' +
+        '<span class="rt-cad-ultima">' + rtEsc(ultima.data || '') + ' · ' +
+          rtEsc(String(ultima.texto || '').slice(0, 90)) + '</span>');
+      linha.addEventListener('click', function () {
+        if (ponte.irParaCliente) ponte.irParaCliente(item.cliente);
+      });
+      caixa.appendChild(linha);
+    });
+    alvo.appendChild(caixa);
   }
 
   function desenharNotas() {
@@ -469,10 +493,13 @@ var Roteiro = (function () {
     if (!alvo) return;
     alvo.innerHTML = '';
 
-    if (!atual || !atual.cliente) return;
+    if (!atual || !atual.cliente) { desenharCaderno(alvo); return; }
 
     var cliente = atual.cliente;
     var lista = ponte.notasDe ? ponte.notasDe(cliente) : [];
+
+    alvo.appendChild(el('p', 'rt-dica',
+      'Anotações de <b>' + rtEsc(atual.rotulo) + '</b>'));
 
     /* Cliente sem anotacao abre em branco: so a linha de escrever. Nada de
        cabecalho de tabela nem aviso explicando que esta vazio -- o vazio ja

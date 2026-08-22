@@ -214,6 +214,8 @@ function render(dados) {
   estado.rodadas = rodadas;
   Roteiro.iniciar(primeiroNome(dados.vendedor), {
     notasDe: function (cliente) { return estado.notas[cliente] || []; },
+    notasTodas: notasTodas,
+    irParaCliente: irParaCliente,
     salvarNota: salvarNota,
     editarNota: editarNota,
     apagarNota: apagarNota,
@@ -358,6 +360,62 @@ async function perguntarIa(acao, pergunta) {
   return chamar('/api/duvida', { acao: acao, pergunta: pergunta });
 }
 
+/* O caderno da aba Anotações: só os clientes em que o vendedor escreveu
+   alguma coisa, do mais recente para o mais antigo. Enquanto ele não
+   escrever nada, isto devolve lista vazia e a aba abre em branco. */
+function notasTodas() {
+  var fora = [];
+  Object.keys(estado.notas).forEach(function (k) {
+    var notas = estado.notas[k] || [];
+    if (!notas.length) return;
+    fora.push({
+      cliente: k,
+      nome: nomeDoCliente(k) || k,
+      notas: notas,
+      quando: Math.max.apply(null, notas.map(function (n) { return Number(n.ts) || 0; }))
+    });
+  });
+  fora.sort(function (a, b) { return b.quando - a.quando; });
+  return fora;
+}
+
+/* Do código do cliente de volta ao nome que está na lista. Se ele saiu da
+   carteira nesta rodada, o nome não existe mais aqui -- a anotação continua
+   guardada, e o código serve de rótulo. */
+function nomeDoCliente(chave) {
+  for (var i = 0; i < estado.rodadas.length; i++) {
+    var r = estado.rodadas[i];
+    for (var j = 0; j < r.linhas.length; j++) {
+      if (chaveCliente(r.linhas[j], r.colunas) !== chave) continue;
+      for (var c = 0; c < r.colunas.length; c++) {
+        if (/integrador/i.test(r.colunas[c])) return String(r.linhas[j][r.colunas[c]] || '');
+      }
+    }
+  }
+  return '';
+}
+
+/* Do caderno de volta ao cliente: seleciona a linha dele na lista, para o
+   roteiro e o editor de anotações passarem a falar daquele cliente. */
+function irParaCliente(chave) {
+  for (var i = 0; i < estado.rodadas.length; i++) {
+    var r = estado.rodadas[i];
+    for (var j = 0; j < r.linhas.length; j++) {
+      if (chaveCliente(r.linhas[j], r.colunas) !== chave) continue;
+      var tr = document.querySelector(
+        '.rt-listas tbody tr[data-rodada="' + i + '"][data-linha="' + j + '"]');
+      if (tr) {
+        var antes = document.querySelectorAll('.rt-listas tr[data-rtsel="1"]');
+        for (var k = 0; k < antes.length; k++) antes[k].removeAttribute('data-rtsel');
+        tr.setAttribute('data-rtsel', '1');
+      }
+      Roteiro.selecionar(Roteiro.daLinha(r.linhas[j], r.colunas, r.modo));
+      return true;
+    }
+  }
+  return false;
+}
+
 /* Clicar numa linha faz o roteiro falar daquele cliente. A linha continua
    sendo uma linha de tabela: quem só quer ler a lista não perde nada, e quem
    vai ligar ganha a fala com a data e o histórico certos. */
@@ -388,9 +446,31 @@ function ligarSelecao(rodadas) {
           Roteiro.abrirNotas();
         }
       });
+
       // Dois cliques abrem o caderno daquele cliente, ja na aba certa.
       tr.addEventListener('dblclick', function () {
         if (escolher()) Roteiro.abrirNotas();
+      });
+
+      /* O toque duplo do Android contado por nos.
+         O evento dblclick existe no papel em todo navegador de celular, mas
+         nao chega de forma confiavel: dependendo da versao e do teclado de
+         gestos, o segundo toque vira zoom, rolagem ou selecao de texto e o
+         dblclick some. Entao aqui a conta e nossa -- dois toques na MESMA
+         linha dentro de 450 ms abrem o caderno, sem depender de o navegador
+         sintetizar coisa alguma. O mouse continua no dblclick de cima. */
+      var toqueAnterior = 0;
+      tr.addEventListener('pointerup', function (ev) {
+        if (ev.pointerType === 'mouse') return;
+        if (ev.target && ev.target.closest &&
+            ev.target.closest('a, .col-falei, .tag-nota')) return;
+        var agora = Date.now();
+        if (agora - toqueAnterior < 450) {
+          toqueAnterior = 0;
+          if (escolher()) Roteiro.abrirNotas();
+        } else {
+          toqueAnterior = agora;
+        }
       });
     })(linhas[i]);
   }

@@ -229,16 +229,19 @@ with sync_playwright() as p:
     ok(pg.evaluate("document.querySelectorAll('.falei-box:checked').length") == 1,
        "e sobrevive a recarregar a página")
 
-    print("\n13. dois cliques abrem o caderno, e ele abre EM BRANCO")
-    ok(pg.evaluate("document.getElementById('rtTabNotas').hidden"),
-       "sem cliente escolhido, a aba nem aparece")
+    print("\n13. a aba fica no cabeçalho e abre EM BRANCO")
+    ok(not pg.evaluate("document.getElementById('rtTabNotas').hidden"),
+       "a aba está no cabeçalho desde o começo")
+    pg.click("[data-rtaba='notas']")
+    pg.wait_for_timeout(400)
+    ok(pg.inner_text("#rtNotas").strip() == "",
+       "sem nenhuma anotação escrita, ela abre vazia — nenhum cliente carregado",
+       repr(pg.inner_text("#rtNotas")[:160]))
 
     pg.dblclick(".rt-listas tbody tr:nth-child(2) td:nth-child(2)")
     pg.wait_for_timeout(600)
-    ok(not pg.evaluate("document.getElementById('rtTabNotas').hidden"),
-       "o duplo clique faz a aba aparecer")
     ok(pg.evaluate("document.getElementById('rtTabNotas').getAttribute('aria-selected')") == "true",
-       "e já abre nela")
+       "o duplo clique abre a aba")
     ok(pg.is_visible(".rt-notas"), "com a linha para escrever")
 
     # Em branco quer dizer em branco: nada de cabecalho de tabela, nada de
@@ -268,6 +271,24 @@ with sync_playwright() as p:
 
     _, nc = api("/api/anotacoes", {"token": tokC, "acao": "listar"})
     ok("setembro" in bruto(nc), "chegou ao servidor", bruto(nc)[:120])
+
+    # Agora que existe conteudo, a aba sem cliente vira o caderno: so os
+    # clientes em que ele escreveu, e nada mais.
+    pg.reload(); pg.wait_for_timeout(1800)
+    pg.click("[data-rtaba='notas']")
+    pg.wait_for_timeout(400)
+    ok(pg.evaluate("document.querySelectorAll('.rt-caderno-item').length") == 1,
+       "o caderno lista só o cliente que tem anotação",
+       pg.evaluate("document.querySelectorAll('.rt-caderno-item').length"))
+    ok("setembro" in pg.inner_text("#rtNotas"), "com um pedaço do que foi escrito",
+       pg.inner_text("#rtNotas")[:160])
+    pg.click(".rt-caderno-item")
+    pg.wait_for_timeout(500)
+    ok(pg.evaluate("document.querySelectorAll('.rt-notas tbody tr').length") == 2,
+       "e abre naquele cliente",
+       pg.evaluate("document.querySelectorAll('.rt-notas tbody tr').length"))
+    ok(pg.evaluate("document.querySelectorAll('tr[data-rtsel=\"1\"]').length") == 1,
+       "marcando a linha dele na lista")
 
     print("\n14. o campo da IA na tela")
     pg.click("[data-rtaba='obj']")
@@ -300,10 +321,16 @@ with sync_playwright() as p:
     ok(not m.evaluate("document.documentElement.scrollWidth > document.documentElement.clientWidth + 1"),
        "sem rolagem lateral no celular")
 
-    m.dblclick(".rt-listas tbody tr:nth-child(3) td:nth-child(2)")
+    # Dois TOQUES de verdade, não um dblclick de mouse: é assim que o
+    # aparelho do vendedor manda o evento, e é onde estava falhando.
+    alvo = ".rt-listas tbody tr:nth-child(3) td:nth-child(2)"
+    m.tap(alvo)
+    m.tap(alvo)
     m.wait_for_timeout(1200)
     ok(m.evaluate("document.getElementById('rtTabNotas').getAttribute('aria-selected')") == "true",
-       "o toque duplo abriu a aba")
+       "dois toques abriram a aba (sem depender do dblclick do navegador)")
+    ok(m.evaluate("document.querySelectorAll('tr[data-rtsel=\"1\"]').length") == 1,
+       "no cliente que foi tocado")
     visao = m.evaluate("""(() => {
       const r = document.getElementById('rtNotas').getBoundingClientRect();
       return {topo: Math.round(r.top), janela: window.innerHeight,
