@@ -237,6 +237,12 @@ with sync_playwright() as p:
     ok(pg.inner_text("#rtNotas").strip() == "",
        "sem nenhuma anotação escrita, ela abre vazia — nenhum cliente carregado",
        repr(pg.inner_text("#rtNotas")[:160]))
+    ok(pg.evaluate("document.getElementById('rtEscolhido').hidden"),
+       "e o cartão do cliente sai de cena nesta aba")
+    pg.click("[data-rtaba='abrir']")
+    pg.wait_for_timeout(300)
+    ok(not pg.evaluate("document.getElementById('rtEscolhido').hidden"),
+       "mas continua nas outras duas, onde a fala usa os dados dele")
 
     pg.dblclick(".rt-listas tbody tr:nth-child(2) td:nth-child(2)")
     pg.wait_for_timeout(600)

@@ -446,6 +446,13 @@ var Roteiro = (function () {
     document.getElementById('rtAbrir').hidden = qual !== 'abrir';
     document.getElementById('rtObj').hidden = qual !== 'obj';
     document.getElementById('rtNotas').hidden = qual !== 'notas';
+
+    /* Nas anotacoes o cartao do cliente sai de cena. Nas outras duas abas ele
+       serve -- a fala usa a cidade, a ultima compra, o faturado. Aqui nao:
+       enquanto nao houver anotacao escrita, este espaco fica em branco, sem
+       nenhum dado da lista de distribuicao. */
+    var cartao = document.getElementById('rtEscolhido');
+    if (cartao) cartao.hidden = qual === 'notas';
   }
 
   /* A aba fica sempre no cabecalho. O numero ao lado e o do cliente

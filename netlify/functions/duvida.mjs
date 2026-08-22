@@ -134,6 +134,12 @@ export default async function duvida(req) {
   // gastar sem contar.
   const meu = await somarUso(loja, chaveVend, POR_VENDEDOR_DIA);
   if (!meu.ok) {
+    // `disputa` nao e cota estourada: e o contador que nao conseguiu subir.
+    // Dizer "acabaram suas perguntas" nessa hora seria mentira, e mandaria o
+    // vendedor voltar so amanha por um problema que passa em segundos.
+    if (meu.disputa) {
+      return json({ erro: 'Não consegui registrar sua pergunta agora. Tente de novo.' }, 503);
+    }
     return json({
       erro: 'Acabaram suas perguntas de hoje. Volta amanhã de manhã.',
       restantes: 0,

@@ -19,6 +19,15 @@ export function getStore(nome) {
   const m = depositos.get(nome);
 
   function gravar(chave, texto, opcoes) {
+    /* Runtime antigo: aceita a chamada, IGNORA onlyIfMatch/onlyIfNew e nao
+       devolve nada. E o que acontece quando a versao do @netlify/blobs no
+       site e anterior a 8.1 -- quem confiava em `modified` conclui que a
+       escrita falhou, mesmo com o dado gravado. Ligar com
+       BLOBS_SEM_CONDICIONAL=1. */
+    if (process.env.BLOBS_SEM_CONDICIONAL === '1') {
+      m.set(chave, texto);
+      return undefined;
+    }
     const atual = m.get(chave);
     if (opcoes?.onlyIfNew && atual !== undefined) {
       return { modified: false, etag: etagDe(atual) };

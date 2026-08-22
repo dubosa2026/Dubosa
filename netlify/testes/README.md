@@ -45,6 +45,18 @@ que importa — que um token só devolve a carteira do seu dono, que token
 inválido responde 404 sem vazar nada, que a senha errada é recusada e que o
 link continua o mesmo depois de republicar.
 
+O `test_blobs_antigo.py` sobe um segundo servidor, numa porta própria, com
+o stub em modo antigo (`BLOBS_SEM_CONDICIONAL=1`): a escrita condicional é
+aceita, ignorada e não devolve `modified`. É o que acontece quando a versão
+do `@netlify/blobs` no site é anterior à 8.1, e foi o que quebrou o botão
+**Salvar anotação** em produção — o vendedor via "Não consegui salvar
+agora" e o texto era gravado uma vez por tentativa, seis cópias por clique.
+Precisa da variável `SANDBOX` apontando para a pasta montada acima:
+
+```bash
+SANDBOX=$SANDBOX python3 netlify/testes/test_blobs_antigo.py
+```
+
 Isto exercita a lógica, não a infraestrutura. O comportamento real do
 Netlify Blobs e das funções em produção precisa ser conferido no primeiro
 deploy.

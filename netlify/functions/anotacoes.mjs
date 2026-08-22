@@ -28,7 +28,19 @@ const MAX_CLIENTES = 3000;
 
 /* Grava com escrita condicional: dois aparelhos do mesmo vendedor escrevendo
    ao mesmo tempo nao se apagam em silencio -- o segundo releva e tenta de
-   novo em cima do que ja esta la. */
+   novo em cima do que ja esta la.
+
+   A escrita condicional so existe no @netlify/blobs a partir da 8.1. Num
+   runtime anterior a chamada e aceita, a trava e IGNORADA e nao volta
+   `modified` nenhum. Quem so olhava `escrita?.modified` concluia que falhou:
+   o vendedor via "nao consegui salvar" e o texto era gravado uma vez por
+   tentativa -- seis copias e um erro mentiroso. Por isso a distincao abaixo
+   entre "outro ganhou a corrida" (modified === false, vale repetir) e "este
+   runtime nao tem trava" (nao veio modified, ja gravou, repetir duplica).
+
+   O caderno e de um vendedor so. Sem a trava ele perde a protecao contra
+   dois aparelhos ao mesmo tempo -- e continua funcionando, que e o que
+   importa aqui. */
 async function gravar(loja, chave, transformar, tentativas = 6) {
   for (let i = 0; i < tentativas; i++) {
     const atual = await loja.getWithMetadata(chave, { type: 'json' });
@@ -36,10 +48,27 @@ async function gravar(loja, chave, transformar, tentativas = 6) {
     const depois = transformar(JSON.parse(JSON.stringify(antes)));
     if (depois === null) return { ok: false, motivo: 'nada a fazer', dados: antes };
 
-    const escrita = atual
-      ? await loja.setJSON(chave, depois, { onlyIfMatch: atual.etag })
-      : await loja.setJSON(chave, depois, { onlyIfNew: true });
-    if (escrita?.modified) return { ok: true, dados: depois };
+    // Ja existe mas o runtime nao devolve etag: nao ha como condicionar.
+    if (atual && !atual.etag) {
+      await loja.setJSON(chave, depois);
+      return { ok: true, dados: depois, semTrava: true };
+    }
+
+    let escrita, recusou = false;
+    try {
+      escrita = await loja.setJSON(chave, depois,
+        atual ? { onlyIfMatch: atual.etag } : { onlyIfNew: true });
+    } catch {
+      recusou = true;   // runtime antigo que rejeita a opcao: nao gravou
+    }
+
+    if (!recusou && escrita && typeof escrita.modified === 'boolean') {
+      if (escrita.modified) return { ok: true, dados: depois };
+      continue;         // outro aparelho gravou antes: refaz em cima do novo
+    }
+
+    if (recusou) await loja.setJSON(chave, depois);
+    return { ok: true, dados: depois, semTrava: true };
   }
   return { ok: false, motivo: 'disputa' };
 }

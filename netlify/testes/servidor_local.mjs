@@ -5,6 +5,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const DIST = '/home/user/Dubosa/app/dist';
+// PORTA solta permite subir um segundo servidor ao lado do primeiro -- e o
+// que o test_blobs_antigo.py faz, com outro runtime de blobs.
+const PORTA = Number(process.env.PORTA) || 8899;
 // Cada funcao declara sua rota em `export const config`. Aqui o roteamento
 // e montado a partir disso, para nao precisar lembrar de registrar cada uma
 // -- foi o que quebrou quando /api/situacao caiu no handler da carteira.
@@ -47,4 +50,4 @@ http.createServer(async (req, res) => {
     console.error('ERRO', url.pathname, e);
     res.writeHead(500); res.end(String(e && e.stack || e));
   }
-}).listen(8899, () => console.log('teste em http://localhost:8899'));
+}).listen(PORTA, () => console.log('teste em http://localhost:' + PORTA));
