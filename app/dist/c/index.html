@@ -1465,12 +1465,15 @@ var Roteiro = (function () {
     var cliente = atual.cliente;
     var lista = ponte.notasDe ? ponte.notasDe(cliente) : [];
 
-    alvo.appendChild(el('p', 'rt-dica',
-      'Anotações de <b>' + rtEsc(atual.rotulo) + '</b>'));
+    /* Cliente sem anotacao abre em branco: so a linha de escrever. Nem o
+       nome do cliente aparece aqui -- ele ja esta no cartao logo acima, e
+       repetido dentro da aba so ocupa espaco. Nome, cabecalho de tabela e
+       aviso de privacidade entram junto com a primeira anotacao salva. */
+    if (lista.length) {
+      alvo.appendChild(el('p', 'rt-dica',
+        'Anotações de <b>' + rtEsc(atual.rotulo) + '</b>'));
+    }
 
-    /* Cliente sem anotacao abre em branco: so a linha de escrever. Nada de
-       cabecalho de tabela nem aviso explicando que esta vazio -- o vazio ja
-       se explica sozinho. O historico so aparece depois que existir. */
     var tabela = el('table', 'rt-notas', lista.length
       ? '<thead><tr><th style="width:96px">Data</th><th>Anotação</th>' +
         '<th style="width:34px"></th></tr></thead>'

@@ -255,6 +255,9 @@ with sync_playwright() as p:
        pg.evaluate("document.querySelectorAll('.rt-notas tbody tr').length"))
     ok("Nenhuma anotação" not in pg.inner_text("#rtNotas"),
        "sem texto avisando que está vazio", pg.inner_text("#rtNotas")[:140])
+    ok("Anotações de" not in pg.inner_text("#rtNotas"),
+       "nem o nome do cliente antes de existir anotação",
+       pg.inner_text("#rtNotas")[:140])
 
     pg.fill(".rt-notas tr[data-rtnova='1'] .rt-nota-txt", "Ligou de volta. Fecha em setembro.")
     pg.click("#rtNotas button.btn-primary")
@@ -264,6 +267,8 @@ with sync_playwright() as p:
        pg.evaluate("document.querySelectorAll('.rt-notas tbody tr').length"))
     ok(pg.evaluate("document.querySelectorAll('.rt-notas thead').length") == 1,
        "aí sim o cabeçalho aparece")
+    ok("Anotações de" in pg.inner_text("#rtNotas"),
+       "e o nome do cliente também", pg.inner_text("#rtNotas")[:140])
     ok("nem para o seu gestor" in pg.inner_text("#rtNotas"),
        "e o aviso de privacidade também", pg.inner_text("#rtNotas")[-140:])
     ok("1 anotação" in pg.inner_text(".rt-listas"), "a etiqueta apareceu na lista",
