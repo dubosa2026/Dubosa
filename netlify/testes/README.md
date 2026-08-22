@@ -57,6 +57,22 @@ Precisa da variável `SANDBOX` apontando para a pasta montada acima:
 SANDBOX=$SANDBOX python3 netlify/testes/test_blobs_antigo.py
 ```
 
+O `test_agenda.py` cobre o agendamento e o lembrete de 30 minutos. Sobe um
+servidor próprio com um Brevo falso: o envio é interceptado e gravado num
+arquivo em vez de sair para a internet. Confere que o lembrete sai uma vez
+só mesmo com a tarefa rodando de novo, que compromisso vencido **não** vira
+e-mail atrasado, que vendedor sem e-mail cadastrado ainda consegue agendar
+(sem a tela prometer lembrete), e que o resumo diário do gestor junta a
+equipe inteira. Também precisa da variável `SANDBOX`:
+
+```bash
+SANDBOX=$SANDBOX python3 netlify/testes/test_agenda.py
+```
+
+As funções agendadas não têm rota — quem as chama é o cron do Netlify. No
+servidor de teste elas ficam sob `/__tarefa/<nome>`, para o roteiro
+disparar na hora em vez de esperar cinco minutos.
+
 Isto exercita a lógica, não a infraestrutura. O comportamento real do
 Netlify Blobs e das funções em produção precisa ser conferido no primeiro
 deploy.

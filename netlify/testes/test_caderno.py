@@ -384,6 +384,45 @@ with sync_playwright() as p:
        m.evaluate("document.activeElement && document.activeElement.className"))
     m.screenshot(path="caderno-celular.png", full_page=True)
 
+    print("\n15b. a aba Agenda, na tela do vendedor")
+    pg.click(".rt-listas tbody tr:nth-child(2) td:nth-child(2)")
+    pg.wait_for_timeout(300)
+    pg.click("[data-rtaba='agenda']")
+    pg.wait_for_timeout(400)
+    ok(pg.is_visible("#rtAgQuando"), "com o cliente escolhido, dá para marcar retorno")
+
+    # A sugestao tem de vir na hora LOCAL do aparelho. Se viesse em UTC, o
+    # vendedor de Belem veria tres horas a mais sem entender por que.
+    sugestao = pg.input_value("#rtAgQuando")
+    local = pg.evaluate("""(() => {
+      const d = new Date(Date.now() + 24*3600*1000); d.setMinutes(0,0,0);
+      const p = n => String(n).padStart(2,'0');
+      return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+
+             'T'+p(d.getHours())+':'+p(d.getMinutes());
+    })()""")
+    ok(sugestao == local, "e a sugestão vem na hora do aparelho, não em UTC",
+       (sugestao, local))
+
+    daqui = pg.evaluate("new Date(Date.now() + 3*3600*1000).toISOString().slice(0,16)")
+    pg.fill("#rtAgQuando", pg.evaluate("""(() => {
+      const d = new Date(Date.now() + 3*3600*1000);
+      const p = n => String(n).padStart(2,'0');
+      return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+
+             'T'+p(d.getHours())+':'+p(d.getMinutes());
+    })()"""))
+    pg.fill("#rtAgObs", "Mandar a proposta do kit antes.")
+    pg.click("#rtAgenda button.btn-primary")
+    pg.wait_for_timeout(1200)
+    ok(pg.evaluate("document.querySelectorAll('.rt-ag-item').length") == 1,
+       "o compromisso entra na lista",
+       pg.evaluate("document.querySelectorAll('.rt-ag-item').length"))
+    ok("kit" in pg.inner_text("#rtAgenda"), "com a observação", pg.inner_text("#rtAgenda")[:160])
+
+    _, ag = api("/api/agenda", {"token": tokC, "acao": "listar"})
+    ok(len(ag["agenda"]) == 1, "e chegou ao servidor", ag)
+    ok(ag["agenda"][0]["quando"].endswith("Z") or "+" in ag["agenda"][0]["quando"],
+       "guardado com fuso resolvido", ag["agenda"][0]["quando"])
+
     print("\n16. o painel do gestor lê o caderno da equipe")
     g = b.new_context(viewport={"width": 1400, "height": 1000}).new_page()
     errg = []

@@ -558,6 +558,32 @@ select{max-width:260px;}
   border-left:2px solid var(--line-2);margin-bottom:3px;overflow-wrap:anywhere;
 }
 .cad-data{font-family:var(--mono);font-size:10.5px;color:var(--y);margin-right:8px;}
+.cad-agenda{background:var(--panel-3);border-radius:7px;padding:9px 11px;margin-bottom:11px;}
+.cad-agenda-rot{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text-3);margin-bottom:5px;
+}
+.cad-ag-linha{font-size:12.5px;line-height:1.6;overflow-wrap:anywhere;}
+.cad-ag-hora{font-family:var(--mono);font-size:11px;color:var(--y);margin-right:9px;}
+.cad-ag-obs{color:var(--text-3);}
+
+/* ---- agenda do vendedor ---- */
+.rt-ag-novo{display:grid;gap:8px;}
+.rt-ag-rot{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--text-3);}
+.rt-ag-quando,.rt-ag-obs{
+  width:100%;background:var(--panel-2);border:1px solid var(--line-2);border-radius:7px;
+  color:var(--text-1);font-family:var(--ui);font-size:13.5px;padding:8px 10px;
+}
+.rt-ag-quando{font-family:var(--mono);}
+.rt-ag-quando:focus,.rt-ag-obs:focus{outline:none;border-color:var(--y);}
+.rt-ag-lista{display:flex;flex-direction:column;gap:8px;margin-top:16px;}
+.rt-ag-item{background:var(--panel-3);border:1px solid var(--line);border-radius:8px;padding:10px 12px;}
+.rt-ag-topo{display:flex;justify-content:space-between;align-items:baseline;gap:9px;flex-wrap:wrap;}
+.rt-ag-hora{font-family:var(--mono);font-size:11.5px;color:var(--y);}
+.rt-ag-falta{font-family:var(--mono);font-size:10px;color:var(--text-3);}
+.rt-ag-quem{font-family:var(--dp);font-weight:600;font-size:13px;margin-top:3px;overflow-wrap:anywhere;}
+.rt-ag-obs-txt{font-size:12.5px;color:var(--text-2);margin-top:3px;overflow-wrap:anywhere;}
 
 /* o caderno: os clientes em que ja se escreveu alguma coisa */
 .rt-caderno{display:flex;flex-direction:column;gap:7px;}
@@ -1242,6 +1268,7 @@ var Roteiro = (function () {
           '<button class="rt-tab" role="tab" aria-selected="true" data-rtaba="abrir">Como abrir</button>' +
           '<button class="rt-tab" role="tab" aria-selected="false" data-rtaba="obj">Se ele disser que…</button>' +
           '<button class="rt-tab" role="tab" aria-selected="false" data-rtaba="notas" id="rtTabNotas">Anotações</button>' +
+          '<button class="rt-tab" role="tab" aria-selected="false" data-rtaba="agenda" id="rtTabAgenda">Agenda</button>' +
         '</div>' +
         '<div id="rtAbrir">' +
           '<div class="rt-seg" role="group" aria-label="Tipo de lista">' +
@@ -1272,6 +1299,7 @@ var Roteiro = (function () {
           '</div>' +
         '</div>' +
         '<div id="rtNotas" hidden></div>' +
+        '<div id="rtAgenda" hidden></div>' +
       '</section>';
   }
 
@@ -1433,8 +1461,9 @@ var Roteiro = (function () {
     document.getElementById('rtAbrir').hidden = qual !== 'abrir';
     document.getElementById('rtObj').hidden = qual !== 'obj';
     document.getElementById('rtNotas').hidden = qual !== 'notas';
+    document.getElementById('rtAgenda').hidden = qual !== 'agenda';
 
-    /* Nas anotacoes o cartao do cliente sai de cena. Nas outras duas abas ele
+    /* Nas anotacoes o cartao do cliente sai de cena. Nas outras abas ele
        serve -- a fala usa a cidade, a ultima compra, o faturado. Aqui nao:
        enquanto nao houver anotacao escrita, este espaco fica em branco, sem
        nenhum dado da lista de distribuicao. */
@@ -1480,6 +1509,136 @@ var Roteiro = (function () {
       caixa.appendChild(linha);
     });
     alvo.appendChild(caixa);
+  }
+
+  /* ---------- agenda ----------
+     Mesma divisao do caderno: com um cliente escolhido, marca o retorno dele;
+     sem cliente, e a lista do que vem pela frente. */
+
+  var agenda = { itens: [], avisa: false };
+
+  function contarAgenda() {
+    var t = document.getElementById('rtTabAgenda');
+    if (!t) return;
+    var n = agenda.itens.length;
+    t.innerHTML = 'Agenda' + (n ? '<span class="rt-pip">' + n + '</span>' : '');
+  }
+
+  /* "quinta, 26/03 às 14:30" -- o dia da semana ajuda a perceber engano na
+     hora de marcar mais do que a data sozinha. */
+  function quandoBonito(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return String(iso || '');
+    var dia = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' });
+    var hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return dia + ' às ' + hora;
+  }
+
+  function faltaQuanto(iso) {
+    var min = Math.round((Date.parse(iso) - Date.now()) / 60000);
+    if (min < 0) return 'passou';
+    if (min < 60) return 'em ' + min + ' min';
+    if (min < 60 * 24) return 'em ' + Math.round(min / 60) + 'h';
+    return 'em ' + Math.round(min / 1440) + ' dias';
+  }
+
+  /* Valor para <input type="datetime-local">: hora LOCAL, sem fuso. Usar
+     toISOString aqui jogaria a sugestao para UTC e o vendedor veria uma hora
+     que nao e a dele. */
+  function paraCampo(d) {
+    var p = function (n) { return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+           'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
+  function desenharAgenda() {
+    var alvo = document.getElementById('rtAgenda');
+    if (!alvo) return;
+    alvo.innerHTML = '';
+
+    if (atual && atual.cliente) {
+      var caixa = el('div', 'rt-ag-novo');
+      var amanha = new Date(Date.now() + 24 * 3600 * 1000);
+      amanha.setMinutes(0, 0, 0);
+
+      caixa.innerHTML =
+        '<label class="rt-ag-rot" for="rtAgQuando">Marcar retorno para</label>' +
+        '<input class="rt-ag-quando" id="rtAgQuando" type="datetime-local" value="' +
+          paraCampo(amanha) + '">' +
+        '<input class="rt-ag-obs" id="rtAgObs" maxlength="300" ' +
+          'placeholder="O que combinaram (opcional)">';
+      alvo.appendChild(caixa);
+
+      var linha = el('div', 'btn-row');
+      linha.style.marginTop = '12px';
+      var marcar = el('button', 'btn btn-sm btn-primary', 'Agendar');
+      var recado = el('span', 'rt-salvo', '');
+      marcar.addEventListener('click', function () {
+        var campo = document.getElementById('rtAgQuando');
+        if (!campo.value) { recado.textContent = 'Escolha a data e a hora.'; return; }
+        var quando = new Date(campo.value);
+        if (isNaN(quando) || quando <= new Date()) {
+          recado.textContent = 'Escolha um horário no futuro.'; return;
+        }
+        marcar.disabled = true;
+        recado.textContent = 'salvando…';
+        ponte.agendar(atual.cliente, atual.rotulo, quando.toISOString(),
+                      document.getElementById('rtAgObs').value)
+          .then(function () {
+            marcar.disabled = false;
+            desenharAgenda(); contarAgenda();
+          }, function (e) {
+            marcar.disabled = false;
+            recado.textContent = (e && e.message) || 'Não consegui agendar.';
+          });
+      });
+      linha.append(marcar, recado);
+      alvo.appendChild(linha);
+    }
+
+    if (!agenda.itens.length) {
+      if (!atual || !atual.cliente) {
+        alvo.appendChild(el('p', 'rt-dica',
+          'Escolha um cliente na lista para marcar um retorno.'));
+      }
+      return;
+    }
+
+    alvo.appendChild(el('p', 'rt-dica', agenda.avisa
+      ? 'Você recebe um e-mail 30 minutos antes de cada um.'
+      : 'Sem e-mail cadastrado no seu nome — os compromissos ficam salvos aqui, ' +
+        'mas não sai lembrete. Fale com o seu gestor.'));
+
+    var lista = el('div', 'rt-ag-lista');
+    agenda.itens.forEach(function (a) {
+      var item = el('div', 'rt-ag-item',
+        '<div class="rt-ag-topo"><span class="rt-ag-hora">' + rtEsc(quandoBonito(a.quando)) +
+          '</span><span class="rt-ag-falta">' + rtEsc(faltaQuanto(a.quando)) + '</span></div>' +
+        '<div class="rt-ag-quem">' + rtEsc(a.nome || a.cliente) + '</div>' +
+        (a.obs ? '<div class="rt-ag-obs-txt">' + rtEsc(a.obs) + '</div>' : ''));
+
+      var acoes = el('div', 'btn-row');
+      acoes.style.marginTop = '7px';
+      var feito = el('button', 'btn btn-sm btn-ghost', 'Já liguei');
+      var fora = el('button', 'btn btn-sm btn-ghost', 'Cancelar');
+      feito.addEventListener('click', function () {
+        feito.disabled = true;
+        ponte.mudarAgenda('concluir', a.id).then(function () {
+          desenharAgenda(); contarAgenda();
+        }, function () { feito.disabled = false; });
+      });
+      fora.addEventListener('click', function () {
+        if (!window.confirm('Cancelar este agendamento?')) return;
+        fora.disabled = true;
+        ponte.mudarAgenda('apagar', a.id).then(function () {
+          desenharAgenda(); contarAgenda();
+        }, function () { fora.disabled = false; });
+      });
+      acoes.append(feito, fora);
+      item.appendChild(acoes);
+      lista.appendChild(item);
+    });
+    alvo.appendChild(lista);
   }
 
   function desenharNotas() {
@@ -1748,6 +1907,16 @@ var Roteiro = (function () {
       desenharObjs('');
       desenharNotas();
       contarNotas();
+      desenharAgenda();
+      contarAgenda();
+    },
+
+    /* carteira.js avisa quando a agenda muda no servidor. */
+    agendaMudou: function (itens, avisa) {
+      agenda.itens = itens || [];
+      if (avisa !== undefined) agenda.avisa = !!avisa;
+      desenharAgenda();
+      contarAgenda();
     },
 
     /* Cliente escolhido na tabela: as falas passam a usar os dados dele, e o
@@ -1761,6 +1930,7 @@ var Roteiro = (function () {
       desenharObjs(busca ? busca.value : '');
       desenharNotas();
       contarNotas();
+      desenharAgenda();
     }
   };
 })();
@@ -1986,8 +2156,11 @@ function render(dados) {
     salvarNota: salvarNota,
     editarNota: editarNota,
     apagarNota: apagarNota,
+    agendar: agendar,
+    mudarAgenda: mudarAgenda,
     perguntarIa: perguntarIa
   });
+  Roteiro.agendaMudou(estado.agenda.itens, estado.agenda.avisa);
   ligarSelecao(rodadas);
   ligarMarcas();
   Roteiro.saldoIa();
@@ -2019,7 +2192,8 @@ function render(dados) {
    Tudo passa pelo token do link. Nenhuma chamada manda o nome do vendedor:
    quem diz de quem é a marca ou a anotação é o servidor, a partir do token. */
 
-var estado = { token: '', marcas: {}, notas: {}, rodadas: [] };
+var estado = { token: '', marcas: {}, notas: {}, rodadas: [],
+               agenda: { itens: [], avisa: false } };
 
 async function chamar(caminho, corpo) {
   var resposta = await fetch(caminho, {
@@ -2043,6 +2217,10 @@ async function carregarExtras() {
     var n = await chamar('/api/anotacoes', { acao: 'listar' });
     estado.notas = n.notas || {};
   } catch (e) { estado.notas = {}; }
+  try {
+    var a = await chamar('/api/agenda', { acao: 'listar' });
+    estado.agenda = { itens: a.agenda || [], avisa: !!a.avisa };
+  } catch (e) { estado.agenda = { itens: [], avisa: false }; }
 }
 
 function ligarMarcas() {
@@ -2125,6 +2303,28 @@ async function apagarNota(cliente, indice) {
 
 async function perguntarIa(acao, pergunta) {
   return chamar('/api/duvida', { acao: acao, pergunta: pergunta });
+}
+
+/* O fuso do aparelho vai junto so para o e-mail mostrar a hora que o
+   vendedor digitou. O instante em si ja segue em UTC. */
+function fusoDaqui() {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; }
+  catch (e) { return ''; }
+}
+
+async function agendar(cliente, nome, quandoISO, obs) {
+  var r = await chamar('/api/agenda', {
+    acao: 'somar', cliente: cliente, nome: nome,
+    quando: quandoISO, fuso: fusoDaqui(), obs: obs
+  });
+  Roteiro.agendaMudou(r.agenda, r.avisa);
+  return r.agenda;
+}
+
+async function mudarAgenda(acao, id) {
+  var r = await chamar('/api/agenda', { acao: acao, id: id });
+  Roteiro.agendaMudou(r.agenda, r.avisa);
+  return r.agenda;
 }
 
 /* O caderno da aba Anotações: só os clientes em que o vendedor escreveu

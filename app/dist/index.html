@@ -558,6 +558,32 @@ select{max-width:260px;}
   border-left:2px solid var(--line-2);margin-bottom:3px;overflow-wrap:anywhere;
 }
 .cad-data{font-family:var(--mono);font-size:10.5px;color:var(--y);margin-right:8px;}
+.cad-agenda{background:var(--panel-3);border-radius:7px;padding:9px 11px;margin-bottom:11px;}
+.cad-agenda-rot{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text-3);margin-bottom:5px;
+}
+.cad-ag-linha{font-size:12.5px;line-height:1.6;overflow-wrap:anywhere;}
+.cad-ag-hora{font-family:var(--mono);font-size:11px;color:var(--y);margin-right:9px;}
+.cad-ag-obs{color:var(--text-3);}
+
+/* ---- agenda do vendedor ---- */
+.rt-ag-novo{display:grid;gap:8px;}
+.rt-ag-rot{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--text-3);}
+.rt-ag-quando,.rt-ag-obs{
+  width:100%;background:var(--panel-2);border:1px solid var(--line-2);border-radius:7px;
+  color:var(--text-1);font-family:var(--ui);font-size:13.5px;padding:8px 10px;
+}
+.rt-ag-quando{font-family:var(--mono);}
+.rt-ag-quando:focus,.rt-ag-obs:focus{outline:none;border-color:var(--y);}
+.rt-ag-lista{display:flex;flex-direction:column;gap:8px;margin-top:16px;}
+.rt-ag-item{background:var(--panel-3);border:1px solid var(--line);border-radius:8px;padding:10px 12px;}
+.rt-ag-topo{display:flex;justify-content:space-between;align-items:baseline;gap:9px;flex-wrap:wrap;}
+.rt-ag-hora{font-family:var(--mono);font-size:11.5px;color:var(--y);}
+.rt-ag-falta{font-family:var(--mono);font-size:10px;color:var(--text-3);}
+.rt-ag-quem{font-family:var(--dp);font-weight:600;font-size:13px;margin-top:3px;overflow-wrap:anywhere;}
+.rt-ag-obs-txt{font-size:12.5px;color:var(--text-2);margin-top:3px;overflow-wrap:anywhere;}
 
 /* o caderno: os clientes em que ja se escreveu alguma coisa */
 .rt-caderno{display:flex;flex-direction:column;gap:7px;}
@@ -3345,6 +3371,7 @@ $('publicar').addEventListener('click', async function () {
         body: JSON.stringify({
           vendedor: v.vendedor,
           uf: v.uf,
+          email: v.email || '',   // endereco do lembrete de agendamento
           modo: r.modo,
           rotulo: rotuloDaRodada(r),
           origem: state.origem,
@@ -3794,21 +3821,37 @@ $('verCaderno').addEventListener('click', async function () {
   botao.disabled = false;
 });
 
+/* "qui 26/03 14:30" -- curto porque a lista pode ser longa. */
+function quandoCurto(iso) {
+  var d = new Date(iso);
+  if (isNaN(d)) return String(iso || '');
+  return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })
+    .replace('.', '') + ' ' +
+    d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
 function renderCaderno(itens) {
-  cadernoAtual = (itens || []).filter(function (i) { return i.total; });
+  cadernoAtual = (itens || []).filter(function (i) {
+    return i.total || (i.agenda && i.agenda.length);
+  });
   var saida = $('cadernoSaida');
 
   if (!cadernoAtual.length) {
-    saida.innerHTML = '<p class="empty">Ninguém anotou nada ainda.</p>';
+    saida.innerHTML = '<p class="empty">Ninguém anotou nem agendou nada ainda.</p>';
     return;
   }
 
   cadernoAtual.sort(function (a, b) { return b.total - a.total; });
 
   var total = cadernoAtual.reduce(function (s, i) { return s + i.total; }, 0);
+  var marcados = cadernoAtual.reduce(function (s, i) {
+    return s + ((i.agenda && i.agenda.length) || 0);
+  }, 0);
   var html = '<p class="hint">' + fmtInt(total) + ' anotações de ' +
     fmtInt(cadernoAtual.length) +
-    (cadernoAtual.length === 1 ? ' vendedor' : ' vendedores') + '</p>';
+    (cadernoAtual.length === 1 ? ' vendedor' : ' vendedores') +
+    (marcados ? ' · ' + fmtInt(marcados) + ' agendamento' +
+      (marcados === 1 ? '' : 's') + ' pela frente' : '') + '</p>';
 
   cadernoAtual.forEach(function (i) {
     html += '<div class="cad-vend">' +
@@ -3817,6 +3860,18 @@ function renderCaderno(itens) {
       (i.total === 1 ? ' anotação' : ' anotações') + ' · ' +
       fmtInt(i.clientes.length) +
       (i.clientes.length === 1 ? ' cliente' : ' clientes') + '</span></div>';
+
+    if (i.agenda && i.agenda.length) {
+      html += '<div class="cad-agenda"><div class="cad-agenda-rot">Agendado</div>';
+      i.agenda.forEach(function (a) {
+        html += '<div class="cad-ag-linha"><span class="cad-ag-hora">' +
+          escapeHtml(quandoCurto(a.quando)) + '</span>' +
+          escapeHtml(a.nome) +
+          (a.obs ? ' <span class="cad-ag-obs">— ' + escapeHtml(a.obs) + '</span>' : '') +
+          '</div>';
+      });
+      html += '</div>';
+    }
 
     i.clientes.forEach(function (c) {
       html += '<div class="cad-cli"><div class="cad-cli-nome">' +

@@ -219,8 +219,11 @@ function render(dados) {
     salvarNota: salvarNota,
     editarNota: editarNota,
     apagarNota: apagarNota,
+    agendar: agendar,
+    mudarAgenda: mudarAgenda,
     perguntarIa: perguntarIa
   });
+  Roteiro.agendaMudou(estado.agenda.itens, estado.agenda.avisa);
   ligarSelecao(rodadas);
   ligarMarcas();
   Roteiro.saldoIa();
@@ -252,7 +255,8 @@ function render(dados) {
    Tudo passa pelo token do link. Nenhuma chamada manda o nome do vendedor:
    quem diz de quem é a marca ou a anotação é o servidor, a partir do token. */
 
-var estado = { token: '', marcas: {}, notas: {}, rodadas: [] };
+var estado = { token: '', marcas: {}, notas: {}, rodadas: [],
+               agenda: { itens: [], avisa: false } };
 
 async function chamar(caminho, corpo) {
   var resposta = await fetch(caminho, {
@@ -276,6 +280,10 @@ async function carregarExtras() {
     var n = await chamar('/api/anotacoes', { acao: 'listar' });
     estado.notas = n.notas || {};
   } catch (e) { estado.notas = {}; }
+  try {
+    var a = await chamar('/api/agenda', { acao: 'listar' });
+    estado.agenda = { itens: a.agenda || [], avisa: !!a.avisa };
+  } catch (e) { estado.agenda = { itens: [], avisa: false }; }
 }
 
 function ligarMarcas() {
@@ -358,6 +366,28 @@ async function apagarNota(cliente, indice) {
 
 async function perguntarIa(acao, pergunta) {
   return chamar('/api/duvida', { acao: acao, pergunta: pergunta });
+}
+
+/* O fuso do aparelho vai junto so para o e-mail mostrar a hora que o
+   vendedor digitou. O instante em si ja segue em UTC. */
+function fusoDaqui() {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; }
+  catch (e) { return ''; }
+}
+
+async function agendar(cliente, nome, quandoISO, obs) {
+  var r = await chamar('/api/agenda', {
+    acao: 'somar', cliente: cliente, nome: nome,
+    quando: quandoISO, fuso: fusoDaqui(), obs: obs
+  });
+  Roteiro.agendaMudou(r.agenda, r.avisa);
+  return r.agenda;
+}
+
+async function mudarAgenda(acao, id) {
+  var r = await chamar('/api/agenda', { acao: acao, id: id });
+  Roteiro.agendaMudou(r.agenda, r.avisa);
+  return r.agenda;
 }
 
 /* O caderno da aba Anotações: só os clientes em que o vendedor escreveu

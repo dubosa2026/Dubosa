@@ -12,7 +12,8 @@
  */
 
 import {
-  lojaAnotacoes, lojaCarteiras, lojaTokens, chaveVendedor, segredosIguais, json,
+  lojaAnotacoes, lojaAgenda, lojaCarteiras, lojaTokens,
+  chaveVendedor, segredosIguais, json,
 } from '../lib/loja.mjs';
 
 export const config = { path: '/api/caderno' };
@@ -74,28 +75,47 @@ export default async function caderno(req) {
      importar a planilha antes de conseguir ler uma anotacao -- e ler nao
      depende de rodada nenhuma. O nome vem da propria chave: ela ja e o nome
      do vendedor normalizado. */
+  const agendaLoja = lojaAgenda();
+
   let nomes = Array.isArray(corpo?.vendedores) ? corpo.vendedores : [];
   if (!nomes.length) {
-    try {
-      const { blobs } = await anotacoes.list();
-      nomes = (blobs || []).map((b) => String(b.key || '').replace(/-/g, ' '));
-    } catch {
-      return json({ erro: 'Não consegui listar os cadernos. Carregue a base e tente de novo.' }, 503);
+    const achados = {};
+    for (const loja of [anotacoes, agendaLoja]) {
+      try {
+        const { blobs } = await loja.list();
+        for (const b of blobs || []) {
+          const k = String(b.key || '');
+          if (k) achados[k.replace(/-/g, ' ')] = true;
+        }
+      } catch { /* uma loja vazia ainda nao existe: nao e erro */ }
     }
+    nomes = Object.keys(achados);
+    if (!nomes.length) return json({ itens: [] });
   }
   nomes = nomes.slice(0, MAX_VENDEDORES);
+
+  const agora = Date.now();
 
   const itens = await Promise.all(nomes.map(async (nomeBruto) => {
     const vendedor = String(nomeBruto || '').trim();
     const chave = chaveVendedor(vendedor);
-    if (!chave) return { vendedor, clientes: [], total: 0 };
+    const vazio = { vendedor, clientes: [], total: 0, agenda: [] };
+    if (!chave) return vazio;
 
     const guardado = (await anotacoes.get(chave, { type: 'json' })) || {};
     const codigos = Object.keys(guardado).filter((k) => (guardado[k] || []).length);
-    if (!codigos.length) return { vendedor, clientes: [], total: 0 };
 
-    // So busca a carteira de quem tem anotacao: sem isto seriam 22 leituras
-    // de base inteira para montar uma tela que quase sempre e curta.
+    const marcados = (await agendaLoja.get(chave, { type: 'json' })) || {};
+    const agenda = Object.keys(marcados)
+      .map((id) => ({ id, ...marcados[id] }))
+      .filter((a) => !a.feitoEm && Date.parse(a.quando) > agora)
+      .sort((a, b) => Date.parse(a.quando) - Date.parse(b.quando))
+      .slice(0, 50);
+
+    if (!codigos.length && !agenda.length) return vazio;
+
+    // So busca a carteira de quem tem alguma coisa: sem isto seriam 22
+    // leituras de base inteira para montar uma tela que quase sempre e curta.
     let nomesDeCliente = {};
     const token = await tokens.get(chave);
     if (token) {
@@ -116,6 +136,11 @@ export default async function caderno(req) {
     return {
       vendedor,
       clientes,
+      agenda: agenda.map((a) => ({
+        quando: a.quando,
+        obs: a.obs || '',
+        nome: a.nome || nomesDeCliente[a.cliente] || a.cliente,
+      })),
       total: clientes.reduce((s, c) => s + c.notas.length, 0),
     };
   }));

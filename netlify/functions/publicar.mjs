@@ -97,6 +97,14 @@ export default async function publicar(req) {
   const doc = normalizar(await carteiras.get(token, { type: 'json' })) || { vendedor, rodadas: {} };
   doc.vendedor = vendedor;
 
+  /* O e-mail vem do cadastro da etapa 2 e e o endereco do lembrete de
+     agendamento. Guardar so quando vier preenchido: publicar de um
+     navegador onde o cadastro esta vazio nao pode apagar o endereco que ja
+     estava aqui -- o vendedor deixaria de receber lembrete sem ninguem
+     perceber. */
+  const email = String(corpo?.email || '').trim().slice(0, 200);
+  if (email) doc.email = email;
+
   if (!linhas.length) {
     // Sem clientes nao ha o que publicar, e apagar aqui seria destruir
     // trabalho ja entregue. Devolve o estado atual sem tocar em nada.

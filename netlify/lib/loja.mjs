@@ -31,6 +31,47 @@ export const lojaMarcas = () => getStore('marcas');
 /* uso/<dia>/<vendedor> e uso/<dia>/__global__ -> { n } */
 export const lojaUso = () => getStore('uso');
 
+/* agenda/<vendedor> -> { <id>: {cliente, nome, quando, obs, avisadoEm} }
+   `quando` e sempre UTC em ISO. O navegador do vendedor converte a hora que
+   ele digitou usando o fuso do proprio aparelho -- Belem, Manaus e Rio
+   Branco tem horas diferentes, e um lembrete de 30 minutos so significa
+   alguma coisa se o instante for absoluto. */
+export const lojaAgenda = () => getStore('agenda');
+
+/* Escrita condicional com o mesmo cuidado do caderno: `modified` ausente
+   quer dizer runtime sem trava (@netlify/blobs anterior a 8.1), que ja
+   gravou ignorando a condicao -- repetir ali duplicaria o registro. */
+export async function gravarComTrava(loja, chave, transformar, tentativas = 6) {
+  for (let i = 0; i < tentativas; i++) {
+    const atual = await loja.getWithMetadata(chave, { type: 'json' });
+    const antes = atual?.data || {};
+    const depois = transformar(JSON.parse(JSON.stringify(antes)));
+    if (depois === null) return { ok: false, motivo: 'nada a fazer', dados: antes };
+
+    if (atual && !atual.etag) {
+      await loja.setJSON(chave, depois);
+      return { ok: true, dados: depois, semTrava: true };
+    }
+
+    let escrita, recusou = false;
+    try {
+      escrita = await loja.setJSON(chave, depois,
+        atual ? { onlyIfMatch: atual.etag } : { onlyIfNew: true });
+    } catch {
+      recusou = true;
+    }
+
+    if (!recusou && escrita && typeof escrita.modified === 'boolean') {
+      if (escrita.modified) return { ok: true, dados: depois };
+      continue;
+    }
+
+    if (recusou) await loja.setJSON(chave, depois);
+    return { ok: true, dados: depois, semTrava: true };
+  }
+  return { ok: false, motivo: 'disputa' };
+}
+
 /* Data do SERVIDOR, em AAAA-MM-DD. O relogio do aparelho do vendedor nao
    participa: mudar a data do celular nao vira o dia do contador. */
 export function diaDeHoje() {

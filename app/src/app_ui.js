@@ -926,6 +926,7 @@ $('publicar').addEventListener('click', async function () {
         body: JSON.stringify({
           vendedor: v.vendedor,
           uf: v.uf,
+          email: v.email || '',   // endereco do lembrete de agendamento
           modo: r.modo,
           rotulo: rotuloDaRodada(r),
           origem: state.origem,
@@ -1375,21 +1376,37 @@ $('verCaderno').addEventListener('click', async function () {
   botao.disabled = false;
 });
 
+/* "qui 26/03 14:30" -- curto porque a lista pode ser longa. */
+function quandoCurto(iso) {
+  var d = new Date(iso);
+  if (isNaN(d)) return String(iso || '');
+  return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })
+    .replace('.', '') + ' ' +
+    d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
 function renderCaderno(itens) {
-  cadernoAtual = (itens || []).filter(function (i) { return i.total; });
+  cadernoAtual = (itens || []).filter(function (i) {
+    return i.total || (i.agenda && i.agenda.length);
+  });
   var saida = $('cadernoSaida');
 
   if (!cadernoAtual.length) {
-    saida.innerHTML = '<p class="empty">Ninguém anotou nada ainda.</p>';
+    saida.innerHTML = '<p class="empty">Ninguém anotou nem agendou nada ainda.</p>';
     return;
   }
 
   cadernoAtual.sort(function (a, b) { return b.total - a.total; });
 
   var total = cadernoAtual.reduce(function (s, i) { return s + i.total; }, 0);
+  var marcados = cadernoAtual.reduce(function (s, i) {
+    return s + ((i.agenda && i.agenda.length) || 0);
+  }, 0);
   var html = '<p class="hint">' + fmtInt(total) + ' anotações de ' +
     fmtInt(cadernoAtual.length) +
-    (cadernoAtual.length === 1 ? ' vendedor' : ' vendedores') + '</p>';
+    (cadernoAtual.length === 1 ? ' vendedor' : ' vendedores') +
+    (marcados ? ' · ' + fmtInt(marcados) + ' agendamento' +
+      (marcados === 1 ? '' : 's') + ' pela frente' : '') + '</p>';
 
   cadernoAtual.forEach(function (i) {
     html += '<div class="cad-vend">' +
@@ -1398,6 +1415,18 @@ function renderCaderno(itens) {
       (i.total === 1 ? ' anotação' : ' anotações') + ' · ' +
       fmtInt(i.clientes.length) +
       (i.clientes.length === 1 ? ' cliente' : ' clientes') + '</span></div>';
+
+    if (i.agenda && i.agenda.length) {
+      html += '<div class="cad-agenda"><div class="cad-agenda-rot">Agendado</div>';
+      i.agenda.forEach(function (a) {
+        html += '<div class="cad-ag-linha"><span class="cad-ag-hora">' +
+          escapeHtml(quandoCurto(a.quando)) + '</span>' +
+          escapeHtml(a.nome) +
+          (a.obs ? ' <span class="cad-ag-obs">— ' + escapeHtml(a.obs) + '</span>' : '') +
+          '</div>';
+      });
+      html += '</div>';
+    }
 
     i.clientes.forEach(function (c) {
       html += '<div class="cad-cli"><div class="cad-cli-nome">' +

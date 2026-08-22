@@ -18,7 +18,7 @@
  *   apagar            -> remove uma anotacao
  */
 
-import { lojaAnotacoes, vendedorDoToken, json } from '../lib/loja.mjs';
+import { lojaAnotacoes, vendedorDoToken, gravarComTrava, json } from '../lib/loja.mjs';
 
 export const config = { path: '/api/anotacoes' };
 
@@ -41,37 +41,7 @@ const MAX_CLIENTES = 3000;
    O caderno e de um vendedor so. Sem a trava ele perde a protecao contra
    dois aparelhos ao mesmo tempo -- e continua funcionando, que e o que
    importa aqui. */
-async function gravar(loja, chave, transformar, tentativas = 6) {
-  for (let i = 0; i < tentativas; i++) {
-    const atual = await loja.getWithMetadata(chave, { type: 'json' });
-    const antes = atual?.data || {};
-    const depois = transformar(JSON.parse(JSON.stringify(antes)));
-    if (depois === null) return { ok: false, motivo: 'nada a fazer', dados: antes };
-
-    // Ja existe mas o runtime nao devolve etag: nao ha como condicionar.
-    if (atual && !atual.etag) {
-      await loja.setJSON(chave, depois);
-      return { ok: true, dados: depois, semTrava: true };
-    }
-
-    let escrita, recusou = false;
-    try {
-      escrita = await loja.setJSON(chave, depois,
-        atual ? { onlyIfMatch: atual.etag } : { onlyIfNew: true });
-    } catch {
-      recusou = true;   // runtime antigo que rejeita a opcao: nao gravou
-    }
-
-    if (!recusou && escrita && typeof escrita.modified === 'boolean') {
-      if (escrita.modified) return { ok: true, dados: depois };
-      continue;         // outro aparelho gravou antes: refaz em cima do novo
-    }
-
-    if (recusou) await loja.setJSON(chave, depois);
-    return { ok: true, dados: depois, semTrava: true };
-  }
-  return { ok: false, motivo: 'disputa' };
-}
+const gravar = gravarComTrava;
 
 function limpar(s, max) {
   return String(s === null || s === undefined ? '' : s).trim().slice(0, max);

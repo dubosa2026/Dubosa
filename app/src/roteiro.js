@@ -255,6 +255,7 @@ var Roteiro = (function () {
           '<button class="rt-tab" role="tab" aria-selected="true" data-rtaba="abrir">Como abrir</button>' +
           '<button class="rt-tab" role="tab" aria-selected="false" data-rtaba="obj">Se ele disser que…</button>' +
           '<button class="rt-tab" role="tab" aria-selected="false" data-rtaba="notas" id="rtTabNotas">Anotações</button>' +
+          '<button class="rt-tab" role="tab" aria-selected="false" data-rtaba="agenda" id="rtTabAgenda">Agenda</button>' +
         '</div>' +
         '<div id="rtAbrir">' +
           '<div class="rt-seg" role="group" aria-label="Tipo de lista">' +
@@ -285,6 +286,7 @@ var Roteiro = (function () {
           '</div>' +
         '</div>' +
         '<div id="rtNotas" hidden></div>' +
+        '<div id="rtAgenda" hidden></div>' +
       '</section>';
   }
 
@@ -446,8 +448,9 @@ var Roteiro = (function () {
     document.getElementById('rtAbrir').hidden = qual !== 'abrir';
     document.getElementById('rtObj').hidden = qual !== 'obj';
     document.getElementById('rtNotas').hidden = qual !== 'notas';
+    document.getElementById('rtAgenda').hidden = qual !== 'agenda';
 
-    /* Nas anotacoes o cartao do cliente sai de cena. Nas outras duas abas ele
+    /* Nas anotacoes o cartao do cliente sai de cena. Nas outras abas ele
        serve -- a fala usa a cidade, a ultima compra, o faturado. Aqui nao:
        enquanto nao houver anotacao escrita, este espaco fica em branco, sem
        nenhum dado da lista de distribuicao. */
@@ -493,6 +496,136 @@ var Roteiro = (function () {
       caixa.appendChild(linha);
     });
     alvo.appendChild(caixa);
+  }
+
+  /* ---------- agenda ----------
+     Mesma divisao do caderno: com um cliente escolhido, marca o retorno dele;
+     sem cliente, e a lista do que vem pela frente. */
+
+  var agenda = { itens: [], avisa: false };
+
+  function contarAgenda() {
+    var t = document.getElementById('rtTabAgenda');
+    if (!t) return;
+    var n = agenda.itens.length;
+    t.innerHTML = 'Agenda' + (n ? '<span class="rt-pip">' + n + '</span>' : '');
+  }
+
+  /* "quinta, 26/03 às 14:30" -- o dia da semana ajuda a perceber engano na
+     hora de marcar mais do que a data sozinha. */
+  function quandoBonito(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return String(iso || '');
+    var dia = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' });
+    var hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return dia + ' às ' + hora;
+  }
+
+  function faltaQuanto(iso) {
+    var min = Math.round((Date.parse(iso) - Date.now()) / 60000);
+    if (min < 0) return 'passou';
+    if (min < 60) return 'em ' + min + ' min';
+    if (min < 60 * 24) return 'em ' + Math.round(min / 60) + 'h';
+    return 'em ' + Math.round(min / 1440) + ' dias';
+  }
+
+  /* Valor para <input type="datetime-local">: hora LOCAL, sem fuso. Usar
+     toISOString aqui jogaria a sugestao para UTC e o vendedor veria uma hora
+     que nao e a dele. */
+  function paraCampo(d) {
+    var p = function (n) { return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+           'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
+  function desenharAgenda() {
+    var alvo = document.getElementById('rtAgenda');
+    if (!alvo) return;
+    alvo.innerHTML = '';
+
+    if (atual && atual.cliente) {
+      var caixa = el('div', 'rt-ag-novo');
+      var amanha = new Date(Date.now() + 24 * 3600 * 1000);
+      amanha.setMinutes(0, 0, 0);
+
+      caixa.innerHTML =
+        '<label class="rt-ag-rot" for="rtAgQuando">Marcar retorno para</label>' +
+        '<input class="rt-ag-quando" id="rtAgQuando" type="datetime-local" value="' +
+          paraCampo(amanha) + '">' +
+        '<input class="rt-ag-obs" id="rtAgObs" maxlength="300" ' +
+          'placeholder="O que combinaram (opcional)">';
+      alvo.appendChild(caixa);
+
+      var linha = el('div', 'btn-row');
+      linha.style.marginTop = '12px';
+      var marcar = el('button', 'btn btn-sm btn-primary', 'Agendar');
+      var recado = el('span', 'rt-salvo', '');
+      marcar.addEventListener('click', function () {
+        var campo = document.getElementById('rtAgQuando');
+        if (!campo.value) { recado.textContent = 'Escolha a data e a hora.'; return; }
+        var quando = new Date(campo.value);
+        if (isNaN(quando) || quando <= new Date()) {
+          recado.textContent = 'Escolha um horário no futuro.'; return;
+        }
+        marcar.disabled = true;
+        recado.textContent = 'salvando…';
+        ponte.agendar(atual.cliente, atual.rotulo, quando.toISOString(),
+                      document.getElementById('rtAgObs').value)
+          .then(function () {
+            marcar.disabled = false;
+            desenharAgenda(); contarAgenda();
+          }, function (e) {
+            marcar.disabled = false;
+            recado.textContent = (e && e.message) || 'Não consegui agendar.';
+          });
+      });
+      linha.append(marcar, recado);
+      alvo.appendChild(linha);
+    }
+
+    if (!agenda.itens.length) {
+      if (!atual || !atual.cliente) {
+        alvo.appendChild(el('p', 'rt-dica',
+          'Escolha um cliente na lista para marcar um retorno.'));
+      }
+      return;
+    }
+
+    alvo.appendChild(el('p', 'rt-dica', agenda.avisa
+      ? 'Você recebe um e-mail 30 minutos antes de cada um.'
+      : 'Sem e-mail cadastrado no seu nome — os compromissos ficam salvos aqui, ' +
+        'mas não sai lembrete. Fale com o seu gestor.'));
+
+    var lista = el('div', 'rt-ag-lista');
+    agenda.itens.forEach(function (a) {
+      var item = el('div', 'rt-ag-item',
+        '<div class="rt-ag-topo"><span class="rt-ag-hora">' + rtEsc(quandoBonito(a.quando)) +
+          '</span><span class="rt-ag-falta">' + rtEsc(faltaQuanto(a.quando)) + '</span></div>' +
+        '<div class="rt-ag-quem">' + rtEsc(a.nome || a.cliente) + '</div>' +
+        (a.obs ? '<div class="rt-ag-obs-txt">' + rtEsc(a.obs) + '</div>' : ''));
+
+      var acoes = el('div', 'btn-row');
+      acoes.style.marginTop = '7px';
+      var feito = el('button', 'btn btn-sm btn-ghost', 'Já liguei');
+      var fora = el('button', 'btn btn-sm btn-ghost', 'Cancelar');
+      feito.addEventListener('click', function () {
+        feito.disabled = true;
+        ponte.mudarAgenda('concluir', a.id).then(function () {
+          desenharAgenda(); contarAgenda();
+        }, function () { feito.disabled = false; });
+      });
+      fora.addEventListener('click', function () {
+        if (!window.confirm('Cancelar este agendamento?')) return;
+        fora.disabled = true;
+        ponte.mudarAgenda('apagar', a.id).then(function () {
+          desenharAgenda(); contarAgenda();
+        }, function () { fora.disabled = false; });
+      });
+      acoes.append(feito, fora);
+      item.appendChild(acoes);
+      lista.appendChild(item);
+    });
+    alvo.appendChild(lista);
   }
 
   function desenharNotas() {
@@ -761,6 +894,16 @@ var Roteiro = (function () {
       desenharObjs('');
       desenharNotas();
       contarNotas();
+      desenharAgenda();
+      contarAgenda();
+    },
+
+    /* carteira.js avisa quando a agenda muda no servidor. */
+    agendaMudou: function (itens, avisa) {
+      agenda.itens = itens || [];
+      if (avisa !== undefined) agenda.avisa = !!avisa;
+      desenharAgenda();
+      contarAgenda();
     },
 
     /* Cliente escolhido na tabela: as falas passam a usar os dados dele, e o
@@ -774,6 +917,7 @@ var Roteiro = (function () {
       desenharObjs(busca ? busca.value : '');
       desenharNotas();
       contarNotas();
+      desenharAgenda();
     }
   };
 })();
