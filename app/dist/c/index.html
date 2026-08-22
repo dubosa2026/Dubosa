@@ -1612,7 +1612,29 @@ var Roteiro = (function () {
   return {
     html: html,
     daLinha: daLinha,
-    abrirNotas: function () { trocarAba('notas'); },
+    /* Abrir o caderno tem que ser VISIVEL. No celular o roteiro fica acima
+       das listas, entao o vendedor que rolou ate o cliente 20 e deu o toque
+       duplo abria a aba a mil pixels de distancia -- a tela nao mexia e
+       parecia que o duplo clique nao funcionava. Aqui a pagina vai junto, e
+       o cursor cai direto na linha de escrever. */
+    abrirNotas: function () {
+      trocarAba('notas');
+      var painel = document.getElementById('rtNotas');
+      if (!painel) return;
+      var caixa = document.querySelector('.rt-painel') || painel;
+      var r = caixa.getBoundingClientRect();
+      var jaNaTela = r.top >= 0 && r.top < (window.innerHeight || 0) * 0.6;
+      if (!jaNaTela) {
+        try { caixa.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        catch (e) { caixa.scrollIntoView(); }
+      }
+      var campo = painel.querySelector('tr[data-rtnova="1"] .rt-nota-txt');
+      if (campo) {
+        setTimeout(function () {
+          try { campo.focus({ preventScroll: true }); } catch (e) { campo.focus(); }
+        }, jaNaTela ? 0 : 420);
+      }
+    },
 
     saldoIa: function () {
       if (!ponte.perguntarIa) return;

@@ -288,11 +288,32 @@ with sync_playwright() as p:
     ov = pg.evaluate("document.documentElement.scrollWidth > document.documentElement.clientWidth + 1")
     ok(not ov, "sem rolagem lateral")
 
-    m = b.new_context(viewport={"width": 390, "height": 844}).new_page()
+    print("\n15. no celular, abrir o caderno tem que APARECER na tela")
+    # Foi exatamente aqui que quebrou na mao do vendedor: o duplo clique
+    # funcionava, mas no celular o roteiro fica ACIMA das listas, entao a aba
+    # abria a mais de mil pixels de distancia. A tela nao mexia e parecia que
+    # nada tinha acontecido. Nao basta abrir -- tem que ir junto.
+    m = b.new_context(viewport={"width": 390, "height": 844},
+                      has_touch=True, is_mobile=True).new_page()
     m.goto(f"{BASE}/c/#{tokC}")
     m.wait_for_timeout(1800)
     ok(not m.evaluate("document.documentElement.scrollWidth > document.documentElement.clientWidth + 1"),
        "sem rolagem lateral no celular")
+
+    m.dblclick(".rt-listas tbody tr:nth-child(3) td:nth-child(2)")
+    m.wait_for_timeout(1200)
+    ok(m.evaluate("document.getElementById('rtTabNotas').getAttribute('aria-selected')") == "true",
+       "o toque duplo abriu a aba")
+    visao = m.evaluate("""(() => {
+      const r = document.getElementById('rtNotas').getBoundingClientRect();
+      return {topo: Math.round(r.top), janela: window.innerHeight,
+              visivel: r.top >= 0 && r.top < window.innerHeight};
+    })()""")
+    ok(visao["visivel"], "e o caderno está na tela, não mil pixels acima", visao)
+    ok(m.evaluate("document.activeElement && document.activeElement.classList"
+                  ".contains('rt-nota-txt')"),
+       "com o cursor já na linha de escrever",
+       m.evaluate("document.activeElement && document.activeElement.className"))
     m.screenshot(path="caderno-celular.png", full_page=True)
 
     print("\nerros de página:", errs or "nenhum")
