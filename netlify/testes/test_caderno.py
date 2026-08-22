@@ -135,6 +135,32 @@ for caminho in ["/api/marcas", "/api/anotacoes"]:
     st, _ = api(caminho, {"token": "curto", "acao": "listar"})
     ok(st == 404, f"{caminho}: token malformado recusado", st)
 
+print("\n7b. o caderno do gestor: lê tudo, e só ele")
+st, _ = api("/api/caderno", {"vendedores": [A]})
+ok(st == 401, "sem a senha de publicação não sai nada", st)
+st, _ = api("/api/caderno", {"vendedores": [A], "token": tokA})
+ok(st == 401, "e o token do vendedor não abre esta porta", st)
+
+st, cad = api("/api/caderno", {"vendedores": [A, B]}, admin=True)
+ok(st == 200, "com a senha, responde", st)
+so_a = [i for i in cad["itens"] if i["vendedor"] == A]
+so_b = [i for i in cad["itens"] if i["vendedor"] == B]
+ok(so_a and so_a[0]["total"] == 1, "traz o que a Ana escreveu",
+   so_a[0] if so_a else cad)
+ok("Texto corrigido" not in bruto(cad), "a anotação apagada não volta")
+ok(so_b and so_b[0]["total"] == 0, "e o Bento, que não escreveu, vem vazio",
+   so_b[0] if so_b else cad)
+ok(so_a[0]["clientes"][0]["nome"], "com o nome do integrador, não só o código",
+   so_a[0]["clientes"][0])
+
+# Sem lista de nomes o servidor procura sozinho: ler nao pode depender de o
+# gestor ter importado a planilha antes.
+st, tudo = api("/api/caderno", {"vendedores": []}, admin=True)
+ok(st == 200, "consulta sem lista de nomes responde", st)
+ok(any(i["total"] for i in tudo["itens"]),
+   "e encontra quem anotou sem precisar da base carregada",
+   [(i["vendedor"], i["total"]) for i in tudo["itens"]][:6])
+
 print("\n8. IA: saldo e resposta")
 _, s = api("/api/duvida", {"token": tokA, "acao": "saldo"})
 print("     saldo:", s)
@@ -275,8 +301,12 @@ with sync_playwright() as p:
        "aí sim o cabeçalho aparece")
     ok("Anotações de" in pg.inner_text("#rtNotas"),
        "e o nome do cliente também", pg.inner_text("#rtNotas")[:140])
-    ok("nem para o seu gestor" in pg.inner_text("#rtNotas"),
-       "e o aviso de privacidade também", pg.inner_text("#rtNotas")[-140:])
+    aviso = pg.inner_text("#rtNotas")
+    ok("Nenhum outro vendedor lê isto" in aviso,
+       "e o aviso de privacidade também", aviso[-160:])
+    ok("gestor" not in aviso,
+       "que não promete mais nada sobre o gestor — ele lê pelo painel dele",
+       aviso[-160:])
     ok("1 anotação" in pg.inner_text(".rt-listas"), "a etiqueta apareceu na lista",
        pg.inner_text(".rt-listas")[:200])
 
@@ -353,6 +383,27 @@ with sync_playwright() as p:
        "com o cursor já na linha de escrever",
        m.evaluate("document.activeElement && document.activeElement.className"))
     m.screenshot(path="caderno-celular.png", full_page=True)
+
+    print("\n16. o painel do gestor lê o caderno da equipe")
+    g = b.new_context(viewport={"width": 1400, "height": 1000}).new_page()
+    errg = []
+    g.on("pageerror", lambda e: errg.append(str(e)))
+    g.goto(BASE + "/")
+    g.wait_for_timeout(1200)
+    ok(g.is_visible("#cadernoPanel"), "o painel existe na página do gestor")
+
+    # Sem importar planilha nenhuma: ler nao depende de rodada. O painel fica
+    # na etapa 1 justamente porque as etapas 3 e 4 so abrem depois de uma.
+    g.fill("#senhaCaderno", SENHA)
+    g.click("#verCaderno")
+    g.wait_for_timeout(1500)
+    texto = g.inner_text("#cadernoSaida")
+    ok("setembro" in texto, "e mostra o que a equipe escreveu", texto[:200])
+    ok(A.split("-")[0] in texto.upper(), "com o nome de quem escreveu", texto[:200])
+    ok("SOLAR NORTE" in texto.upper() or "MARAJO" in texto.upper(),
+       "e o cliente da anotação", texto[:200])
+    g.screenshot(path="caderno-gestor.png", full_page=True)
+    ok(not errg, "sem erro de console no gestor", errg)
 
     print("\nerros de página:", errs or "nenhum")
     if errs:

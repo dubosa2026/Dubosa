@@ -539,6 +539,26 @@ select{max-width:260px;}
 .rt-tab[aria-selected="true"]{color:var(--y);border-bottom-color:var(--y);}
 .rt-tab:focus-visible{outline:2px solid var(--y);outline-offset:-2px;}
 
+/* ---- caderno da equipe, na pagina do gestor ---- */
+.cad-vend{border:1px solid var(--line);border-radius:9px;padding:12px 13px;margin-bottom:11px;}
+.cad-vend-topo{
+  display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  flex-wrap:wrap;margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid var(--line);
+}
+.cad-conta{font-family:var(--mono);font-size:11px;color:var(--text-3);}
+.cad-cli{margin-bottom:10px;}
+.cad-cli:last-child{margin-bottom:0;}
+.cad-cli-nome{font-size:12.5px;font-weight:600;margin-bottom:4px;overflow-wrap:anywhere;}
+.cad-fora{
+  font-family:var(--mono);font-size:9px;font-weight:400;letter-spacing:.04em;
+  color:var(--text-3);border:1px solid var(--line-2);border-radius:99px;padding:1px 6px;
+}
+.cad-nota{
+  font-size:12.5px;color:var(--text-2);line-height:1.55;padding:4px 0 4px 11px;
+  border-left:2px solid var(--line-2);margin-bottom:3px;overflow-wrap:anywhere;
+}
+.cad-data{font-family:var(--mono);font-size:10.5px;color:var(--y);margin-right:8px;}
+
 /* o caderno: os clientes em que ja se escreveu alguma coisa */
 .rt-caderno{display:flex;flex-direction:column;gap:7px;}
 .rt-caderno-item{
@@ -810,6 +830,28 @@ tr[data-falei="1"] td:not(.col-falei){color:var(--text-3);}
     </div>
 
     <div id="baseInfo"></div>
+
+    <!-- Fica na etapa 1 de proposito: ler o caderno nao depende de importar
+         base nem de rodar distribuicao. As etapas 3 e 4 so abrem depois de
+         uma rodada, e o gestor precisa conseguir ler a qualquer momento. -->
+    <div class="panel" id="cadernoPanel" style="margin-top:22px;">
+      <div class="panel-head">
+        <h3>Caderno da equipe</h3>
+        <div class="btn-row">
+          <button class="btn btn-sm" id="verCaderno">Consultar</button>
+          <button class="btn btn-sm" id="copiarCaderno">Copiar</button>
+        </div>
+      </div>
+      <p class="hint" style="margin-top:0;">
+        O que cada vendedor anotou em cada cliente, do contato mais recente para
+        o mais antigo. Leitura apenas — daqui não se escreve nem se apaga nada.
+      </p>
+      <label class="lbl" for="senhaCaderno" style="margin-top:14px;display:block;">Senha de publicação</label>
+      <input id="senhaCaderno" type="password" autocomplete="current-password"
+             placeholder="a mesma do ADMIN_TOKEN"
+             style="max-width:320px;margin-bottom:16px;">
+      <div id="cadernoSaida"></div>
+    </div>
   </section>
 
   <!-- ============ 2. EQUIPE ============ -->
@@ -3247,6 +3289,7 @@ function ajustarPainelPublicar() {
   var naWeb = location.protocol === 'http:' || location.protocol === 'https:';
   $('publicarPanel').hidden = !naWeb;
   $('situacaoPanel').hidden = !naWeb;
+  $('cadernoPanel').hidden = !naWeb;
 }
 
 function linkDoVendedor(token) {
@@ -3708,6 +3751,109 @@ $('copiarSituacao').addEventListener('click', function () {
   });
   copyText(toTSV(linhas, ['Vendedor', 'Lista', 'Clientes', 'Publicada', 'Link']),
     $('copiarSituacao'), null);
+});
+
+/* ---------- Caderno da equipe ----------
+   Leitura do que a equipe anotou. Consulta sob demanda, nunca junto com a
+   publicacao: e texto de conversa, e nao tem por que trafegar sem alguem
+   ter pedido. */
+
+var cadernoAtual = [];
+
+/* Senha propria: o campo da etapa 3 so existe depois de uma rodada, e ler o
+   caderno nao pode depender disso. Se a da etapa 3 ja estiver preenchida,
+   ela serve -- para nao digitar duas vezes na mesma sessao. */
+async function chamarCaderno(corpo) {
+  var senha = norm($('senhaCaderno').value) || norm($('senhaPub').value);
+  if (!senha) { toast('Informe a senha de publicação'); $('senhaCaderno').focus(); return null; }
+  var resposta = await fetch('/api/caderno', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-admin-token': senha },
+    body: JSON.stringify(corpo)
+  });
+  var dados = await resposta.json();
+  if (!resposta.ok) { toast(dados.erro || ('Erro ' + resposta.status)); return null; }
+  return dados;
+}
+
+$('verCaderno').addEventListener('click', async function () {
+  var botao = $('verCaderno');
+  var saida = $('cadernoSaida');
+  botao.disabled = true;
+  saida.innerHTML = '<p class="hint">Consultando…</p>';
+  try {
+    // Lista vazia de proposito: o servidor procura quem tem caderno. Mandar
+    // os nomes da rodada esconderia quem anotou e saiu da distribuicao.
+    var dados = await chamarCaderno({ vendedores: [] });
+    if (dados) renderCaderno(dados.itens);
+    else saida.innerHTML = '';
+  } catch (e) {
+    saida.innerHTML = '<div class="alert">Não consegui consultar: ' +
+      escapeHtml(e.message) + '</div>';
+  }
+  botao.disabled = false;
+});
+
+function renderCaderno(itens) {
+  cadernoAtual = (itens || []).filter(function (i) { return i.total; });
+  var saida = $('cadernoSaida');
+
+  if (!cadernoAtual.length) {
+    saida.innerHTML = '<p class="empty">Ninguém anotou nada ainda.</p>';
+    return;
+  }
+
+  cadernoAtual.sort(function (a, b) { return b.total - a.total; });
+
+  var total = cadernoAtual.reduce(function (s, i) { return s + i.total; }, 0);
+  var html = '<p class="hint">' + fmtInt(total) + ' anotações de ' +
+    fmtInt(cadernoAtual.length) +
+    (cadernoAtual.length === 1 ? ' vendedor' : ' vendedores') + '</p>';
+
+  cadernoAtual.forEach(function (i) {
+    html += '<div class="cad-vend">' +
+      '<div class="cad-vend-topo"><b>' + escapeHtml(i.vendedor) + '</b>' +
+      '<span class="cad-conta">' + fmtInt(i.total) +
+      (i.total === 1 ? ' anotação' : ' anotações') + ' · ' +
+      fmtInt(i.clientes.length) +
+      (i.clientes.length === 1 ? ' cliente' : ' clientes') + '</span></div>';
+
+    i.clientes.forEach(function (c) {
+      html += '<div class="cad-cli"><div class="cad-cli-nome">' +
+        escapeHtml(c.nome || c.codigo) +
+        (c.nome ? '' : ' <span class="cad-fora">fora da carteira atual</span>') +
+        '</div>';
+      c.notas.slice().reverse().forEach(function (n) {
+        html += '<div class="cad-nota"><span class="cad-data">' +
+          escapeHtml(n.data || '') + '</span>' +
+          escapeHtml(n.texto || '') + '</div>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+
+  saida.innerHTML = html;
+}
+
+$('copiarCaderno').addEventListener('click', function () {
+  if (!cadernoAtual.length) { toast('Consulte o caderno primeiro'); return; }
+  var linhas = [];
+  cadernoAtual.forEach(function (i) {
+    i.clientes.forEach(function (c) {
+      c.notas.forEach(function (n) {
+        linhas.push({
+          Vendedor: i.vendedor,
+          Cliente: c.nome || c.codigo,
+          Codigo: c.codigo,
+          Data: n.data || '',
+          Anotacao: String(n.texto || '').replace(/\s+/g, ' ')
+        });
+      });
+    });
+  });
+  copyText(toTSV(linhas, ['Vendedor', 'Cliente', 'Codigo', 'Data', 'Anotacao']),
+    $('copiarCaderno'), null);
 });
 
 </script>

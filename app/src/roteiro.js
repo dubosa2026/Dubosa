@@ -566,8 +566,8 @@ var Roteiro = (function () {
     nova.setAttribute('data-rtnova', '1');
     nova.innerHTML =
       '<td class="dt"><input class="rt-nota-data" value="' + hojeBR() + '"></td>' +
-      '<td><textarea class="rt-nota-txt" rows="2" placeholder="O que aconteceu nessa conversa… ' +
-        '(só você lê isto)"></textarea></td>' +
+      '<td><textarea class="rt-nota-txt" rows="2" ' +
+        'placeholder="O que aconteceu nessa conversa…"></textarea></td>' +
       '<td></td>';
     corpo.appendChild(nova);
     tabela.appendChild(corpo);
@@ -594,13 +594,17 @@ var Roteiro = (function () {
     linha.append(salvar, recado);
     alvo.appendChild(linha);
 
-    // A explicacao inteira so depois que existir o que proteger.
+    /* A explicacao inteira so depois que existir o que proteger.
+       Ela fala do que continua verdade: nenhum outro vendedor le, e a
+       anotacao nao viaja com o cliente. Nao afirma mais nada sobre o gestor
+       -- ele passou a ler pelo painel dele, e uma promessa que deixou de
+       valer nao pode ficar escrita na tela. */
     if (!lista.length) return;
     alvo.appendChild(el('div', 'rt-privado',
-      '<b>Só você vê isto.</b> Suas anotações não aparecem para nenhum outro vendedor, ' +
-      'nem para o seu gestor. Ficam guardadas com o seu nome e o código do cliente: se ele ' +
-      'passar para outro vendedor numa próxima distribuição, o que você escreveu não vai ' +
-      'junto — e se voltar para você, tudo reaparece.'));
+      '<b>Nenhum outro vendedor lê isto.</b> Suas anotações ficam guardadas com o seu ' +
+      'nome e o código do cliente: se ele passar para outro vendedor numa próxima ' +
+      'distribuição, o que você escreveu não vai junto — e se voltar para você, tudo ' +
+      'reaparece.'));
   }
 
   function avisar(tr, texto) {

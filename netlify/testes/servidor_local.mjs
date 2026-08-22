@@ -13,7 +13,7 @@ const PORTA = Number(process.env.PORTA) || 8899;
 // -- foi o que quebrou quando /api/situacao caiu no handler da carteira.
 const ROTAS = {};
 for (const arquivo of ['publicar', 'carteira', 'situacao', 'apagar',
-                       'marcas', 'anotacoes', 'duvida']) {
+                       'marcas', 'anotacoes', 'duvida', 'caderno']) {
   const mod = await import(`./netlify/functions/${arquivo}.mjs`);
   const rota = (mod.config && mod.config.path) || `/api/${arquivo}`;
   ROTAS[rota] = mod.default;

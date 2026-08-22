@@ -60,6 +60,11 @@ export function getStore(nome) {
     async set(chave, valor, opcoes) { return gravar(chave, String(valor), opcoes); },
     async setJSON(chave, valor, opcoes) { return gravar(chave, JSON.stringify(valor), opcoes); },
     async delete(chave) { m.delete(chave); },
+    /* Usado pelo caderno do gestor quando ele consulta sem ter carregado a
+       base: descobre quem tem anotacao sem precisar da lista de nomes. */
+    async list() {
+      return { blobs: [...m.keys()].map((key) => ({ key, etag: etagDe(m.get(key)) })) };
+    },
   };
 }
 

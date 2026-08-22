@@ -870,6 +870,7 @@ function ajustarPainelPublicar() {
   var naWeb = location.protocol === 'http:' || location.protocol === 'https:';
   $('publicarPanel').hidden = !naWeb;
   $('situacaoPanel').hidden = !naWeb;
+  $('cadernoPanel').hidden = !naWeb;
 }
 
 function linkDoVendedor(token) {
@@ -1331,4 +1332,107 @@ $('copiarSituacao').addEventListener('click', function () {
   });
   copyText(toTSV(linhas, ['Vendedor', 'Lista', 'Clientes', 'Publicada', 'Link']),
     $('copiarSituacao'), null);
+});
+
+/* ---------- Caderno da equipe ----------
+   Leitura do que a equipe anotou. Consulta sob demanda, nunca junto com a
+   publicacao: e texto de conversa, e nao tem por que trafegar sem alguem
+   ter pedido. */
+
+var cadernoAtual = [];
+
+/* Senha propria: o campo da etapa 3 so existe depois de uma rodada, e ler o
+   caderno nao pode depender disso. Se a da etapa 3 ja estiver preenchida,
+   ela serve -- para nao digitar duas vezes na mesma sessao. */
+async function chamarCaderno(corpo) {
+  var senha = norm($('senhaCaderno').value) || norm($('senhaPub').value);
+  if (!senha) { toast('Informe a senha de publicação'); $('senhaCaderno').focus(); return null; }
+  var resposta = await fetch('/api/caderno', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-admin-token': senha },
+    body: JSON.stringify(corpo)
+  });
+  var dados = await resposta.json();
+  if (!resposta.ok) { toast(dados.erro || ('Erro ' + resposta.status)); return null; }
+  return dados;
+}
+
+$('verCaderno').addEventListener('click', async function () {
+  var botao = $('verCaderno');
+  var saida = $('cadernoSaida');
+  botao.disabled = true;
+  saida.innerHTML = '<p class="hint">Consultando…</p>';
+  try {
+    // Lista vazia de proposito: o servidor procura quem tem caderno. Mandar
+    // os nomes da rodada esconderia quem anotou e saiu da distribuicao.
+    var dados = await chamarCaderno({ vendedores: [] });
+    if (dados) renderCaderno(dados.itens);
+    else saida.innerHTML = '';
+  } catch (e) {
+    saida.innerHTML = '<div class="alert">Não consegui consultar: ' +
+      escapeHtml(e.message) + '</div>';
+  }
+  botao.disabled = false;
+});
+
+function renderCaderno(itens) {
+  cadernoAtual = (itens || []).filter(function (i) { return i.total; });
+  var saida = $('cadernoSaida');
+
+  if (!cadernoAtual.length) {
+    saida.innerHTML = '<p class="empty">Ninguém anotou nada ainda.</p>';
+    return;
+  }
+
+  cadernoAtual.sort(function (a, b) { return b.total - a.total; });
+
+  var total = cadernoAtual.reduce(function (s, i) { return s + i.total; }, 0);
+  var html = '<p class="hint">' + fmtInt(total) + ' anotações de ' +
+    fmtInt(cadernoAtual.length) +
+    (cadernoAtual.length === 1 ? ' vendedor' : ' vendedores') + '</p>';
+
+  cadernoAtual.forEach(function (i) {
+    html += '<div class="cad-vend">' +
+      '<div class="cad-vend-topo"><b>' + escapeHtml(i.vendedor) + '</b>' +
+      '<span class="cad-conta">' + fmtInt(i.total) +
+      (i.total === 1 ? ' anotação' : ' anotações') + ' · ' +
+      fmtInt(i.clientes.length) +
+      (i.clientes.length === 1 ? ' cliente' : ' clientes') + '</span></div>';
+
+    i.clientes.forEach(function (c) {
+      html += '<div class="cad-cli"><div class="cad-cli-nome">' +
+        escapeHtml(c.nome || c.codigo) +
+        (c.nome ? '' : ' <span class="cad-fora">fora da carteira atual</span>') +
+        '</div>';
+      c.notas.slice().reverse().forEach(function (n) {
+        html += '<div class="cad-nota"><span class="cad-data">' +
+          escapeHtml(n.data || '') + '</span>' +
+          escapeHtml(n.texto || '') + '</div>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+
+  saida.innerHTML = html;
+}
+
+$('copiarCaderno').addEventListener('click', function () {
+  if (!cadernoAtual.length) { toast('Consulte o caderno primeiro'); return; }
+  var linhas = [];
+  cadernoAtual.forEach(function (i) {
+    i.clientes.forEach(function (c) {
+      c.notas.forEach(function (n) {
+        linhas.push({
+          Vendedor: i.vendedor,
+          Cliente: c.nome || c.codigo,
+          Codigo: c.codigo,
+          Data: n.data || '',
+          Anotacao: String(n.texto || '').replace(/\s+/g, ' ')
+        });
+      });
+    });
+  });
+  copyText(toTSV(linhas, ['Vendedor', 'Cliente', 'Codigo', 'Data', 'Anotacao']),
+    $('copiarCaderno'), null);
 });
