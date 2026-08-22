@@ -3,6 +3,7 @@
   "private": true,
   "description": "Funcoes do Netlify que servem a carteira de cada vendedor por link secreto.",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.120.0",
     "@netlify/blobs": "^8.1.0"
   }
 }

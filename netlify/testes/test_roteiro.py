@@ -111,8 +111,11 @@ with sync_playwright() as p:
     # deixa a pagina sem responder aos cliques seguintes -- limitacao do
     # navegador de teste, nao do app. O clique no telefone e exercitado no
     # passo 8, de proposito no fim do roteiro.
+    # A primeira coluna passou a ser a caixinha "ja falei"; clicar nela
+    # alterna a marca em vez de escolher a linha. O nome do cliente e a
+    # segunda coluna.
     def linhaDe(nome):
-        return ".rt-listas tbody tr:has(td:text-matches('" + nome + "')) td:nth-child(1)"
+        return ".rt-listas tbody tr:has(td:text-matches('" + nome + "')) td:nth-child(2)"
     pg.click(linhaDe("SOLAR NORTE"))
     pg.wait_for_timeout(500)
     esc = pg.inner_text("#rtEscolhido")
@@ -200,7 +203,7 @@ with sync_playwright() as p:
     ok(pos["ry"] < pos["ly"], "no celular o roteiro vem antes da lista", pos)
     ovm = m.evaluate("document.documentElement.scrollWidth > document.documentElement.clientWidth + 1")
     ok(not ovm, "sem rolagem lateral no celular")
-    m.click(".rt-listas tbody tr:has(td:text-matches('SOLAR NORTE')) td:nth-child(1)")
+    m.click(".rt-listas tbody tr:has(td:text-matches('SOLAR NORTE')) td:nth-child(2)")
     m.wait_for_timeout(500)
     ok("SOLAR NORTE" in m.inner_text("#rtEscolhido"), "seleção funciona no celular")
     m.screenshot(path="roteiro-celular.png", full_page=True)
@@ -239,7 +242,7 @@ with sync_playwright() as p:
     pv.wait_for_timeout(1600)
 
     def cartaoDe(nome):
-        pv.click(".rt-listas tbody tr:has(td:text-matches('" + nome + "')) td:nth-child(1)")
+        pv.click(".rt-listas tbody tr:has(td:text-matches('" + nome + "')) td:nth-child(2)")
         pv.wait_for_timeout(350)
         return pv.inner_text("#rtEscolhido")
 

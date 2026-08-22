@@ -115,24 +115,44 @@ function secaoDaRodada(r, indice, repetidos) {
   var linhasHtml = r.linhas.map(function (l, li) {
     var k = chaveCliente(l, r.colunas);
     var outras = (repetidos[k] || []).filter(function (x) { return x !== r.rotulo; });
-    return '<tr data-rodada="' + indice + '" data-linha="' + li + '">' +
-      visiveis.map(function (c, ci) {
+    var marcado = !!(estado.marcas[r.modo] || {})[k];
+    var quantasNotas = (estado.notas[k] || []).length;
+
+    var celulas = visiveis.map(function (c, ci) {
       var conteudo = celula(c, l[c]);
-      if (ci === 0 && outras.length) {
-        conteudo += ' <span class="tag-rep" title="Este cliente também está em: ' +
-          escapeHtml(outras.join(', ')) + '">também em ' + escapeHtml(outras[0]) + '</span>';
+      if (ci === 0) {
+        if (quantasNotas) {
+          conteudo += ' <span class="tag-nota" title="Suas anotações deste cliente">' +
+            quantasNotas + (quantasNotas === 1 ? ' anotação' : ' anotações') + '</span>';
+        }
+        if (outras.length) {
+          conteudo += ' <span class="tag-rep" title="Este cliente também está em: ' +
+            escapeHtml(outras.join(', ')) + '">também em ' + escapeHtml(outras[0]) + '</span>';
+        }
       }
       var titulo = (c === visiveis[0] || /mail/i.test(c))
         ? ' title="' + escapeHtml(l[c]) + '"' : '';
       return '<td data-rotulo="' + escapeHtml(c) + '"' + titulo + '>' + conteudo + '</td>';
-    }).join('') + '</tr>';
+    }).join('');
+
+    return '<tr data-rodada="' + indice + '" data-linha="' + li + '"' +
+        (marcado ? ' data-falei="1"' : '') + '>' +
+      '<td class="col-falei" data-rotulo="Já falei">' +
+        '<input type="checkbox" class="falei-box"' + (marcado ? ' checked' : '') +
+        ' data-cliente="' + escapeHtml(k) + '" data-modo="' + escapeHtml(r.modo) + '"' +
+        ' aria-label="Já falei com este cliente"></td>' +
+      celulas + '</tr>';
   }).join('');
+
+  var marcados = Object.keys(estado.marcas[r.modo] || {}).length;
 
   return '<div class="panel">' +
       '<div class="panel-head">' +
         '<h3>' + escapeHtml(r.rotulo) +
           ' <span class="count-pill">' + r.linhas.length + '</span></h3>' +
         '<div class="btn-row">' +
+          '<span class="hint" data-contados="' + escapeHtml(r.modo) + '">' +
+            marcados + ' de ' + r.linhas.length + ' já contatados</span>' +
           '<button class="btn btn-sm" data-copiar="' + idBase + '">Copiar</button>' +
           '<button class="btn btn-sm btn-primary" data-baixar="' + idBase + '">Baixar CSV</button>' +
         '</div>' +
@@ -142,6 +162,7 @@ function secaoDaRodada(r, indice, repetidos) {
         escapeHtml(quando.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })) +
       '.</p>' +
       '<div class="tablewrap cartoes"><table><thead><tr>' +
+        '<th class="col-falei" title="Marque quando já tiver falado com o cliente">✓</th>' +
         visiveis.map(function (c) { return '<th>' + escapeHtml(c) + '</th>'; }).join('') +
       '</tr></thead><tbody>' + linhasHtml + '</tbody></table></div>' +
     '</div>';
@@ -190,8 +211,17 @@ function render(dados) {
       '<aside class="rt-lado">' + Roteiro.html() + '</aside>' +
     '</div>';
 
-  Roteiro.iniciar(primeiroNome(dados.vendedor));
+  estado.rodadas = rodadas;
+  Roteiro.iniciar(primeiroNome(dados.vendedor), {
+    notasDe: function (cliente) { return estado.notas[cliente] || []; },
+    salvarNota: salvarNota,
+    editarNota: editarNota,
+    apagarNota: apagarNota,
+    perguntarIa: perguntarIa
+  });
   ligarSelecao(rodadas);
+  ligarMarcas();
+  Roteiro.saldoIa();
 
   rodadas.forEach(function (r, i) {
     var idBase = 'r' + i;
@@ -216,6 +246,118 @@ function render(dados) {
   });
 }
 
+/* ---------- conversa com o servidor ----------
+   Tudo passa pelo token do link. Nenhuma chamada manda o nome do vendedor:
+   quem diz de quem é a marca ou a anotação é o servidor, a partir do token. */
+
+var estado = { token: '', marcas: {}, notas: {}, rodadas: [] };
+
+async function chamar(caminho, corpo) {
+  var resposta = await fetch(caminho, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(Object.assign({ token: estado.token }, corpo || {}))
+  });
+  var dados = await resposta.json();
+  if (!resposta.ok) throw new Error(dados && dados.erro ? dados.erro : 'Falhou.');
+  return dados;
+}
+
+/* A caixinha e a anotacao são conforto, não a razão da página existir. Se o
+   servidor não responder, a lista tem de aparecer do mesmo jeito. */
+async function carregarExtras() {
+  try {
+    var m = await chamar('/api/marcas', {});
+    estado.marcas = m.marcas || {};
+  } catch (e) { estado.marcas = {}; }
+  try {
+    var n = await chamar('/api/anotacoes', { acao: 'listar' });
+    estado.notas = n.notas || {};
+  } catch (e) { estado.notas = {}; }
+}
+
+function ligarMarcas() {
+  document.querySelectorAll('.falei-box').forEach(function (caixa) {
+    caixa.addEventListener('click', function (ev) {
+      ev.stopPropagation();   // marcar não é escolher a linha
+    });
+    caixa.addEventListener('change', async function () {
+      var cliente = caixa.getAttribute('data-cliente');
+      var modo = caixa.getAttribute('data-modo');
+      var querMarcar = caixa.checked;
+      var linha = caixa.closest('tr');
+      caixa.disabled = true;
+      try {
+        var r = await chamar('/api/marcas', { modo: modo, cliente: cliente, marcado: querMarcar });
+        estado.marcas[modo] = r.marcas || {};
+        if (querMarcar) linha.setAttribute('data-falei', '1');
+        else linha.removeAttribute('data-falei');
+        atualizarContagem(modo);
+      } catch (e) {
+        caixa.checked = !querMarcar;   // desfaz o visual: não gravou
+        toast('Não consegui salvar a marcação. Tente de novo.');
+      }
+      caixa.disabled = false;
+    });
+  });
+}
+
+function atualizarContagem(modo) {
+  var alvo = document.querySelector('[data-contados="' + modo + '"]');
+  if (!alvo) return;
+  var rodada = estado.rodadas.filter(function (r) { return r.modo === modo; })[0];
+  if (!rodada) return;
+  alvo.textContent = Object.keys(estado.marcas[modo] || {}).length +
+    ' de ' + rodada.linhas.length + ' já contatados';
+}
+
+/* Depois de mexer numa anotação, a lista precisa refletir: a etiqueta com a
+   quantidade fica na linha do cliente. */
+function atualizarEtiquetaNotas(cliente) {
+  var quantas = (estado.notas[cliente] || []).length;
+  document.querySelectorAll('.falei-box[data-cliente="' + CSS.escape(cliente) + '"]')
+    .forEach(function (caixa) {
+      var primeira = caixa.closest('tr').querySelectorAll('td')[1];
+      if (!primeira) return;
+      var etiqueta = primeira.querySelector('.tag-nota');
+      if (!quantas) { if (etiqueta) etiqueta.remove(); return; }
+      if (!etiqueta) {
+        etiqueta = document.createElement('span');
+        etiqueta.className = 'tag-nota';
+        etiqueta.title = 'Suas anotações deste cliente';
+        primeira.appendChild(document.createTextNode(' '));
+        primeira.appendChild(etiqueta);
+      }
+      etiqueta.textContent = quantas + (quantas === 1 ? ' anotação' : ' anotações');
+    });
+}
+
+async function salvarNota(cliente, data, texto) {
+  var r = await chamar('/api/anotacoes', { acao: 'somar', cliente: cliente, data: data, texto: texto });
+  estado.notas[cliente] = r.notas || [];
+  atualizarEtiquetaNotas(cliente);
+  return estado.notas[cliente];
+}
+
+async function editarNota(cliente, indice, data, texto) {
+  var r = await chamar('/api/anotacoes', {
+    acao: 'editar', cliente: cliente, indice: indice, data: data, texto: texto
+  });
+  estado.notas[cliente] = r.notas || [];
+  return estado.notas[cliente];
+}
+
+async function apagarNota(cliente, indice) {
+  var r = await chamar('/api/anotacoes', { acao: 'apagar', cliente: cliente, indice: indice });
+  estado.notas[cliente] = r.notas || [];
+  atualizarEtiquetaNotas(cliente);
+  return estado.notas[cliente];
+}
+
+async function perguntarIa(acao, pergunta) {
+  return chamar('/api/duvida', { acao: acao, pergunta: pergunta });
+}
+
 /* Clicar numa linha faz o roteiro falar daquele cliente. A linha continua
    sendo uma linha de tabela: quem só quer ler a lista não perde nada, e quem
    vai ligar ganha a fala com a data e o histórico certos. */
@@ -223,19 +365,25 @@ function ligarSelecao(rodadas) {
   var linhas = document.querySelectorAll('.rt-listas tbody tr[data-rodada]');
   for (var i = 0; i < linhas.length; i++) {
     (function (tr) {
-      tr.addEventListener('click', function () {
+      function escolher() {
         // Vale tambem quando o clique cai no telefone: quem toca no numero e
         // exatamente quem vai ligar, e e nessa hora que o roteiro precisa
         // estar pronto. O link continua funcionando -- nada e cancelado aqui.
         var r = rodadas[Number(tr.getAttribute('data-rodada'))];
         var linha = r && r.linhas[Number(tr.getAttribute('data-linha'))];
-        if (!linha) return;
+        if (!linha) return null;
 
         var antes = document.querySelectorAll('.rt-listas tr[data-rtsel="1"]');
         for (var k = 0; k < antes.length; k++) antes[k].removeAttribute('data-rtsel');
         tr.setAttribute('data-rtsel', '1');
 
         Roteiro.selecionar(Roteiro.daLinha(linha, r.colunas, r.modo));
+        return linha;
+      }
+      tr.addEventListener('click', escolher);
+      // Dois cliques abrem o caderno daquele cliente, ja na aba certa.
+      tr.addEventListener('dblclick', function () {
+        if (escolher()) Roteiro.abrirNotas();
       });
     })(linhas[i]);
   }
@@ -270,6 +418,8 @@ async function carregar() {
         dados && dados.erro ? dados.erro : 'Peça um link novo ao seu gestor.');
       return;
     }
+    estado.token = token;
+    await carregarExtras();
     render(dados);
   } catch (e) {
     aviso('Sem conexão',

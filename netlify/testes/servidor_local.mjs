@@ -9,7 +9,8 @@ const DIST = '/home/user/Dubosa/app/dist';
 // e montado a partir disso, para nao precisar lembrar de registrar cada uma
 // -- foi o que quebrou quando /api/situacao caiu no handler da carteira.
 const ROTAS = {};
-for (const arquivo of ['publicar', 'carteira', 'situacao', 'apagar']) {
+for (const arquivo of ['publicar', 'carteira', 'situacao', 'apagar',
+                       'marcas', 'anotacoes', 'duvida']) {
   const mod = await import(`./netlify/functions/${arquivo}.mjs`);
   const rota = (mod.config && mod.config.path) || `/api/${arquivo}`;
   ROTAS[rota] = mod.default;

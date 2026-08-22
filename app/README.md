@@ -389,6 +389,71 @@ informação comercial que o programa não conhece (prazo de entrega por estado,
 nome e ano do prêmio, condição do mês) também aparecem assim, para o vendedor
 completar com o que for verdade.
 
+## O caderno do vendedor
+
+Três coisas na página do vendedor, todas guardadas no servidor.
+
+### A caixinha "já falei"
+
+Primeira coluna da lista. Marcar risca a linha e atualiza o contador do
+cabeçalho ("7 de 34 já contatados").
+
+**A marca pertence à rodada.** A chave inclui a data em que aquela lista foi
+publicada, então publicar uma lista nova gera uma chave nova e tudo começa
+zerado — sem apagar nada, e sem risco de apagar o que não devia. A data vem
+do documento no servidor, nunca do navegador: senão bastaria mandar uma data
+antiga para trazer as marcas de volta.
+
+### Anotações
+
+Dois cliques numa linha abrem a aba **Anotações** daquele cliente: uma tabela
+Data | Anotação, com a última linha sempre em branco e já preenchida com a
+data de hoje. Dá para editar e apagar as anteriores.
+
+**A regra que dá sentido a tudo:** a anotação fica guardada sob
+`vendedor + código do cliente`. Se numa rodada nova o cliente cair para outro
+vendedor, ele abre a ficha e não há nada — porque a chave dele é outra. O que
+o primeiro escreveu continua intacto no lugar de sempre, e reaparece inteiro
+se o cliente voltar.
+
+Ninguém mais lê: nem outro vendedor, nem o gestor. Não existe rota que
+devolva anotação sem o token do dono, e o token só alcança a chave dele. A
+tela diz isso ao vendedor com todas as letras.
+
+### Pergunta à IA
+
+No fim da aba "Se ele disser que…", depois dos 17 cenários. Serve para a
+objeção que não está entre eles.
+
+A instrução do modelo proíbe inventar **preço, frete, prazo, estoque,
+condição de pagamento e nome de prêmio** — quando a pergunta depende disso,
+ele diz que não sabe e manda confirmar com o gestor. Uma resposta incompleta
+custa menos que um número errado dito ao cliente.
+
+O campo só aparece quando a variável `ANTHROPIC_API_KEY` existe no site. Sem
+ela, a página funciona igual, sem o campo.
+
+**Os tetos de gasto** ficam em variáveis de ambiente, então apertar o
+orçamento não exige mexer em código:
+
+| Variável | Padrão | O que limita |
+|---|---|---|
+| `IA_POR_VENDEDOR_DIA` | 20 | perguntas de cada vendedor por dia |
+| `IA_GLOBAL_DIA` | 200 | perguntas da equipe inteira por dia |
+| `IA_POR_MINUTO` | 5 | rajada de um vendedor só |
+
+A pergunta é cortada em 600 caracteres e a resposta tem teto de tokens, então
+cada chamada tem custo máximo conhecido. Com Haiku 4.5, o pior caso possível
+(teto global, todo dia útil) fica em torno de US$ 13 no mês.
+
+**O contador vive no servidor**, sobe **antes** de chamar o modelo, e usa
+escrita condicional (`onlyIfMatch`): quem leu "19" só grava "20" se ninguém
+tiver gravado no meio. Cinquenta disparos simultâneos viram cinquenta
+tentativas de gravar, e só uma passa por vez. O botão desabilitado na tela é
+cortesia — quem recusa a requisição de número 21 é o servidor. O dia vem do
+relógio do servidor, e a conta é presa ao **nome** do vendedor, não ao token:
+pedir link novo não devolve perguntas.
+
 ## Editar o app
 
 O arquivo publicado é gerado a partir de `src/`:
