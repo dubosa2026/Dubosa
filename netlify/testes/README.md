@@ -73,12 +73,14 @@ As funções agendadas não têm rota — quem as chama é o cron do Netlify. No
 servidor de teste elas ficam sob `/__tarefa/<nome>`, para o roteiro
 disparar na hora em vez de esperar cinco minutos.
 
-O `test_desligado.py` cobre os recursos que ficam prontos mas escondidos:
-`IA_LIGADA=0` tira o campo "Pergunte à IA" da tela **sem** remover a
-`ANTHROPIC_API_KEY`, e a função também recusa a pergunta — senão bastaria
-o console do navegador para gastar de um campo "escondido". Confere também
-que a agenda não menciona e-mail nenhum enquanto o lembrete não estiver
-ligado. Precisa de `SANDBOX` e sobe servidor próprio:
+O `test_desligado.py` cobre os recursos que ficam prontos mas escondidos.
+A pergunta à IA **nasce desligada**: ter a `ANTHROPIC_API_KEY` no site não
+basta, é preciso `IA_LIGADA=1`. O roteiro confere os dois jeitos de estar
+escondida — a variável ausente e `IA_LIGADA=0` — e que a função também
+**recusa a pergunta**, senão bastaria o console do navegador para gastar de
+um campo "escondido". Confere também que a agenda não menciona e-mail
+nenhum enquanto o lembrete não estiver ligado. Precisa de `SANDBOX` e sobe
+servidor próprio:
 
 ```bash
 SANDBOX=$SANDBOX python3 netlify/testes/test_desligado.py

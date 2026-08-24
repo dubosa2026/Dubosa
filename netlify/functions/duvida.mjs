@@ -37,17 +37,18 @@ const POR_MINUTO = teto('IA_POR_MINUTO', 5);
 
 /* Chave-geral do recurso, separada da chave da API.
  *
- * IA_LIGADA=0 esconde o campo na tela do vendedor sem tirar a
- * ANTHROPIC_API_KEY do site -- serve para deixar tudo pronto e apresentar a
- * equipe na hora que o gestor quiser. Nao e so a tela: com o recurso
- * desligado a funcao tambem recusa a pergunta, senao bastaria abrir o
- * console do navegador para gastar de um campo "escondido".
+ * NASCE DESLIGADA. Ter a ANTHROPIC_API_KEY no site nao basta para o campo
+ * aparecer na tela do vendedor: e preciso dizer IA_LIGADA=1, de propriedade.
+ * O padrao e esse porque a chave costuma entrar no site muito antes de a
+ * equipe estar pronta para receber o recurso -- e quem decide a hora de
+ * apresentar e o gestor, nao a existencia da chave.
  *
- * Ausente = ligada, para nao mudar o comportamento de quem ja tem a chave. */
+ * Nao e so a tela: com o recurso desligado a funcao tambem recusa a
+ * pergunta, senao bastaria abrir o console do navegador para gastar de um
+ * campo "escondido". */
 function recursoLigado() {
   const v = String(process.env.IA_LIGADA ?? '').trim().toLowerCase();
-  if (!v) return true;
-  return !['0', 'nao', 'não', 'off', 'false', 'desligada', 'desligado'].includes(v);
+  return ['1', 'sim', 'on', 'true', 'ligada', 'ligado'].includes(v);
 }
 const MAX_PERGUNTA = 600;   // caracteres
 const MAX_RESPOSTA = 700;   // tokens de saida
@@ -124,7 +125,8 @@ export default async function duvida(req) {
       erro: ligado
         ? 'A pergunta à IA ainda não está ligada neste site. ' +
           'Falta a variável ANTHROPIC_API_KEY em Site settings → Environment variables.'
-        : 'A pergunta à IA está desligada no momento.',
+        : 'A pergunta à IA está desligada no momento. ' +
+          'Para ligar, defina IA_LIGADA=1 em Site settings → Environment variables.',
     }, 503);
   }
 

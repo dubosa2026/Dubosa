@@ -2,10 +2,11 @@
 
 O gestor pediu para deixar a programacao pronta e nao mostrar nada ainda:
 
-  1. A pergunta a IA some da tela com IA_LIGADA=0, SEM tirar a
-     ANTHROPIC_API_KEY do site. E some de verdade: a funcao tambem recusa a
-     pergunta, senao bastaria abrir o console do navegador para gastar de um
-     campo "escondido".
+  1. A pergunta a IA NASCE DESLIGADA. Ter a ANTHROPIC_API_KEY no site nao
+     basta -- so aparece com IA_LIGADA=1. E some de verdade: a funcao tambem
+     recusa a pergunta, senao bastaria abrir o console do navegador para
+     gastar de um campo "escondido". Cobre os dois jeitos de estar
+     escondida: a variavel ausente e IA_LIGADA=0.
   2. A agenda nao fala em e-mail enquanto o lembrete nao estiver ligado --
      nem para prometer, nem para avisar que nao vai sair.
 
@@ -87,6 +88,49 @@ try:
     ok(st == 503, "e perguntar direto pela API é recusado", (st, d))
     ok("desligada" in json.dumps(d, ensure_ascii=False),
        "com o motivo certo, não 'falta a chave'", d)
+
+    print("\n1b. e sem a variável nenhuma também fica escondida")
+    # O caso real do site do gestor: a chave da API entrou, IA_LIGADA nunca
+    # foi criada. Antes isso deixava o campo aparecer.
+    outro = subprocess.Popen(
+        ["node", "servidor.mjs"], cwd=SANDBOX,
+        stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT,
+        env={k: v for k, v in {**os.environ, "ADMIN_TOKEN": SENHA,
+                               "PORTA": str(int(PORTA) + 1),
+                               "ANTHROPIC_API_KEY": "sk-ant-teste"}.items()
+             if k != "IA_LIGADA"})
+    try:
+        vizinho = f"http://localhost:{int(PORTA) + 1}"
+        for _ in range(40):
+            try:
+                urllib.request.urlopen(vizinho + "/", timeout=1)
+                break
+            except Exception:
+                time.sleep(0.25)
+        # Blobs deste servidor são outros: precisa do próprio link.
+        pub = urllib.request.Request(
+            vizinho + "/api/publicar",
+            data=json.dumps({
+                "vendedor": V, "uf": "PA", "modo": "normal",
+                "rotulo": "Distribuição de carteira",
+                "colunas": ["Integrador (CLI - Nome)", "Cidade", "UF", "Telefone"],
+                "linhas": [{"Integrador (CLI - Nome)": "CLI-0000000101 - SOLAR NORTE",
+                            "Cidade": "BELÉM", "UF": "PA",
+                            "Telefone": "(91) 98888-0001"}]}).encode(),
+            headers={"content-type": "application/json", "x-admin-token": SENHA})
+        with urllib.request.urlopen(pub) as r:
+            tok2 = json.loads(r.read())["token"]
+
+        pedido = urllib.request.Request(
+            vizinho + "/api/duvida",
+            data=json.dumps({"token": tok2, "acao": "saldo"}).encode(),
+            headers={"content-type": "application/json"})
+        with urllib.request.urlopen(pedido) as r:
+            s2 = json.loads(r.read())
+        ok(s2.get("ligado") is False,
+           "chave da API no site, sem IA_LIGADA: continua escondida", s2)
+    finally:
+        outro.terminate()
 
     print("\n2. a agenda não fala em e-mail")
     quando = time.strftime("%Y-%m-%dT%H:%M:%S.000Z",
