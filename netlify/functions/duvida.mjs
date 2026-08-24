@@ -34,6 +34,21 @@ function teto(nome, padrao) {
 const POR_VENDEDOR_DIA = teto('IA_POR_VENDEDOR_DIA', 20);
 const GLOBAL_DIA = teto('IA_GLOBAL_DIA', 200);
 const POR_MINUTO = teto('IA_POR_MINUTO', 5);
+
+/* Chave-geral do recurso, separada da chave da API.
+ *
+ * IA_LIGADA=0 esconde o campo na tela do vendedor sem tirar a
+ * ANTHROPIC_API_KEY do site -- serve para deixar tudo pronto e apresentar a
+ * equipe na hora que o gestor quiser. Nao e so a tela: com o recurso
+ * desligado a funcao tambem recusa a pergunta, senao bastaria abrir o
+ * console do navegador para gastar de um campo "escondido".
+ *
+ * Ausente = ligada, para nao mudar o comportamento de quem ja tem a chave. */
+function recursoLigado() {
+  const v = String(process.env.IA_LIGADA ?? '').trim().toLowerCase();
+  if (!v) return true;
+  return !['0', 'nao', 'não', 'off', 'false', 'desligada', 'desligado'].includes(v);
+}
 const MAX_PERGUNTA = 600;   // caracteres
 const MAX_RESPOSTA = 700;   // tokens de saida
 
@@ -76,7 +91,8 @@ const ESQUEMA = {
 export default async function duvida(req) {
   if (req.method !== 'POST') return json({ erro: 'Método não permitido.' }, 405);
 
-  const chaveApi = process.env.ANTHROPIC_API_KEY;
+  const ligado = recursoLigado();
+  const chaveApi = ligado ? process.env.ANTHROPIC_API_KEY : '';
 
   let corpo;
   try {
@@ -105,8 +121,10 @@ export default async function duvida(req) {
 
   if (!chaveApi) {
     return json({
-      erro: 'A pergunta à IA ainda não está ligada neste site. ' +
-            'Falta a variável ANTHROPIC_API_KEY em Site settings → Environment variables.',
+      erro: ligado
+        ? 'A pergunta à IA ainda não está ligada neste site. ' +
+          'Falta a variável ANTHROPIC_API_KEY em Site settings → Environment variables.'
+        : 'A pergunta à IA está desligada no momento.',
     }, 503);
   }
 

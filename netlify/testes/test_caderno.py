@@ -161,6 +161,12 @@ ok(any(i["total"] for i in tudo["itens"]),
    "e encontra quem anotou sem precisar da base carregada",
    [(i["vendedor"], i["total"]) for i in tudo["itens"]][:6])
 
+print("\n7c. a chave-geral da IA (IA_LIGADA)")
+# Com IA_LIGADA=0 a tela esconde o campo E a função recusa a pergunta. Se
+# recusasse só na tela, bastaria o console do navegador para gastar.
+st, s = api("/api/duvida", {"token": tokA, "acao": "saldo"})
+ok(s.get("ligado") is True, "ligada por padrão quando há chave de API", s)
+
 print("\n8. IA: saldo e resposta")
 _, s = api("/api/duvida", {"token": tokA, "acao": "saldo"})
 print("     saldo:", s)

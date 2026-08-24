@@ -591,10 +591,15 @@ var Roteiro = (function () {
       return;
     }
 
-    alvo.appendChild(el('p', 'rt-dica', agenda.avisa
-      ? 'Você recebe um e-mail 30 minutos antes de cada um.'
-      : 'Sem e-mail cadastrado no seu nome — os compromissos ficam salvos aqui, ' +
-        'mas não sai lembrete. Fale com o seu gestor.'));
+    /* Enquanto o lembrete por e-mail nao estiver ligado, a tela nao fala
+       dele. Nada de explicar ao vendedor um recurso que ele ainda nao tem e
+       nem sabe que existe -- a agenda funciona sozinha como lista do dia. A
+       frase aparece por conta propria no dia em que o e-mail for ligado e o
+       endereco dele estiver cadastrado. */
+    if (agenda.avisa) {
+      alvo.appendChild(el('p', 'rt-dica',
+        'Você recebe um e-mail 30 minutos antes de cada um.'));
+    }
 
     var lista = el('div', 'rt-ag-lista');
     agenda.itens.forEach(function (a) {
