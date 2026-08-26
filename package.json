@@ -1,0 +1,8 @@
+{
+  "name": "bussola",
+  "private": true,
+  "description": "Função do Netlify que responde a análise por IA da Bússola. O app em si não precisa de nada disto para funcionar.",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.120.0"
+  }
+}

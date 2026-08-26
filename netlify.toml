@@ -1,0 +1,47 @@
+# Publicacao da Bussola no Netlify.
+#
+# O site e estatico: um HTML so, sem servidor por tras. Cada push na branch
+# conectada dispara o build abaixo e publica a versao nova.
+#
+# Se o build falhar por falta de Python na imagem do Netlify, apague a linha
+# "command": o arquivo app/dist/index.html ja vai versionado no repositorio
+# e a publicacao funciona sem gerar nada.
+
+[build]
+  command = "python3 app/build_app.py"
+  publish = "app/dist"
+
+[build.environment]
+  PYTHON_VERSION = "3.11"
+
+# A funcao da analise por IA. Precisa de ANTHROPIC_API_KEY e IA_LIGADA=1 em
+# Site settings -> Environment variables. Sem elas o app continua inteiro:
+# so o botao "pedir analise a IA" responde que esta desligado.
+[functions]
+  directory = "netlify/functions"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    # O microfone precisa estar liberado para a propria pagina — e so para
+    # ela. Camera e localizacao ficam fechadas: este app nao usa nenhuma das
+    # duas e nao ha motivo para a permissao sequer existir.
+    Permissions-Policy = "microphone=(self), camera=(), geolocation=(), interest-cohort=()"
+    X-Robots-Tag = "noindex, nofollow"
+
+# O HTML e regerado a cada deploy, entao nao pode ficar em cache: senao o
+# celular continua abrindo a versao antiga depois de uma correcao. Quem
+# guarda a pagina para o modo offline e o service worker, que sabe se
+# atualizar sozinho.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
