@@ -549,6 +549,25 @@ select{max-width:260px;}
 .cad-cli{margin-bottom:10px;}
 .cad-cli:last-child{margin-bottom:0;}
 .cad-cli-cod{font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--y);}
+.cad-quando{margin-top:0;}
+
+/* escolher o vendedor: a lista da equipe, e so o dele abaixo */
+.cad-vends{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px;}
+.cad-vend-btn{
+  appearance:none;cursor:pointer;text-align:left;font:inherit;color:var(--text-2);
+  background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+  padding:7px 11px;display:grid;gap:1px;min-width:0;
+}
+.cad-vend-btn:hover{border-color:var(--line-2);color:var(--text-1);}
+.cad-vend-btn[aria-selected="true"]{
+  border-color:var(--y);background:var(--y-wash);color:var(--text-1);
+}
+.cad-vend-btn:focus-visible{outline:2px solid var(--y);outline-offset:2px;}
+.cad-vb-nome{font-family:var(--dp);font-weight:600;font-size:12.5px;overflow-wrap:anywhere;}
+.cad-vb-conta{font-family:var(--mono);font-size:9.5px;color:var(--text-3);letter-spacing:.03em;}
+.cad-vend-btn[aria-selected="true"] .cad-vb-conta{color:var(--y);}
+.cad-orfa{border-left:2px dashed var(--line-2);padding-left:9px;opacity:.85;}
+.cad-orfa .cad-cli-nome{font-weight:500;color:var(--text-2);}
 .cad-cli-nome{font-size:12.5px;font-weight:600;margin-bottom:4px;overflow-wrap:anywhere;}
 .cad-fora{
   font-family:var(--mono);font-size:9px;font-weight:400;letter-spacing:.04em;

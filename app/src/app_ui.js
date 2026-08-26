@@ -1341,6 +1341,7 @@ $('copiarSituacao').addEventListener('click', function () {
    ter pedido. */
 
 var cadernoAtual = [];
+var cadernoSel = '';   // vendedor aberto no painel
 
 /* Senha propria: o campo da etapa 3 so existe depois de uma rodada, e ler o
    caderno nao pode depender disso. Se a da etapa 3 ja estiver preenchida,
@@ -1367,7 +1368,7 @@ $('verCaderno').addEventListener('click', async function () {
     // Lista vazia de proposito: o servidor procura quem tem caderno. Mandar
     // os nomes da rodada esconderia quem anotou e saiu da distribuicao.
     var dados = await chamarCaderno({ vendedores: [] });
-    if (dados) renderCaderno(dados.itens);
+    if (dados) renderCaderno(dados.itens, dados.em);
     else saida.innerHTML = '';
   } catch (e) {
     saida.innerHTML = '<div class="alert">Não consegui consultar: ' +
@@ -1385,69 +1386,134 @@ function quandoCurto(iso) {
     d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-function renderCaderno(itens) {
+function renderCaderno(itens, em) {
   cadernoAtual = (itens || []).filter(function (i) {
     return i.total || (i.agenda && i.agenda.length);
   });
   var saida = $('cadernoSaida');
 
+  // A hora da leitura importa: isto e uma fotografia, e o vendedor pode
+  // escrever um minuto depois. Sem a hora, uma tela de meia hora atras
+  // parece a tela de agora, e some anotacao que existe.
+  var quando = em ? new Date(em) : new Date();
+  var carimbo = '<p class="hint cad-quando">Leitura de ' +
+    escapeHtml(quando.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })) +
+    '. O que a equipe escrever depois disso só aparece consultando de novo.</p>';
+
   if (!cadernoAtual.length) {
-    saida.innerHTML = '<p class="empty">Ninguém anotou nem agendou nada ainda.</p>';
+    saida.innerHTML = carimbo +
+      '<p class="empty">Ninguém anotou nem agendou nada ainda.</p>';
     return;
   }
 
-  cadernoAtual.sort(function (a, b) { return b.total - a.total; });
+  // Por nome: a lista de vendedores e para procurar alguem, e procurar num
+  // ranking que muda de ordem toda consulta e pior que procurar em ordem
+  // alfabetica, que nao muda nunca.
+  cadernoAtual.sort(function (a, b) {
+    return a.vendedor.localeCompare(b.vendedor, 'pt-BR');
+  });
 
   var total = cadernoAtual.reduce(function (s, i) { return s + i.total; }, 0);
   var marcados = cadernoAtual.reduce(function (s, i) {
     return s + ((i.agenda && i.agenda.length) || 0);
   }, 0);
-  var html = '<p class="hint">' + fmtInt(total) + ' anotações de ' +
+
+  // Mantem o vendedor aberto entre uma consulta e outra, se ele continuar
+  // na lista: consultar de novo nao pode jogar o gestor de volta ao inicio.
+  var aindaTem = cadernoAtual.some(function (i) { return i.vendedor === cadernoSel; });
+  if (!aindaTem) cadernoSel = cadernoAtual[0].vendedor;
+
+  saida.innerHTML = carimbo + '<p class="hint">' + fmtInt(total) + ' anotações de ' +
     fmtInt(cadernoAtual.length) +
     (cadernoAtual.length === 1 ? ' vendedor' : ' vendedores') +
     (marcados ? ' · ' + fmtInt(marcados) + ' agendamento' +
-      (marcados === 1 ? '' : 's') + ' pela frente' : '') + '</p>';
+      (marcados === 1 ? '' : 's') + ' pela frente' : '') + '</p>' +
+    '<div class="cad-vends" id="cadVends" role="tablist"></div>' +
+    '<div id="cadDetalhe"></div>';
 
+  var barra = $('cadVends');
   cadernoAtual.forEach(function (i) {
-    html += '<div class="cad-vend">' +
-      '<div class="cad-vend-topo"><b>' + escapeHtml(i.vendedor) + '</b>' +
-      '<span class="cad-conta">' + fmtInt(i.total) +
-      (i.total === 1 ? ' anotação' : ' anotações') + ' · ' +
-      fmtInt(i.clientes.length) +
-      (i.clientes.length === 1 ? ' cliente' : ' clientes') + '</span></div>';
-
-    if (i.agenda && i.agenda.length) {
-      html += '<div class="cad-agenda"><div class="cad-agenda-rot">Agendado</div>';
-      i.agenda.forEach(function (a) {
-        html += '<div class="cad-ag-linha"><span class="cad-ag-hora">' +
-          escapeHtml(quandoCurto(a.quando)) + '</span>' +
-          escapeHtml(a.nome) +
-          (a.obs ? ' <span class="cad-ag-obs">— ' + escapeHtml(a.obs) + '</span>' : '') +
-          '</div>';
+    var b = document.createElement('button');
+    b.className = 'cad-vend-btn';
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', i.vendedor === cadernoSel ? 'true' : 'false');
+    b.innerHTML = '<span class="cad-vb-nome">' + escapeHtml(i.vendedor) + '</span>' +
+      '<span class="cad-vb-conta">' + fmtInt(i.total) +
+      (i.total === 1 ? ' anotação' : ' anotações') +
+      (i.agenda && i.agenda.length
+        ? ' · ' + fmtInt(i.agenda.length) + ' agendado' + (i.agenda.length === 1 ? '' : 's')
+        : '') + '</span>';
+    b.addEventListener('click', function () {
+      cadernoSel = i.vendedor;
+      barra.querySelectorAll('.cad-vend-btn').forEach(function (o) {
+        o.setAttribute('aria-selected', 'false');
       });
-      html += '</div>';
-    }
+      b.setAttribute('aria-selected', 'true');
+      desenharDetalheCaderno();
+    });
+    barra.appendChild(b);
+  });
 
-    i.clientes.forEach(function (c) {
-      // Codigo sempre visivel ao lado do nome: e o que distingue duas
-      // razoes sociais parecidas, e e a chave que guarda a anotacao.
+  desenharDetalheCaderno();
+}
+
+/* O que um vendedor fez, cliente a cliente. */
+function desenharDetalheCaderno() {
+  var alvo = $('cadDetalhe');
+  if (!alvo) return;
+  var i = cadernoAtual.filter(function (v) { return v.vendedor === cadernoSel; })[0];
+  if (!i) { alvo.innerHTML = ''; return; }
+
+  var html = '<div class="cad-vend">' +
+    '<div class="cad-vend-topo"><b>' + escapeHtml(i.vendedor) + '</b>' +
+    '<span class="cad-conta">' + fmtInt(i.total) +
+    (i.total === 1 ? ' anotação' : ' anotações') + ' · ' +
+    fmtInt(i.clientes.length) +
+    (i.clientes.length === 1 ? ' cliente' : ' clientes') + '</span></div>';
+
+  if (i.agenda && i.agenda.length) {
+    html += '<div class="cad-agenda"><div class="cad-agenda-rot">Agendado</div>';
+    i.agenda.forEach(function (a) {
+      html += '<div class="cad-ag-linha"><span class="cad-ag-hora">' +
+        escapeHtml(quandoCurto(a.quando)) + '</span>' +
+        escapeHtml(a.nome) +
+        (a.obs ? ' <span class="cad-ag-obs">— ' + escapeHtml(a.obs) + '</span>' : '') +
+        '</div>';
+    });
+    html += '</div>';
+  }
+
+  if (!i.clientes.length) {
+    html += '<p class="empty">Nada anotado ainda — só agendamento.</p>';
+  }
+
+  i.clientes.forEach(function (c) {
+    // Codigo sempre visivel ao lado do nome: e o que distingue duas
+    // razoes sociais parecidas, e e a chave que guarda a anotacao.
+    if (c.orfa) {
+      // Sobra da epoca em que a coluna errada virava chave e tudo caia num
+      // balde so. Nao ha como saber de qual cliente e cada texto -- dizer
+      // "cliente 1" seria inventar. Fica separado, para ser reescrito.
+      html += '<div class="cad-cli cad-orfa">' +
+        '<div class="cad-cli-nome">Anotações sem cliente identificado' +
+        ' <span class="cad-fora">de antes da correção · precisam ser reescritas</span>' +
+        '</div>';
+    } else {
       html += '<div class="cad-cli">' +
         '<div class="cad-cli-cod">' + escapeHtml(c.codigo) + '</div>' +
         '<div class="cad-cli-nome">' +
-        escapeHtml(c.nome || '(fora da carteira publicada hoje)') +
-        (c.nome ? '' : ' <span class="cad-fora">sem nome nesta rodada</span>') +
+        escapeHtml(c.nome || '(não está na carteira publicada hoje)') +
         '</div>';
-      c.notas.slice().reverse().forEach(function (n) {
-        html += '<div class="cad-nota"><span class="cad-data">' +
-          escapeHtml(n.data || '') + '</span>' +
-          escapeHtml(n.texto || '') + '</div>';
-      });
-      html += '</div>';
+    }
+    c.notas.slice().reverse().forEach(function (n) {
+      html += '<div class="cad-nota"><span class="cad-data">' +
+        escapeHtml(n.data || '') + '</span>' +
+        escapeHtml(n.texto || '') + '</div>';
     });
     html += '</div>';
   });
 
-  saida.innerHTML = html;
+  alvo.innerHTML = html + '</div>';
 }
 
 $('copiarCaderno').addEventListener('click', function () {
@@ -1458,8 +1524,8 @@ $('copiarCaderno').addEventListener('click', function () {
       c.notas.forEach(function (n) {
         linhas.push({
           Vendedor: i.vendedor,
-          Cliente: c.nome || c.codigo,
-          Codigo: c.codigo,
+          Cliente: c.orfa ? '(sem cliente identificado)' : (c.nome || c.codigo),
+          Codigo: c.orfa ? '' : c.codigo,
           Data: n.data || '',
           Anotacao: String(n.texto || '').replace(/\s+/g, ' ')
         });

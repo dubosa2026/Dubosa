@@ -135,6 +135,42 @@ with sync_playwright() as p:
     _, mc = api("/api/marcas", {"token": tok})
     ok(len(mc["marcas"]["carteira"]) == 1, "e o servidor guardou uma marca só", mc)
 
+    print("\n6. o gestor lê TODOS os clientes com anotação")
+    # Mais duas anotações, em clientes diferentes, para o painel do gestor
+    # precisar trazer três clientes e não um.
+    for linha in (3, 4):
+        pg.dblclick(f".rt-listas tbody tr:nth-child({linha}) td:nth-child(2)")
+        pg.wait_for_timeout(500)
+        pg.fill(".rt-notas tr[data-rtnova='1'] .rt-nota-txt", f"nota da linha {linha}")
+        pg.click("#rtNotas button.btn-primary")
+        pg.wait_for_timeout(1100)
+
+    # Pelo nome exato: execuções anteriores deixam outros "NILTON CHAVE-..."
+    # no depósito, e um filtro largo leria o vendedor errado.
+    st, cad = api("/api/caderno", {"vendedores": [V]}, admin=True)
+    meu = [i for i in cad["itens"] if i["vendedor"] == V]
+    ok(meu, "o vendedor aparece na leitura do gestor",
+       [i["vendedor"] for i in cad["itens"]][:8])
+    codigos = sorted(c["codigo"] for c in meu[0]["clientes"]) if meu else []
+    ok(codigos == ["CLI128900", "CLI247363", "CLI289736"],
+       "com os TRÊS clientes anotados, nenhum a menos", codigos)
+    ok(meu[0]["total"] == 3, "e as três anotações", meu[0]["total"] if meu else None)
+    ok(all(not c["orfa"] for c in meu[0]["clientes"]),
+       "nenhuma marcada como órfã, porque todas têm cliente de verdade",
+       [(c["codigo"], c["orfa"]) for c in meu[0]["clientes"]])
+
+    print("\n7. anotação órfã da versão antiga não vira 'cliente 1'")
+    # Semeia direto no depósito o balde "1", que era o defeito em produção.
+    _, orf = api("/api/anotacoes", {"token": tok, "acao": "somar", "cliente": "1",
+                                    "texto": "texto que caiu no balde antigo"})
+    ok(orf.get("notas"), "a anotação antiga continua guardada", orf)
+    st, cad2 = api("/api/caderno", {"vendedores": [V]}, admin=True)
+    meu2 = [i for i in cad2["itens"] if i["vendedor"] == V]
+    balde = [c for c in meu2[0]["clientes"] if c["codigo"] == "1"] if meu2 else []
+    ok(balde and balde[0]["orfa"] is True,
+       "mas vem marcada como órfã, para a tela não chamá-la de cliente",
+       balde[0] if balde else meu2)
+
     print("\nerros de página:", errs or "nenhum")
     if errs:
         falhas.append("erros de console")

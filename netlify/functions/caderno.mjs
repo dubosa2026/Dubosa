@@ -120,34 +120,43 @@ export default async function caderno(req) {
 
   /* Sem lista de nomes, procura quem tem caderno. Sem isto o gestor teria de
      importar a planilha antes de conseguir ler uma anotacao -- e ler nao
-     depende de rodada nenhuma. O nome vem da propria chave: ela ja e o nome
-     do vendedor normalizado. */
+     depende de rodada nenhuma.
+   *
+     Aqui a busca guarda a CHAVE do deposito, nao o nome reconstruido a
+     partir dela. Reconstruir o nome e voltar a normalizar para achar o
+     deposito e uma volta a mais que pode nao fechar -- e um vendedor cujo
+     nome nao fechasse a volta sumiria da leitura do gestor sem aviso. */
   const agendaLoja = lojaAgenda();
 
-  let nomes = Array.isArray(corpo?.vendedores) ? corpo.vendedores : [];
-  if (!nomes.length) {
-    const achados = {};
+  const alvos = [];
+  const dados = Array.isArray(corpo?.vendedores) ? corpo.vendedores : [];
+  if (dados.length) {
+    for (const nomeBruto of dados) {
+      const vendedor = String(nomeBruto || '').trim();
+      const chave = chaveVendedor(vendedor);
+      if (chave) alvos.push({ chave, vendedor });
+    }
+  } else {
+    const vistos = {};
     for (const loja of [anotacoes, agendaLoja]) {
       try {
         const { blobs } = await loja.list();
         for (const b of blobs || []) {
-          const k = String(b.key || '');
-          if (k) achados[k.replace(/-/g, ' ')] = true;
+          const chave = String(b.key || '');
+          if (!chave || vistos[chave]) continue;
+          vistos[chave] = true;
+          alvos.push({ chave, vendedor: chave.replace(/-/g, ' ') });
         }
       } catch { /* uma loja vazia ainda nao existe: nao e erro */ }
     }
-    nomes = Object.keys(achados);
-    if (!nomes.length) return json({ itens: [] });
+    if (!alvos.length) return json({ itens: [], em: Date.now() });
   }
-  nomes = nomes.slice(0, MAX_VENDEDORES);
 
   const agora = Date.now();
 
-  const itens = await Promise.all(nomes.map(async (nomeBruto) => {
-    const vendedor = String(nomeBruto || '').trim();
-    const chave = chaveVendedor(vendedor);
+  const itens = await Promise.all(alvos.slice(0, MAX_VENDEDORES).map(async (alvo) => {
+    const { chave, vendedor } = alvo;
     const vazio = { vendedor, clientes: [], total: 0, agenda: [] };
-    if (!chave) return vazio;
 
     const guardado = (await anotacoes.get(chave, { type: 'json' })) || {};
     const codigos = Object.keys(guardado).filter((k) => (guardado[k] || []).length);
@@ -175,6 +184,12 @@ export default async function caderno(req) {
       return {
         codigo,
         nome: nomesDeCliente[codigo] || '',
+        // Chave que nunca identificou cliente nenhum: sobrou da epoca em que
+        // a coluna errada virava chave, e todas as anotacoes caiam num balde
+        // so. Marcada aqui para a tela nao apresentar "1" como se fosse um
+        // cliente -- e para o gestor saber que aquele texto precisa ser
+        // reescrito no cliente certo.
+        orfa: !/^(CLI\d+|DOC\d+)$/.test(codigo) && !nomesDeCliente[codigo],
         notas,
         ultima: Math.max(...notas.map((n) => Number(n.ts) || 0)),
       };
@@ -192,5 +207,7 @@ export default async function caderno(req) {
     };
   }));
 
-  return json({ itens });
+  // `em` deixa a tela dizer de quando e a leitura: o painel e uma fotografia,
+  // e o vendedor pode escrever um minuto depois.
+  return json({ itens, em: Date.now() });
 }

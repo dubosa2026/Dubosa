@@ -143,6 +143,8 @@ ok(st == 401, "e o token do vendedor não abre esta porta", st)
 
 st, cad = api("/api/caderno", {"vendedores": [A, B]}, admin=True)
 ok(st == 200, "com a senha, responde", st)
+ok(isinstance(cad.get("em"), int), "com a hora da leitura, que é uma fotografia",
+   cad.get("em"))
 so_a = [i for i in cad["itens"] if i["vendedor"] == A]
 so_b = [i for i in cad["itens"] if i["vendedor"] == B]
 ok(so_a and so_a[0]["total"] == 1, "traz o que a Ana escreveu",
@@ -229,7 +231,8 @@ st, _ = api("/api/duvida", {"token": novo["token"], "pergunta": "tentando pelo l
 ok(st == 429, "e perguntar pelo link novo continua recusado", st)
 
 print("\n12. a tela do vendedor, de ponta a ponta")
-_, rc = publicar("CARLA DA TELA" + SUF, CLIENTES)
+C = "CARLA DA TELA" + SUF
+_, rc = publicar(C, CLIENTES)
 tokC = rc["token"]
 with sync_playwright() as p:
     b = p.chromium.launch(executable_path="/opt/pw-browsers/chromium")
@@ -450,10 +453,28 @@ with sync_playwright() as p:
     g.click("#verCaderno")
     g.wait_for_timeout(1500)
     texto = g.inner_text("#cadernoSaida")
-    ok("setembro" in texto, "e mostra o que a equipe escreveu", texto[:200])
-    ok(A.split("-")[0] in texto.upper(), "com o nome de quem escreveu", texto[:200])
-    ok("SOLAR NORTE" in texto.upper() or "MARAJO" in texto.upper(),
-       "e o cliente da anotação", texto[:200])
+    ok("Leitura de" in texto, "com a hora da leitura, porque é uma fotografia",
+       texto[:120])
+
+    # A equipe vira uma lista para escolher; só o vendedor aberto aparece.
+    botoes = g.evaluate("""[...document.querySelectorAll('.cad-vend-btn')]
+                           .map(b => b.querySelector('.cad-vb-nome').textContent)""")
+    ok(botoes, "a equipe aparece como lista de vendedores", botoes)
+    ok(any(C.split("-")[0] in b.upper() for b in botoes),
+       "com quem escreveu entre eles", botoes)
+    ok(g.evaluate("document.querySelectorAll('#cadDetalhe .cad-vend').length") == 1,
+       "e só um vendedor aberto por vez",
+       g.evaluate("document.querySelectorAll('#cadDetalhe .cad-vend').length"))
+
+    # Abre quem escreveu e confere o que ele fez, cliente a cliente.
+    alvo = [b for b in botoes if C.split("-")[0] in b.upper()][0]
+    g.click(f".cad-vend-btn:has-text('{alvo}')")
+    g.wait_for_timeout(400)
+    detalhe = g.inner_text("#cadDetalhe")
+    ok("setembro" in detalhe, "e mostra o que ele escreveu", detalhe[:220])
+    ok("MARAJO" in detalhe.upper() or "SOLAR NORTE" in detalhe.upper(),
+       "no cliente certo", detalhe[:220])
+    ok("CLI" in detalhe, "com o código junto", detalhe[:220])
     g.screenshot(path="caderno-gestor.png", full_page=True)
     ok(not errg, "sem erro de console no gestor", errg)
 
