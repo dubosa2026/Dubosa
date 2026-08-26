@@ -80,15 +80,81 @@ function celula(coluna, valor) {
   return escapeHtml(texto);
 }
 
-/* Identidade do cliente, para reconhecer quem aparece em mais de uma
-   rodada. Mesmo criterio do app do gestor: o codigo CLI-xxxx quando existe. */
-function chaveCliente(linha, colunas) {
-  var nome = '';
+/* Identidade do cliente. Manda em tres coisas: reconhecer quem aparece em
+   mais de uma rodada, guardar a marca de "ja falei" e guardar a anotacao.
+   Errar aqui nao da erro na tela -- junta clientes em silencio.
+ *
+ * Foi o que aconteceu: a versao anterior pegava a PRIMEIRA coluna cujo NOME
+ * contem "integrador" e nunca olhava o valor. Numa base com outra coluna
+ * assim antes da certa -- uma contagem, valendo 1 em toda linha -- a chave
+ * virou "1" para os 130 clientes, e a anotacao de um apareceu em todos.
+ *
+ * Por isso a ordem abaixo comeca pelo NOME EXATO da coluna, e toda regra
+ * seguinte exige que o VALOR pareca um cliente. Numero solto nunca vira
+ * chave. Sem nada reconhecivel devolve vazio, e quem chama trata como
+ * "nao identificado" -- melhor perder a anotacao de uma linha do que
+ * espalhar a anotacao de uma para a lista inteira. */
+var RE_CLI = /CLI[-\s]?0*(\d+)/i;
+
+function colunaChamada(colunas, nome) {
+  var alvo = nome.toLowerCase();
   for (var i = 0; i < colunas.length; i++) {
-    if (/integrador/i.test(colunas[i])) { nome = String(linha[colunas[i]] || ''); break; }
+    if (String(colunas[i]).trim().toLowerCase() === alvo) return colunas[i];
   }
-  var m = nome.match(/CLI[-\s]?0*(\d+)/i);
-  return m ? 'CLI' + m[1] : nome.trim().toUpperCase();
+  return null;
+}
+
+/* "1", "12", "3,5" nao identificam ninguem. Um nome de integrador, sim. */
+function pareceNome(s) {
+  return s.length >= 3 && !/^\d+([.,]\d+)?$/.test(s);
+}
+
+function deValor(v) {
+  var s = String(v == null ? '' : v).trim();
+  var m = s.match(RE_CLI);
+  if (m) return 'CLI' + m[1];
+  return pareceNome(s) ? s.toUpperCase() : '';
+}
+
+function chaveCliente(linha, colunas) {
+  var i;
+
+  // 1. A coluna certa, pelo nome exato. Resolve o caso normal.
+  var c = colunaChamada(colunas, 'Integrador (CLI - Nome)') ||
+          colunaChamada(colunas, 'Integrador');
+  if (c) {
+    var k = deValor(linha[c]);
+    if (k) return k;
+  }
+
+  // 2. Qualquer coluna "integrador" cujo VALOR traga codigo CLI.
+  for (i = 0; i < colunas.length; i++) {
+    if (!/integrador/i.test(colunas[i])) continue;
+    var m2 = String(linha[colunas[i]] || '').match(RE_CLI);
+    if (m2) return 'CLI' + m2[1];
+  }
+
+  // 3. Qualquer coluna com codigo CLI, custe o nome que for.
+  for (i = 0; i < colunas.length; i++) {
+    var m3 = String(linha[colunas[i]] || '').match(RE_CLI);
+    if (m3) return 'CLI' + m3[1];
+  }
+
+  // 4. CNPJ ou CPF, que tambem identificam sem ambiguidade.
+  for (i = 0; i < colunas.length; i++) {
+    if (!/cnpj|cpf|documento/i.test(colunas[i])) continue;
+    var digitos = String(linha[colunas[i]] || '').replace(/\D/g, '');
+    if (digitos.length >= 11) return 'DOC' + digitos;
+  }
+
+  // 5. O nome do integrador, se for mesmo um nome.
+  for (i = 0; i < colunas.length; i++) {
+    if (!/integrador/i.test(colunas[i])) continue;
+    var nome = String(linha[colunas[i]] || '').trim();
+    if (pareceNome(nome)) return nome.toUpperCase();
+  }
+
+  return '';
 }
 
 /* Em quantas rodadas cada cliente aparece. O vendedor precisa saber que o
@@ -135,12 +201,19 @@ function secaoDaRodada(r, indice, repetidos) {
       return '<td data-rotulo="' + escapeHtml(c) + '"' + titulo + '>' + conteudo + '</td>';
     }).join('');
 
-    return '<tr data-rodada="' + indice + '" data-linha="' + li + '"' +
-        (marcado ? ' data-falei="1"' : '') + '>' +
-      '<td class="col-falei" data-rotulo="Já falei">' +
-        '<input type="checkbox" class="falei-box"' + (marcado ? ' checked' : '') +
+    /* Sem chave, a linha nao ganha caixinha nem anotacao. Uma chave vazia
+       seria a MESMA para todas as linhas sem chave -- marcar uma marcaria
+       todas, e a anotacao de uma apareceria em todas. */
+    var caixa = k
+      ? '<input type="checkbox" class="falei-box"' + (marcado ? ' checked' : '') +
         ' data-cliente="' + escapeHtml(k) + '" data-modo="' + escapeHtml(r.modo) + '"' +
-        ' aria-label="Já falei com este cliente"></td>' +
+        ' aria-label="Já falei com este cliente">'
+      : '<span class="sem-chave" title="Não consegui identificar este cliente na ' +
+        'planilha, então a marcação e as anotações ficam desligadas nesta linha.">—</span>';
+
+    return '<tr data-rodada="' + indice + '" data-linha="' + li + '"' +
+        (marcado ? ' data-falei="1"' : '') + (k ? '' : ' data-semchave="1"') + '>' +
+      '<td class="col-falei" data-rotulo="Já falei">' + caixa + '</td>' +
       celulas + '</tr>';
   }).join('');
 
@@ -214,8 +287,6 @@ function render(dados) {
   estado.rodadas = rodadas;
   Roteiro.iniciar(primeiroNome(dados.vendedor), {
     notasDe: function (cliente) { return estado.notas[cliente] || []; },
-    notasTodas: notasTodas,
-    irParaCliente: irParaCliente,
     salvarNota: salvarNota,
     editarNota: editarNota,
     apagarNota: apagarNota,
@@ -390,61 +461,6 @@ async function mudarAgenda(acao, id) {
   return r.agenda;
 }
 
-/* O caderno da aba Anotações: só os clientes em que o vendedor escreveu
-   alguma coisa, do mais recente para o mais antigo. Enquanto ele não
-   escrever nada, isto devolve lista vazia e a aba abre em branco. */
-function notasTodas() {
-  var fora = [];
-  Object.keys(estado.notas).forEach(function (k) {
-    var notas = estado.notas[k] || [];
-    if (!notas.length) return;
-    fora.push({
-      cliente: k,
-      nome: nomeDoCliente(k) || k,
-      notas: notas,
-      quando: Math.max.apply(null, notas.map(function (n) { return Number(n.ts) || 0; }))
-    });
-  });
-  fora.sort(function (a, b) { return b.quando - a.quando; });
-  return fora;
-}
-
-/* Do código do cliente de volta ao nome que está na lista. Se ele saiu da
-   carteira nesta rodada, o nome não existe mais aqui -- a anotação continua
-   guardada, e o código serve de rótulo. */
-function nomeDoCliente(chave) {
-  for (var i = 0; i < estado.rodadas.length; i++) {
-    var r = estado.rodadas[i];
-    for (var j = 0; j < r.linhas.length; j++) {
-      if (chaveCliente(r.linhas[j], r.colunas) !== chave) continue;
-      for (var c = 0; c < r.colunas.length; c++) {
-        if (/integrador/i.test(r.colunas[c])) return String(r.linhas[j][r.colunas[c]] || '');
-      }
-    }
-  }
-  return '';
-}
-
-/* Do caderno de volta ao cliente: seleciona a linha dele na lista, para o
-   roteiro e o editor de anotações passarem a falar daquele cliente. */
-function irParaCliente(chave) {
-  for (var i = 0; i < estado.rodadas.length; i++) {
-    var r = estado.rodadas[i];
-    for (var j = 0; j < r.linhas.length; j++) {
-      if (chaveCliente(r.linhas[j], r.colunas) !== chave) continue;
-      var tr = document.querySelector(
-        '.rt-listas tbody tr[data-rodada="' + i + '"][data-linha="' + j + '"]');
-      if (tr) {
-        var antes = document.querySelectorAll('.rt-listas tr[data-rtsel="1"]');
-        for (var k = 0; k < antes.length; k++) antes[k].removeAttribute('data-rtsel');
-        tr.setAttribute('data-rtsel', '1');
-      }
-      Roteiro.selecionar(Roteiro.daLinha(r.linhas[j], r.colunas, r.modo));
-      return true;
-    }
-  }
-  return false;
-}
 
 /* Clicar numa linha faz o roteiro falar daquele cliente. A linha continua
    sendo uma linha de tabela: quem só quer ler a lista não perde nada, e quem

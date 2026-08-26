@@ -86,6 +86,17 @@ servidor próprio:
 SANDBOX=$SANDBOX python3 netlify/testes/test_desligado.py
 ```
 
+O `test_chave_cliente.py` reproduz o defeito que juntou o caderno inteiro:
+uma base com a coluna **"Integradores"** (uma contagem, valendo 1 em toda
+linha) **antes** de "Integrador (CLI - Nome)". A versão anterior escolhia a
+coluna pelo nome conter "integrador" e nunca olhava o valor, então a chave
+virou `1` para todos os clientes — a marca de "já falei" e a anotação de um
+passaram a valer para a lista inteira. Roda contra o servidor normal:
+
+```bash
+python3 netlify/testes/test_chave_cliente.py
+```
+
 Isto exercita a lógica, não a infraestrutura. O comportamento real do
 Netlify Blobs e das funções em produção precisa ser conferido no primeiro
 deploy.

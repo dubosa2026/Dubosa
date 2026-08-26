@@ -22,14 +22,54 @@ const MAX_VENDEDORES = 200;
 
 /* A MESMA conta que o navegador do vendedor faz em carteira.js. Precisa ser
    identica, senao o codigo guardado na anotacao nao encontra a linha da
-   carteira e o gestor le "CLI100379" em vez do nome do integrador. */
+   carteira e o gestor le "CLI100379" em vez do nome do integrador.
+   A ordem comeca pelo nome exato da coluna e toda regra seguinte exige que
+   o valor pareca um cliente -- ver o comentario longo em carteira.js. */
+const RE_CLI = /CLI[-\s]?0*(\d+)/i;
+
+function colunaChamada(colunas, nome) {
+  const alvo = nome.toLowerCase();
+  return colunas.find((c) => String(c).trim().toLowerCase() === alvo) || null;
+}
+
+function pareceNome(s) {
+  return s.length >= 3 && !/^\d+([.,]\d+)?$/.test(s);
+}
+
+function deValor(v) {
+  const s = String(v ?? '').trim();
+  const m = s.match(RE_CLI);
+  if (m) return 'CLI' + m[1];
+  return pareceNome(s) ? s.toUpperCase() : '';
+}
+
 function chaveCliente(linha, colunas) {
-  let nome = '';
-  for (const c of colunas) {
-    if (/integrador/i.test(c)) { nome = String(linha[c] || ''); break; }
+  const c = colunaChamada(colunas, 'Integrador (CLI - Nome)') ||
+            colunaChamada(colunas, 'Integrador');
+  if (c) {
+    const k = deValor(linha[c]);
+    if (k) return k;
   }
-  const m = nome.match(/CLI[-\s]?0*(\d+)/i);
-  return m ? 'CLI' + m[1] : nome.trim().toUpperCase();
+  for (const col of colunas) {
+    if (!/integrador/i.test(col)) continue;
+    const m = String(linha[col] || '').match(RE_CLI);
+    if (m) return 'CLI' + m[1];
+  }
+  for (const col of colunas) {
+    const m = String(linha[col] || '').match(RE_CLI);
+    if (m) return 'CLI' + m[1];
+  }
+  for (const col of colunas) {
+    if (!/cnpj|cpf|documento/i.test(col)) continue;
+    const digitos = String(linha[col] || '').replace(/\D/g, '');
+    if (digitos.length >= 11) return 'DOC' + digitos;
+  }
+  for (const col of colunas) {
+    if (!/integrador/i.test(col)) continue;
+    const nome = String(linha[col] || '').trim();
+    if (pareceNome(nome)) return nome.toUpperCase();
+  }
+  return '';
 }
 
 /* Do codigo de volta ao nome, usando o que esta publicado hoje no link dele.
@@ -41,11 +81,18 @@ function mapaDeNomes(doc) {
   for (const modo of Object.keys(rodadas)) {
     const r = rodadas[modo] || {};
     const colunas = r.colunas || [];
-    const coluna = colunas.filter((c) => /integrador/i.test(c))[0];
-    if (!coluna) continue;
     for (const linha of r.linhas || []) {
       const k = chaveCliente(linha, colunas);
-      if (k && !mapa[k]) mapa[k] = String(linha[coluna] || '');
+      if (!k || mapa[k]) continue;
+      // Mesma escolha de coluna do vendedor: nome exato primeiro, e uma
+      // alternativa so se o valor dela parecer um nome de verdade.
+      let coluna = colunaChamada(colunas, 'Integrador (CLI - Nome)') ||
+                   colunaChamada(colunas, 'Integrador');
+      if (!coluna || !pareceNome(String(linha[coluna] || '').trim())) {
+        coluna = colunas.find((c) => /integrador/i.test(c) &&
+                                     pareceNome(String(linha[c] || '').trim())) || coluna;
+      }
+      if (coluna) mapa[k] = String(linha[coluna] || '');
     }
   }
   return mapa;

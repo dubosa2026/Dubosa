@@ -267,9 +267,12 @@ with sync_playwright() as p:
        "a aba está no cabeçalho desde o começo")
     pg.click("[data-rtaba='notas']")
     pg.wait_for_timeout(400)
-    ok(pg.inner_text("#rtNotas").strip() == "",
-       "sem nenhuma anotação escrita, ela abre vazia — nenhum cliente carregado",
+    ok("Escolha um cliente" in pg.inner_text("#rtNotas"),
+       "sem cliente escolhido não mostra anotação de ninguém",
        repr(pg.inner_text("#rtNotas")[:160]))
+    ok(pg.evaluate("document.querySelectorAll('.rt-notas, .rt-caderno-item').length") == 0,
+       "nem lista geral, nem campo de escrever solto",
+       pg.evaluate("document.querySelectorAll('.rt-notas, .rt-caderno-item').length"))
     ok(pg.evaluate("document.getElementById('rtEscolhido').hidden"),
        "e o cartão do cliente sai de cena nesta aba")
     pg.click("[data-rtaba='abrir']")
@@ -294,7 +297,7 @@ with sync_playwright() as p:
        pg.evaluate("document.querySelectorAll('.rt-notas tbody tr').length"))
     ok("Nenhuma anotação" not in pg.inner_text("#rtNotas"),
        "sem texto avisando que está vazio", pg.inner_text("#rtNotas")[:140])
-    ok("Anotações de" not in pg.inner_text("#rtNotas"),
+    ok(pg.evaluate("document.querySelectorAll('.rt-nota-dono').length") == 0,
        "nem o nome do cliente antes de existir anotação",
        pg.inner_text("#rtNotas")[:140])
 
@@ -306,8 +309,9 @@ with sync_playwright() as p:
        pg.evaluate("document.querySelectorAll('.rt-notas tbody tr').length"))
     ok(pg.evaluate("document.querySelectorAll('.rt-notas thead').length") == 1,
        "aí sim o cabeçalho aparece")
-    ok("Anotações de" in pg.inner_text("#rtNotas"),
-       "e o nome do cliente também", pg.inner_text("#rtNotas")[:140])
+    dono = pg.inner_text(".rt-nota-dono")
+    ok("CLI102" in dono, "com o CÓDIGO do cliente por cima da anotação", dono)
+    ok("MARAJO" in dono.upper(), "e o nome dele junto", dono)
     aviso = pg.inner_text("#rtNotas")
     ok("Nenhum outro vendedor lê isto" in aviso,
        "e o aviso de privacidade também", aviso[-160:])
@@ -320,23 +324,25 @@ with sync_playwright() as p:
     _, nc = api("/api/anotacoes", {"token": tokC, "acao": "listar"})
     ok("setembro" in bruto(nc), "chegou ao servidor", bruto(nc)[:120])
 
-    # Agora que existe conteudo, a aba sem cliente vira o caderno: so os
-    # clientes em que ele escreveu, e nada mais.
+    # Mesmo com anotação escrita, a aba sem cliente NÃO mostra anotação de
+    # ninguém. Existiu aqui uma lista geral, e era ela que fazia parecer que
+    # a anotação de um cliente valia para a carteira inteira.
     pg.reload(); pg.wait_for_timeout(1800)
     pg.click("[data-rtaba='notas']")
     pg.wait_for_timeout(400)
-    ok(pg.evaluate("document.querySelectorAll('.rt-caderno-item').length") == 1,
-       "o caderno lista só o cliente que tem anotação",
-       pg.evaluate("document.querySelectorAll('.rt-caderno-item').length"))
-    ok("setembro" in pg.inner_text("#rtNotas"), "com um pedaço do que foi escrito",
-       pg.inner_text("#rtNotas")[:160])
-    pg.click(".rt-caderno-item")
-    pg.wait_for_timeout(500)
-    ok(pg.evaluate("document.querySelectorAll('.rt-notas tbody tr').length") == 2,
-       "e abre naquele cliente",
-       pg.evaluate("document.querySelectorAll('.rt-notas tbody tr').length"))
-    ok(pg.evaluate("document.querySelectorAll('tr[data-rtsel=\"1\"]').length") == 1,
-       "marcando a linha dele na lista")
+    vazio = pg.inner_text("#rtNotas")
+    ok("setembro" not in vazio,
+       "sem cliente escolhido, nada do que foi escrito aparece", vazio[:200])
+    ok(pg.evaluate("document.querySelectorAll('.rt-caderno-item, .rt-notas').length") == 0,
+       "nem lista geral, nem tabela de anotação",
+       pg.evaluate("document.querySelectorAll('.rt-caderno-item, .rt-notas').length"))
+
+    # E, escolhendo um cliente SEM anotação, continua sem ver a do outro.
+    pg.dblclick(".rt-listas tbody tr:nth-child(1) td:nth-child(2)")
+    pg.wait_for_timeout(600)
+    outros = pg.evaluate("""[...document.querySelectorAll('#rtNotas .rt-nota-txt')]
+                            .map(t => t.value).filter(Boolean)""")
+    ok(outros == [], "outro cliente não vê a anotação do primeiro", outros)
 
     print("\n14. o campo da IA na tela")
     pg.click("[data-rtaba='obj']")

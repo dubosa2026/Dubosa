@@ -540,6 +540,7 @@ select{max-width:260px;}
 .cad-conta{font-family:var(--mono);font-size:11px;color:var(--text-3);}
 .cad-cli{margin-bottom:10px;}
 .cad-cli:last-child{margin-bottom:0;}
+.cad-cli-cod{font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--y);}
 .cad-cli-nome{font-size:12.5px;font-weight:600;margin-bottom:4px;overflow-wrap:anywhere;}
 .cad-fora{
   font-family:var(--mono);font-size:9px;font-weight:400;letter-spacing:.04em;
@@ -577,18 +578,13 @@ select{max-width:260px;}
 .rt-ag-quem{font-family:var(--dp);font-weight:600;font-size:13px;margin-top:3px;overflow-wrap:anywhere;}
 .rt-ag-obs-txt{font-size:12.5px;color:var(--text-2);margin-top:3px;overflow-wrap:anywhere;}
 
-/* o caderno: os clientes em que ja se escreveu alguma coisa */
-.rt-caderno{display:flex;flex-direction:column;gap:7px;}
-.rt-caderno-item{
-  appearance:none;text-align:left;cursor:pointer;width:100%;
-  background:var(--panel-3);border:1px solid var(--line);border-radius:8px;
-  padding:9px 11px;display:grid;gap:2px;color:inherit;font:inherit;
+/* de quem e a anotacao: codigo e nome por cima do que foi escrito */
+.rt-nota-dono{
+  display:grid;gap:2px;margin:0 0 12px;padding:8px 11px;
+  background:var(--panel-3);border-left:3px solid var(--y);border-radius:0 7px 7px 0;
 }
-.rt-caderno-item:hover{border-color:var(--y);}
-.rt-caderno-item:focus-visible{outline:2px solid var(--y);outline-offset:2px;}
-.rt-cad-nome{font-family:var(--dp);font-weight:600;font-size:13px;overflow-wrap:anywhere;}
-.rt-cad-quantas{font-family:var(--mono);font-size:10px;color:var(--y);letter-spacing:.04em;}
-.rt-cad-ultima{font-size:12px;color:var(--text-3);overflow-wrap:anywhere;}
+.rt-nota-cod{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;color:var(--y);}
+.rt-nota-nome{font-family:var(--dp);font-weight:600;font-size:13px;overflow-wrap:anywhere;}
 
 .rt-seg{display:inline-flex;border:1px solid var(--line-2);border-radius:7px;overflow:hidden;margin-bottom:15px;}
 .rt-seg button{
@@ -680,6 +676,7 @@ th.col-falei,td.col-falei{width:42px;text-align:center;padding-left:6px;padding-
   background:var(--panel-2);cursor:pointer;vertical-align:middle;position:relative;flex:none;
 }
 .falei-box:hover:not(:disabled){border-color:var(--y);}
+.sem-chave{color:var(--text-3);font-family:var(--mono);font-size:12px;cursor:help;}
 .falei-box:focus-visible{outline:2px solid var(--y);outline-offset:2px;}
 .falei-box:disabled{opacity:.5;cursor:wait;}
 .falei-box:checked{background:var(--ok);border-color:var(--ok);}

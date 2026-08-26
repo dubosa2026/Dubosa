@@ -1429,9 +1429,13 @@ function renderCaderno(itens) {
     }
 
     i.clientes.forEach(function (c) {
-      html += '<div class="cad-cli"><div class="cad-cli-nome">' +
-        escapeHtml(c.nome || c.codigo) +
-        (c.nome ? '' : ' <span class="cad-fora">fora da carteira atual</span>') +
+      // Codigo sempre visivel ao lado do nome: e o que distingue duas
+      // razoes sociais parecidas, e e a chave que guarda a anotacao.
+      html += '<div class="cad-cli">' +
+        '<div class="cad-cli-cod">' + escapeHtml(c.codigo) + '</div>' +
+        '<div class="cad-cli-nome">' +
+        escapeHtml(c.nome || '(fora da carteira publicada hoje)') +
+        (c.nome ? '' : ' <span class="cad-fora">sem nome nesta rodada</span>') +
         '</div>';
       c.notas.slice().reverse().forEach(function (n) {
         html += '<div class="cad-nota"><span class="cad-data">' +

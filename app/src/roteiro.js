@@ -190,6 +190,23 @@ var Roteiro = (function () {
     return null;
   }
 
+  /* A coluna do nome do cliente. Nao serve procurar so por /integrador/i: a
+     base pode ter outra coluna com esse nome antes da certa -- uma contagem,
+     valendo 1 em toda linha -- e o roteiro passava a chamar todo cliente de
+     "1". Prefere o nome exato da coluna, e so aceita uma alternativa se o
+     VALOR dela parecer um nome. colunaChamada e pareceNome vivem em
+     carteira.js, junto de chaveCliente, para os dois lados decidirem igual. */
+  function colunaDoCliente(colunas, linha) {
+    var certa = colunaChamada(colunas, 'Integrador (CLI - Nome)') ||
+                colunaChamada(colunas, 'Integrador');
+    if (certa && pareceNome(String(linha[certa] || '').trim())) return certa;
+    for (var i = 0; i < colunas.length; i++) {
+      if (!/integrador/i.test(colunas[i])) continue;
+      if (pareceNome(String(linha[colunas[i]] || '').trim())) return colunas[i];
+    }
+    return certa;
+  }
+
   /* "CLI-0000000123 - SOLAR NORTE LTDA" -> "SOLAR NORTE LTDA" */
   function nomeCurto(v) {
     var s = String(v == null ? '' : v).trim();
@@ -216,7 +233,7 @@ var Roteiro = (function () {
   }
 
   function daLinha(linha, colunas, modo) {
-    var cNome = acharCol(colunas, /integrador/i);
+    var cNome = colunaDoCliente(colunas, linha);
     var cCidade = acharCol(colunas, /^cidade$/i);
     var cUltima = acharCol(colunas, /última nota|ultima nota/i);
     var cPedidos = acharCol(colunas, /pedido/i);
@@ -229,6 +246,9 @@ var Roteiro = (function () {
 
     return {
       rotulo: cNome ? nomeCurto(linha[cNome]) : '',
+      // O valor cru da coluna Integrador, com codigo e nome, como esta na
+      // lista. E o que identifica de quem e a anotacao sem margem a duvida.
+      nomeCompleto: cNome ? String(linha[cNome] || '').trim() : '',
       // Mesma chave que carteira.js usa para guardar as anotacoes: o codigo
       // CLI quando existe. Se as duas divergirem, o caderno do cliente some.
       cliente: chaveCliente(linha, colunas),
@@ -458,44 +478,14 @@ var Roteiro = (function () {
     if (cartao) cartao.hidden = qual === 'notas';
   }
 
-  /* A aba fica sempre no cabecalho. O numero ao lado e o do cliente
-     escolhido quando ha um; sem cliente, e quantos clientes ja tem
-     anotacao. Zero nao mostra numero nenhum. */
+  /* A aba fica sempre no cabecalho, e fala SEMPRE de um cliente so: o que
+     esta escolhido na lista. O numero ao lado e a contagem dele. */
   function contarNotas() {
     var t = document.getElementById('rtTabNotas');
     if (!t) return;
     var n = (atual && atual.cliente && ponte.notasDe)
-      ? ponte.notasDe(atual.cliente).length
-      : (ponte.notasTodas ? ponte.notasTodas().length : 0);
+      ? ponte.notasDe(atual.cliente).length : 0;
     t.innerHTML = 'Anotações' + (n ? '<span class="rt-pip">' + n + '</span>' : '');
-  }
-
-  /* Sem cliente escolhido, a aba e o caderno do vendedor: so os clientes em
-     que ele ja escreveu alguma coisa. Enquanto nao escrever nada, nao ha
-     nada para mostrar -- e a aba abre em branco de proposito, sem lista de
-     cliente nenhum. */
-  function desenharCaderno(alvo) {
-    var tudo = ponte.notasTodas ? ponte.notasTodas() : [];
-    if (!tudo.length) return;
-
-    alvo.appendChild(el('p', 'rt-dica',
-      'Clientes em que você já escreveu. Toque para abrir.'));
-
-    var caixa = el('div', 'rt-caderno');
-    tudo.forEach(function (item) {
-      var ultima = item.notas[item.notas.length - 1] || {};
-      var linha = el('button', 'rt-caderno-item',
-        '<span class="rt-cad-nome">' + rtEsc(item.nome) + '</span>' +
-        '<span class="rt-cad-quantas">' + item.notas.length +
-          (item.notas.length === 1 ? ' anotação' : ' anotações') + '</span>' +
-        '<span class="rt-cad-ultima">' + rtEsc(ultima.data || '') + ' · ' +
-          rtEsc(String(ultima.texto || '').slice(0, 90)) + '</span>');
-      linha.addEventListener('click', function () {
-        if (ponte.irParaCliente) ponte.irParaCliente(item.cliente);
-      });
-      caixa.appendChild(linha);
-    });
-    alvo.appendChild(caixa);
   }
 
   /* ---------- agenda ----------
@@ -638,18 +628,36 @@ var Roteiro = (function () {
     if (!alvo) return;
     alvo.innerHTML = '';
 
-    if (!atual || !atual.cliente) { desenharCaderno(alvo); return; }
+    /* Sem cliente escolhido nao se mostra anotacao nenhuma.
+       Existiu aqui um "caderno" que listava todos os clientes em que o
+       vendedor ja tinha escrito. Guardar sempre esteve certo -- cada
+       anotacao fica so no seu cliente -- mas mostrar assim fazia parecer
+       que a anotacao valia para a lista inteira. A aba e do cliente
+       escolhido, e de mais ninguem. */
+    if (!atual) {
+      alvo.appendChild(el('p', 'rt-dica',
+        'Escolha um cliente na lista para ver e escrever as anotações dele.'));
+      return;
+    }
+    if (!atual.cliente) {
+      alvo.appendChild(el('p', 'rt-dica',
+        'Não consegui identificar este cliente na planilha, então não dá para ' +
+        'guardar anotação dele com segurança. Avise o seu gestor.'));
+      return;
+    }
 
     var cliente = atual.cliente;
     var lista = ponte.notasDe ? ponte.notasDe(cliente) : [];
 
-    /* Cliente sem anotacao abre em branco: so a linha de escrever. Nem o
-       nome do cliente aparece aqui -- ele ja esta no cartao logo acima, e
-       repetido dentro da aba so ocupa espaco. Nome, cabecalho de tabela e
-       aviso de privacidade entram junto com a primeira anotacao salva. */
+    /* Cliente sem anotacao abre em branco: so a linha de escrever.
+       Havendo anotacao, ela vem com o CODIGO e o NOME do cliente por cima:
+       e a evidencia de quem e aquele texto, sem precisar conferir contra a
+       lista. O codigo e o mesmo que guarda a anotacao no servidor. */
     if (lista.length) {
-      alvo.appendChild(el('p', 'rt-dica',
-        'Anotações de <b>' + rtEsc(atual.rotulo) + '</b>'));
+      alvo.appendChild(el('div', 'rt-nota-dono',
+        '<span class="rt-nota-cod">' + rtEsc(cliente) + '</span>' +
+        '<span class="rt-nota-nome">' +
+          rtEsc(atual.nomeCompleto || atual.rotulo) + '</span>'));
     }
 
     var tabela = el('table', 'rt-notas', lista.length
