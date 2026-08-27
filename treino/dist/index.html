@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Circuito">
-<meta name="circuito-versao" content="b5698f8b">
+<meta name="circuito-versao" content="2e2c4cbb">
 <meta name="circuito-arquivo" content="circuito.html">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230A0A0B'/%3E%3Ccircle cx='16' cy='16' r='9.5' fill='none' stroke='%233A3A43' stroke-width='3'/%3E%3Cpath d='M16 6.5a9.5 9.5 0 0 1 8.6 5.5' fill='none' stroke='%23FFC72C' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='2.8' fill='%23FFC72C'/%3E%3C/svg%3E">
 <link rel="manifest" href="manifest.webmanifest">
@@ -2885,7 +2885,22 @@ function conferirArmazenamento() {
   } catch (e) {
     return 'previa';   // moldura de outro endereco: nem da para perguntar
   }
+  if (comoArquivo()) return 'arquivo';
   return 'ok';
+}
+
+/* Aberto direto do arquivo baixado, sem endereco.
+ *
+ * No Android o gerenciador de arquivos costuma abrir com `content:`; no
+ * computador e no iPhone, com `file:`. Nos tres o app funciona e nos tres o
+ * navegador se recusa a oferecer instalacao — instalar exige HTTPS,
+ * manifesto e service worker, e service worker nao existe fora de um
+ * endereco. Nao e limite do app, e regra do navegador; o que o app pode
+ * fazer e dizer isso em vez de deixar a pessoa procurando um botao que
+ * nunca vai aparecer. */
+function comoArquivo() {
+  const p = (window.location && window.location.protocol) || '';
+  return p === 'file:' || p === 'content:';
 }
 
 const ALERTAS = {
@@ -2901,6 +2916,13 @@ const ALERTAS = {
     texto: 'Ele aceitou salvar e esqueceu ao recarregar — é o que a aba anônima faz. '
       + 'Abra numa aba normal, ou instale o app na tela de início, para o histórico ficar.',
     acao: 'Exportar o que tenho',
+  },
+  arquivo: {
+    titulo: 'Aberto como arquivo — não dá para instalar assim',
+    texto: 'O app funciona inteiro, mas o navegador só oferece “instalar na tela de início” '
+      + 'para página com endereço (https). Abrindo o arquivo baixado, esse botão não existe '
+      + 'em navegador nenhum. Veja em Ajustes onde conseguir o endereço.',
+    acao: '',
   },
   previa: {
     titulo: 'Isto é uma prévia',
@@ -3776,7 +3798,14 @@ function cartaoInstalar() {
   }
 
   let h = '<div class="cartao"><div class="bloco-cab"><b>Instalar no celular</b></div>';
-  if (convite) {
+  if (comoArquivo()) {
+    h += '<p class="ajuda" style="margin-top:4px">Você abriu o <b>arquivo baixado</b>. '
+      + 'Assim o app funciona inteiro — treino, cronômetro, histórico —, mas o botão de '
+      + 'instalar <b>não aparece em navegador nenhum</b>: instalar exige uma página com '
+      + 'endereço (https), e um arquivo não tem endereço.</p>'
+      + '<p class="ajuda">Para virar ícone na tela de início, abra o Circuito pelo endereço '
+      + 'publicado — o mesmo app, servido por um endereço. Aí este cartão mostra o botão.</p>';
+  } else if (convite) {
     h += '<p class="ajuda" style="margin:2px 0 10px">Ele vira um ícone na sua tela de início e '
       + 'abre em tela cheia, sem barra de navegador — e funciona sem internet.</p>'
       + '<button class="btn pri bloco" data-acao="instalar">Instalar o app</button>';

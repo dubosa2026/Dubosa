@@ -15,7 +15,7 @@
  * Nenhum treino passa por aqui — o historico fica no armazenamento do
  * aparelho e nunca vira rede.
  */
-const CACHE = 'circuito-b5698f8b';
+const CACHE = 'circuito-2e2c4cbb';
 const ARQUIVOS = ['./', './index.html', './manifest.webmanifest',
   './icone-192.png', './icone-512.png', './icone-maskable-512.png', './apple-touch-icon.png'];
 

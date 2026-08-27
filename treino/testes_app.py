@@ -12,12 +12,41 @@ o app le a hora do sistema (`Date.now`) de proposito — e o que faz ele
 voltar no passo certo quando o celular dorme —, entao adiantar o relogio do
 navegador adianta o treino, exatamente como aconteceria de verdade.
 """
+import functools
+import http.server
 import json
+import socketserver
 import sys
+import threading
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 APP = Path(__file__).resolve().parent / "dist" / "index.html"
+
+
+def servidor():
+    """Um servidor local, porque o app publicado vive num endereço.
+
+    Rodar o teste em `file://` escondia metade do comportamento: sem
+    endereço não há service worker, o navegador nunca oferece instalação, e
+    o app (com razão) passa a dizer isso na tela — o que fazia os testes de
+    instalação medirem o caso errado. Aqui o grosso do teste roda como a
+    pessoa vai usar, por um endereço; o caso do arquivo baixado tem o seu
+    cenário próprio, no fim.
+    """
+    pasta = str(APP.parent)
+
+    class Quieto(http.server.SimpleHTTPRequestHandler):
+        # Sem isto o servidor escreve uma linha por arquivo servido e afoga
+        # o resultado do teste, que é o que alguém veio ler aqui.
+        def log_message(self, *args):
+            pass
+
+    trata = functools.partial(Quieto, directory=pasta)
+    casa = socketserver.TCPServer(("127.0.0.1", 0), trata)
+    casa.daemon_threads = True
+    threading.Thread(target=casa.serve_forever, daemon=True).start()
+    return casa, "http://127.0.0.1:%d/" % casa.server_address[1]
 
 
 def abrir_navegador(p):
@@ -58,6 +87,8 @@ def texto(pg, selecao):
     return el.inner_text().strip() if el else ""
 
 
+casa, BASE = servidor()
+
 with sync_playwright() as p:
     navegador = abrir_navegador(p)
     ctx = navegador.new_context(viewport={"width": 390, "height": 844},
@@ -67,7 +98,7 @@ with sync_playwright() as p:
     pg.on("pageerror", lambda e: erros.append(str(e)))
     pg.on("dialog", lambda d: d.accept())
     pg.clock.install()
-    pg.goto(APP.as_uri())
+    pg.goto(BASE)
     pg.wait_for_selector(".hero .valor")
 
     print("\nA tela de Hoje")
@@ -424,7 +455,7 @@ with sync_playwright() as p:
     ctx2 = navegador.new_context(viewport={"width": 390, "height": 844}, locale="pt-BR")
     p2 = ctx2.new_page()
     p2.add_init_script(RECUSA)
-    p2.goto(APP.as_uri())
+    p2.goto(BASE)
     p2.wait_for_selector(".hero .valor")
     ok("não está guardando nada" in faixa(p2),
        "armazenamento recusado: avisa já na primeira abertura", faixa(p2)[:60])
@@ -440,9 +471,10 @@ with sync_playwright() as p:
     ctx3 = navegador.new_context(viewport={"width": 390, "height": 844}, locale="pt-BR")
     p3 = ctx3.new_page()
     p3.add_init_script(ESQUECE)
-    p3.goto(APP.as_uri())
+    p3.goto(BASE)
     p3.wait_for_selector(".hero .valor")
-    ok(faixa(p3) == "", "armazenamento que esquece: nada a acusar na primeira abertura", faixa(p3)[:60])
+    ok("apagou" not in faixa(p3),
+       "armazenamento que esquece: nada a acusar na primeira abertura", faixa(p3)[:60])
     p3.click('[data-tempo="45"]')
     p3.wait_for_timeout(80)
     p3.reload()
@@ -450,6 +482,22 @@ with sync_playwright() as p:
     ok("apagou o que você tinha feito" in faixa(p3),
        "e acusa a perda exatamente quando ela acontece", faixa(p3)[:60])
     ctx3.close()
+
+    # Aberto como arquivo baixado: o botão de instalar não existe, e o app
+    # tem que dizer isso em vez de deixar a pessoa procurando.
+    ctx5 = navegador.new_context(viewport={"width": 390, "height": 844}, locale="pt-BR")
+    p5 = ctx5.new_page()
+    p5.goto(APP.as_uri())          # as_uri() é file://, que é o caso real do arquivo baixado
+    p5.wait_for_selector(".hero .valor")
+    ok("não dá para instalar assim" in faixa(p5),
+       "arquivo baixado: a faixa avisa que ali não dá para instalar", faixa(p5)[:70])
+    p5.click('[data-pane="ajustes"]')
+    p5.wait_for_timeout(150)
+    texto5 = p5.inner_text("#pane-ajustes")
+    ok("não aparece em navegador nenhum" in texto5,
+       "e os Ajustes explicam que não é limite do app", texto5[texto5.find("Instalar"):][:140])
+    ok("endereço" in texto5, "e dizem o que fazer para conseguir o botão")
+    ctx5.close()
 
     # Dentro de uma moldura: visualizador de anexo, prévia de mensagem.
     moldura = Path(__file__).resolve().parent / "dist" / "_moldura_teste.html"
@@ -459,7 +507,7 @@ with sync_playwright() as p:
     try:
         ctx4 = navegador.new_context(viewport={"width": 390, "height": 844}, locale="pt-BR")
         p4 = ctx4.new_page()
-        p4.goto(moldura.as_uri())
+        p4.goto(BASE + "_moldura_teste.html")
         dentro = p4.frame_locator("iframe")
         dentro.locator(".hero .valor").wait_for()
         ok(dentro.locator("#alerta").is_visible(), "dentro de uma moldura, avisa que é prévia")
@@ -470,6 +518,8 @@ with sync_playwright() as p:
         moldura.unlink(missing_ok=True)
 
     navegador.close()
+
+casa.shutdown()
 
 print("\n%d testes, %d falhas" % (len(feitas), len(falhas)))
 if falhas:

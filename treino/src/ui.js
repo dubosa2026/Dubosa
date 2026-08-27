@@ -102,7 +102,22 @@ function conferirArmazenamento() {
   } catch (e) {
     return 'previa';   // moldura de outro endereco: nem da para perguntar
   }
+  if (comoArquivo()) return 'arquivo';
   return 'ok';
+}
+
+/* Aberto direto do arquivo baixado, sem endereco.
+ *
+ * No Android o gerenciador de arquivos costuma abrir com `content:`; no
+ * computador e no iPhone, com `file:`. Nos tres o app funciona e nos tres o
+ * navegador se recusa a oferecer instalacao — instalar exige HTTPS,
+ * manifesto e service worker, e service worker nao existe fora de um
+ * endereco. Nao e limite do app, e regra do navegador; o que o app pode
+ * fazer e dizer isso em vez de deixar a pessoa procurando um botao que
+ * nunca vai aparecer. */
+function comoArquivo() {
+  const p = (window.location && window.location.protocol) || '';
+  return p === 'file:' || p === 'content:';
 }
 
 const ALERTAS = {
@@ -118,6 +133,13 @@ const ALERTAS = {
     texto: 'Ele aceitou salvar e esqueceu ao recarregar — é o que a aba anônima faz. '
       + 'Abra numa aba normal, ou instale o app na tela de início, para o histórico ficar.',
     acao: 'Exportar o que tenho',
+  },
+  arquivo: {
+    titulo: 'Aberto como arquivo — não dá para instalar assim',
+    texto: 'O app funciona inteiro, mas o navegador só oferece “instalar na tela de início” '
+      + 'para página com endereço (https). Abrindo o arquivo baixado, esse botão não existe '
+      + 'em navegador nenhum. Veja em Ajustes onde conseguir o endereço.',
+    acao: '',
   },
   previa: {
     titulo: 'Isto é uma prévia',
@@ -993,7 +1015,14 @@ function cartaoInstalar() {
   }
 
   let h = '<div class="cartao"><div class="bloco-cab"><b>Instalar no celular</b></div>';
-  if (convite) {
+  if (comoArquivo()) {
+    h += '<p class="ajuda" style="margin-top:4px">Você abriu o <b>arquivo baixado</b>. '
+      + 'Assim o app funciona inteiro — treino, cronômetro, histórico —, mas o botão de '
+      + 'instalar <b>não aparece em navegador nenhum</b>: instalar exige uma página com '
+      + 'endereço (https), e um arquivo não tem endereço.</p>'
+      + '<p class="ajuda">Para virar ícone na tela de início, abra o Circuito pelo endereço '
+      + 'publicado — o mesmo app, servido por um endereço. Aí este cartão mostra o botão.</p>';
+  } else if (convite) {
     h += '<p class="ajuda" style="margin:2px 0 10px">Ele vira um ícone na sua tela de início e '
       + 'abre em tela cheia, sem barra de navegador — e funciona sem internet.</p>'
       + '<button class="btn pri bloco" data-acao="instalar">Instalar o app</button>';
