@@ -35,6 +35,7 @@ const AJUSTES_PADRAO = {
   foco: 'corpo-todo',
   nivel: 2,
   local: 'apartamento',
+  altura: 0,
   som: true,
   vibrar: true,
   telaAcesa: true,
@@ -120,6 +121,10 @@ function normalizar(bruto) {
   novo.ajustes.nivel = Math.min(3, Math.max(1, Math.round(novo.ajustes.nivel)));
   novo.ajustes.minutos = Math.min(90, Math.max(5, Math.round(novo.ajustes.minutos)));
   novo.ajustes.metaSemanal = Math.min(7, Math.max(1, Math.round(novo.ajustes.metaSemanal)));
+  // Altura em centimetros. Zero quer dizer "nao disse ainda", e e por isso
+  // que o IMC some da tela em vez de aparecer errado.
+  const alt = Math.round(novo.ajustes.altura);
+  novo.ajustes.altura = (alt >= 100 && alt <= 250) ? alt : 0;
 
   novo.historico = (Array.isArray(bruto.historico) ? bruto.historico : [])
     .filter((s) => s && s.data)
@@ -137,6 +142,9 @@ function normalizar(bruto) {
     }))
     .sort((x, y) => (x.data < y.data ? 1 : (x.data > y.data ? -1 : y.quando - x.quando)));
 
+  // As medidas do corpo sao normalizadas pelo modulo delas, que conhece as
+  // faixas de cada campo. Aqui so garantimos que a lista existe.
+  novo.medidas = Array.isArray(bruto.medidas) ? bruto.medidas : [];
   novo.doDia = bruto.doDia && bruto.doDia.data ? bruto.doDia : null;
   return novo;
 }
@@ -283,6 +291,128 @@ function maisTreinados(historico, quantos) {
     .slice(0, quantos || 5);
 }
 
+/* ------------------------------------------------------------------ *
+ * Carga, tendencia e projecao                                         *
+ * ------------------------------------------------------------------ */
+
+/* O app nao mede batimento nem oxigenio: nao tem sensor e nao vai fingir
+ * que tem. O que ele mede com honestidade e VOLUME — quanto tempo de
+ * esforco, em que intensidade. E o suficiente para responder as duas
+ * perguntas que fazem alguem largar ou se machucar:
+ *
+ *   "estou treinando menos do que treinava?"
+ *   "estou aumentando rapido demais?"
+ *
+ * A carga de uma sessao e o tempo de esforco vezes o peso do nivel. Nao e
+ * fisiologia, e aritmetica declarada: 40 minutos no nivel 3 pesam mais que
+ * 40 minutos no nivel 1, e e so isso que a conta diz.
+ */
+const PESO_DO_NIVEL = { 1: 1, 2: 1.3, 3: 1.6 };
+
+function carga(sessao) {
+  if (!sessao) return 0;
+  const esforco = Number(sessao.esforco) || Number(sessao.minutos) || 0;
+  return esforco * (PESO_DO_NIVEL[sessao.nivel] || 1.3);
+}
+
+/* As ultimas `semanas` semanas, da mais antiga para a mais nova. */
+function cargaPorSemana(historico, semanas, refIso) {
+  const hoje = refIso || F.hoje();
+  const quantas = semanas || 8;
+  const linhas = [];
+  for (let i = quantas - 1; i >= 0; i -= 1) {
+    const inicio = F.somarDias(F.inicioDaSemana(hoje), -7 * i);
+    const fim = F.somarDias(inicio, 6);
+    const dentro = (historico || []).filter((s) => s.data >= inicio && s.data <= fim);
+    linhas.push({
+      inicio: inicio,
+      fim: fim,
+      treinos: dentro.length,
+      minutos: dentro.reduce((t, s) => t + (Number(s.minutos) || 0), 0),
+      carga: Math.round(dentro.reduce((t, s) => t + carga(s), 0)),
+      atual: i === 0,
+    });
+  }
+  return linhas;
+}
+
+/* Carga dos ultimos 7 dias contra a media semanal dos ultimos 28.
+ *
+ * E a razao aguda/cronica, que treinadores usam para achar o ponto entre
+ * treinar de menos e aumentar rapido demais. A leitura util nao e o numero,
+ * e a faixa: perto de 1 quer dizer "esta semana parece as ultimas", e e ali
+ * que se progride sem susto. Precisa de umas tres semanas de historico
+ * para dizer qualquer coisa — antes disso o app diz que ainda nao sabe, em
+ * vez de inventar um diagnostico.
+ */
+function tendencia(historico, refIso) {
+  const hoje = refIso || F.hoje();
+  const l = historico || [];
+  const desde = (dias) => l.filter((s) => F.diasEntre(s.data, hoje) < dias
+    && F.diasEntre(s.data, hoje) >= 0);
+
+  const aguda = desde(7).reduce((t, s) => t + carga(s), 0);
+  const cronicaTotal = desde(28).reduce((t, s) => t + carga(s), 0);
+  const cronica = cronicaTotal / 4;
+
+  const maisAntigo = l.reduce((a, s) => (!a || s.data < a ? s.data : a), null);
+  const diasDeHistorico = maisAntigo ? F.diasEntre(maisAntigo, hoje) + 1 : 0;
+  if (diasDeHistorico < 21 || cronica <= 0) {
+    return { aguda: Math.round(aguda), cronica: Math.round(cronica), razao: null,
+      faixa: 'cedo', diasDeHistorico: diasDeHistorico,
+      recado: 'Ainda é cedo para falar de tendência. Faltam '
+        + F.plural(Math.max(0, 21 - diasDeHistorico), 'dia', 'dias') + ' de histórico.' };
+  }
+
+  const razao = aguda / cronica;
+  let faixa = 'boa';
+  let recado = 'Esta semana está no mesmo ritmo das últimas. É assim que se evolui sem susto.';
+  if (razao < 0.6) {
+    faixa = 'caiu';
+    recado = 'Você treinou bem menos que o seu normal. Um treino curto já recoloca no ritmo.';
+  } else if (razao < 0.85) {
+    faixa = 'caindo';
+    recado = 'Semana mais leve que as anteriores. Se foi de propósito, ótimo — descanso também treina.';
+  } else if (razao > 1.5) {
+    faixa = 'rapido';
+    recado = 'Subiu bem mais rápido que o seu normal. É o padrão que costuma anteceder lesão: '
+      + 'segure o ritmo na próxima semana.';
+  } else if (razao > 1.25) {
+    faixa = 'subindo';
+    recado = 'Está subindo mais que o normal. Dá para manter, mas sem acelerar de novo.';
+  }
+  return { aguda: Math.round(aguda), cronica: Math.round(cronica), razao: razao,
+    faixa: faixa, diasDeHistorico: diasDeHistorico, recado: recado };
+}
+
+/* No ritmo de agora, como o mes termina.
+ *
+ * Regra de tres com o que ja passou do mes, e nada mais: nao ha modelo
+ * escondido. Nos primeiros dias do mes a projecao balanca muito, entao ela
+ * so aparece a partir do dia 5. */
+function projecaoDoMes(historico, refIso) {
+  const hoje = refIso || F.hoje();
+  const dia = Number(hoje.slice(8, 10));
+  const primeiro = hoje.slice(0, 8) + '01';
+  const noMes = (historico || []).filter((s) => s.data >= primeiro && s.data <= hoje);
+  const diasNoMes = new Date(Number(hoje.slice(0, 4)), Number(hoje.slice(5, 7)), 0).getDate();
+
+  const feitos = noMes.length;
+  const minutos = noMes.reduce((t, s) => t + (Number(s.minutos) || 0), 0);
+  if (dia < 5) {
+    return { cedo: true, dia: dia, diasNoMes: diasNoMes, treinos: feitos, minutos: minutos };
+  }
+  return {
+    cedo: false,
+    dia: dia,
+    diasNoMes: diasNoMes,
+    treinos: feitos,
+    minutos: minutos,
+    treinosProjetados: Math.round((feitos / dia) * diasNoMes),
+    minutosProjetados: Math.round((minutos / dia) * diasNoMes),
+  };
+}
+
 /* A frase do topo da tela de Hoje. Curta, verdadeira e sem empolgacao
    falsa: "voce arrasou!" para quem nao treina ha duas semanas soa como
    deboche. */
@@ -312,6 +442,7 @@ function recado(historico, ajustes, refIso) {
 const Progresso = {
   AJUSTES_PADRAO, LOCAIS_PADRAO, estadoNovo, normalizar, registrar, apagarSessao, localAtual,
   sequencia, maiorSequencia, resumo, ultimosDias, recentes, maisTreinados, recado,
+  carga, cargaPorSemana, tendencia, projecaoDoMes, PESO_DO_NIVEL,
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Progresso;

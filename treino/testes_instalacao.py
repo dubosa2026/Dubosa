@@ -21,6 +21,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent
 ARQUIVO = RAIZ / "circuito.html"
 DIST = RAIZ / "dist"
+DOCS = RAIZ.parent / "docs"
 
 falhas = []
 feitas = []
@@ -40,6 +41,16 @@ if not ARQUIVO.exists() or not (DIST / "index.html").exists():
 unico = ARQUIVO.read_text(encoding="utf-8")
 dist = (DIST / "index.html").read_text(encoding="utf-8")
 
+
+def so_marcacao(texto):
+    """O HTML sem o bloco de script.
+
+    Procurar `href="..."` no arquivo inteiro encontra também o HTML que o
+    app monta dentro do JavaScript — inclusive o link de baixar o app, que
+    é texto dentro de uma string e não uma requisição. Sem tirar o script,
+    o teste de "não pede nada à rede" acusava o próprio código."""
+    return re.sub(r"<script>.*?</script>", "", texto, flags=re.S)
+
 print("\nUm arquivo só")
 ok(len(unico) > 150_000, "o app tem tamanho de app", len(unico))
 ok(unico.count("<script>") == 1, "todo o JavaScript num bloco só", unico.count("<script>"))
@@ -49,17 +60,18 @@ ok(unico.count("data:font/woff2;base64,") == 4, "as quatro fontes, nenhuma a men
    unico.count("data:font/woff2;base64,"))
 
 # Qualquer coisa que o navegador iria buscar na rede.
-externos = re.findall(r'(?:src|href)\s*=\s*"(?!data:|#)([^"]+)"', unico)
+externos = re.findall(r'(?:src|href)\s*=\s*"(?!data:|#)([^"]+)"', so_marcacao(unico))
 ok(not externos, "o arquivo único não pede nada à rede", externos)
 
 print("\nOs módulos, todos lá dentro")
-for modulo in ["formato.js", "exercicios.js", "montador.js", "relogio.js", "progresso.js", "ui.js"]:
+for modulo in ["formato.js", "exercicios.js", "bonecos.js", "montador.js", "relogio.js",
+               "progresso.js", "corpo.js", "ui.js"]:
     ok("/* ==== %s ==== */" % modulo in unico, "%s entrou no pacote" % modulo)
 ok(unico.index("/* ==== formato.js ==== */") < unico.index("/* ==== ui.js ==== */"),
    "e na ordem de dependência")
 
 print("\nA versão publicada")
-externos_dist = re.findall(r'(?:src|href)\s*=\s*"(?!data:|#)([^"]+)"', dist)
+externos_dist = re.findall(r'(?:src|href)\s*=\s*"(?!data:|#)([^"]+)"', so_marcacao(dist))
 permitidos = {"manifest.webmanifest", "apple-touch-icon.png"}
 ok(set(externos_dist) <= permitidos, "a versão publicada só busca o manifesto e o ícone",
    set(externos_dist) - permitidos)
@@ -101,6 +113,26 @@ ok("navigate" in sw and "'reload'" in sw,
 for arquivo in re.findall(r"'\./([^']+)'", sw):
     if arquivo:
         ok((DIST / arquivo).exists(), "o cache pede %s, que existe" % arquivo)
+
+print("\nInstalar e baixar")
+ok('<meta name="circuito-arquivo"' in so_marcacao(dist),
+   "a versão publicada sabe onde está o arquivo para baixar")
+ok('<meta name="circuito-arquivo"' not in so_marcacao(unico),
+   "e a versão de arquivo único não oferece baixar o que a pessoa já tem")
+ok((DIST / "circuito.html").exists(), "a cópia de arquivo único viaja junto do site")
+ok((DIST / "circuito.html").read_text(encoding="utf-8") == unico,
+   "e é idêntica ao arquivo único")
+ok("beforeinstallprompt" in unico, "o app escuta o convite de instalação do Android")
+ok("display-mode: standalone" in unico, "e sabe quando já está instalado")
+
+print("\nA cópia para o GitHub Pages")
+ok((DOCS / "index.html").exists(), "docs/ existe, que é de onde o GitHub Pages publica")
+ok((DOCS / "index.html").read_text(encoding="utf-8") == dist,
+   "e tem exatamente a mesma página que treino/dist/")
+ok((DOCS / ".nojekyll").exists(), "com o .nojekyll que desliga o Jekyll")
+for nome in ["manifest.webmanifest", "sw.js", "icone-192.png", "icone-512.png",
+             "icone-maskable-512.png", "apple-touch-icon.png", "circuito.html"]:
+    ok((DOCS / nome).exists(), "docs/ leva %s junto" % nome)
 
 print("\nA versão muda quando o app muda")
 sys.path.insert(0, str(RAIZ))

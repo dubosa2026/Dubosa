@@ -255,6 +255,102 @@ with sync_playwright() as p:
     pg.wait_for_timeout(80)
     ok(len(estado(pg)["historico"]) == 1, "desfazer devolve a sessão")
 
+    print("\nEvolução do corpo")
+    pg.click('[data-pane="historico"]')
+    pg.wait_for_selector('[data-evo="corpo"]')
+    ok("Evolução" in pg.inner_text("#pane-historico h2"), "a aba se chama Evolução")
+    pg.click('[data-evo="corpo"]')
+    pg.wait_for_selector("#campoAltura")
+    ok("altura" in pg.inner_text("#pane-historico").lower(),
+       "sem altura, o app pede a altura antes de falar de IMC")
+
+    pg.fill("#campoAltura", "178")
+    pg.click('[data-acao="salvar-altura"]')
+    pg.wait_for_timeout(120)
+    ok(estado(pg)["ajustes"]["altura"] == 178, "a altura é guardada")
+
+    pg.fill('[data-medida="peso"]', "84,2")
+    pg.fill('[data-medida="cintura"]', "95")
+    pg.click('[data-acao="anotar"]')
+    pg.wait_for_timeout(150)
+    medidas = estado(pg)["medidas"]
+    ok(len(medidas) == 1, "a anotação entrou", medidas)
+    ok(medidas[0]["peso"] == 84.2, "e a vírgula do teclado brasileiro virou número",
+       medidas[0].get("peso"))
+    ok("26,6" in pg.inner_text("#pane-historico"), "o IMC aparece calculado",
+       pg.inner_text("#pane-historico")[:80])
+    ok("músculo" in pg.inner_text("#pane-historico"),
+       "com a ressalva de que ele não sabe o que é músculo")
+
+    # Anotar de novo no mesmo dia corrige, não duplica.
+    pg.fill('[data-medida="peso"]', "83,9")
+    pg.click('[data-acao="anotar"]')
+    pg.wait_for_timeout(150)
+    ok(len(estado(pg)["medidas"]) == 1, "anotar de novo hoje não cria segunda linha")
+    ok(estado(pg)["medidas"][0]["peso"] == 83.9, "e o valor novo é o que vale")
+    ok(estado(pg)["medidas"][0]["cintura"] == 95,
+       "sem apagar a cintura que já estava lá", estado(pg)["medidas"][0])
+
+    pg.fill('[data-medida="peso"]', "999")
+    pg.click('[data-acao="anotar"]')
+    pg.wait_for_timeout(120)
+    ok(estado(pg)["medidas"][0]["peso"] == 83.9, "999 kg não entra")
+
+    # Duas anotações em dias diferentes: a linha do gráfico aparece.
+    pg.evaluate("""() => {
+      const e = JSON.parse(localStorage.getItem('circuito.v1'));
+      const d = new Date(); d.setDate(d.getDate() - 20);
+      const p = x => String(x).padStart(2, '0');
+      e.medidas.push({ id: 'antiga', peso: 86.5, cintura: 97,
+        data: d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate()) });
+      localStorage.setItem('circuito.v1', JSON.stringify(e));
+    }""")
+    pg.reload()
+    pg.wait_for_selector(".hero .valor")
+    pg.click('[data-pane="historico"]')
+    pg.click('[data-evo="corpo"]')
+    pg.wait_for_timeout(150)
+    ok(pg.query_selector(".linha-grafico") is not None, "com duas anotações, o gráfico aparece")
+    ok("-2,6 kg" in pg.inner_text("#pane-historico"),
+       "e a variação do mês aparece escrita", pg.inner_text("#pane-historico")[-400:])
+
+    pg.click('[data-campo="cintura"]')
+    pg.wait_for_timeout(120)
+    ok(pg.get_attribute('[data-campo="cintura"]', "aria-pressed") == "true",
+       "dá para trocar o gráfico para a cintura")
+
+    pg.click("[data-apagar-medida]")
+    pg.wait_for_timeout(150)
+    ok(len(estado(pg)["medidas"]) == 1, "apagar uma anotação funciona")
+    pg.click(".toast button")
+    pg.wait_for_timeout(150)
+    ok(len(estado(pg)["medidas"]) == 2, "desfazer devolve")
+
+    print("\nCarga e projeção")
+    pg.click('[data-evo="treinos"]')
+    pg.wait_for_timeout(150)
+    texto_evo = pg.inner_text("#pane-historico")
+    ok("Carga das últimas 8 semanas" in texto_evo, "a carga das semanas aparece")
+    ok(len(pg.query_selector_all(".semanas i")) == 8, "com oito barras")
+    ok("Tendência" in texto_evo, "a tendência aparece")
+    ok("cedo para falar de tendência" in texto_evo,
+       "e com pouco histórico ela diz que ainda é cedo, em vez de inventar",
+       texto_evo[texto_evo.find("Tend"):][:120])
+    ok("Este mês" in texto_evo, "e a projeção do mês")
+
+    print("\nInstalar no celular")
+    pg.click('[data-pane="ajustes"]')
+    pg.wait_for_timeout(150)
+    ajustes = pg.inner_text("#pane-ajustes")
+    ok("Instalar no celular" in ajustes, "o cartão de instalar aparece nos Ajustes")
+    ok("Chrome do Android" in ajustes,
+       "e sem o convite do navegador ele ensina onde conseguir o botão")
+    baixar = pg.query_selector('#pane-ajustes a[download]')
+    ok(baixar is not None, "a versão publicada oferece baixar o programa")
+    ok(baixar and baixar.get_attribute("href") == "circuito.html",
+       "apontando para o arquivo que o build deixou do lado",
+       baixar and baixar.get_attribute("href"))
+
     print("\nParar no meio")
     pg.click('[data-pane="hoje"]')
     pg.wait_for_selector("#btnComecar")

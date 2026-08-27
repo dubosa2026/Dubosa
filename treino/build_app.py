@@ -27,6 +27,11 @@ FONTES = SRC / "fonts"
 ICONES = SRC / "icones"
 SAIDA_ARQUIVO = RAIZ / "circuito.html"
 DIST = RAIZ / "dist"
+# O GitHub Pages so publica a raiz do repositorio ou uma pasta chamada
+# `docs/`. Como o app precisa de um endereco para ser aberto no celular e
+# instalado com um toque, o build escreve nos dois lugares. O conteudo e
+# identico.
+DOCS = RAIZ.parent / "docs"
 
 # A marca, embutida como data URI. Sem ela o navegador pede /favicon.ico em
 # toda visita e leva 404 — e este app fica aberto na tela de inicio do
@@ -43,9 +48,9 @@ FAVICON = (
 )
 
 # Ordem importa: cada arquivo usa os anteriores.
-# formato -> exercicios -> bonecos -> montador -> relogio -> progresso -> ui.
+# formato -> exercicios -> bonecos -> montador -> relogio -> progresso -> corpo -> ui.
 MODULOS = ["formato.js", "exercicios.js", "bonecos.js", "montador.js", "relogio.js",
-           "progresso.js", "ui.js"]
+           "progresso.js", "corpo.js", "ui.js"]
 
 SUBSTITUICOES = {
     "__ARCHIVO__": "archivo-var.woff2",
@@ -157,6 +162,7 @@ ESQUELETO = """<!doctype html>
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Circuito">
 <meta name="circuito-versao" content="{versao}">
+{extra_meta}
 <link rel="icon" href="{favicon}">
 {extra_head}
 {cabeca}
@@ -197,7 +203,8 @@ def b64(nome: str) -> str:
     return base64.b64encode((FONTES / nome).read_bytes()).decode("ascii")
 
 
-def montar(shell: str, extra_head: str, extra_body: str, versao: str) -> str:
+def montar(shell: str, extra_head: str, extra_body: str, versao: str,
+           extra_meta: str = "") -> str:
     corte = shell.index("</style>") + len("</style>")
     cabeca, corpo = shell[:corte], shell[corte:]
 
@@ -213,6 +220,7 @@ def montar(shell: str, extra_head: str, extra_body: str, versao: str) -> str:
     return ESQUELETO.format(
         favicon=FAVICON,
         versao=versao,
+        extra_meta=extra_meta,
         extra_head=extra_head,
         cabeca=cabeca,
         corpo=corpo + "\n" + script,
@@ -228,26 +236,39 @@ def main() -> None:
 
     # Versao arquivo unico: nada de manifesto nem service worker, que
     # dependem de um servidor e so renderiam 404 no console.
-    SAIDA_ARQUIVO.write_text(montar(shell, "", "", versao), encoding="utf-8")
+    SAIDA_ARQUIVO.write_text(montar(shell, "", "", versao, ""), encoding="utf-8")
 
     # O iPhone ignora o manifesto para o icone da tela de inicio: ele quer o
     # `apple-touch-icon`, e so em PNG. Sem esta linha, o Safari recorta a
     # propria tela do app e usa como icone.
     cabeca_dist = ('<link rel="manifest" href="manifest.webmanifest">\n'
                    '<link rel="apple-touch-icon" href="apple-touch-icon.png">')
-    html_dist = montar(shell, cabeca_dist, REGISTRO_SW, versao)
+    # Esta marca e o que faz o botao "baixar o app" aparecer: ele so tem
+    # sentido na versao publicada, onde existe um arquivo do lado para
+    # baixar. Na versao de arquivo unico a pessoa JA esta com o arquivo na
+    # mao, e o botao seria um convite a baixar o que ela ja tem.
+    html_dist = montar(shell, cabeca_dist, REGISTRO_SW, versao,
+                       '<meta name="circuito-arquivo" content="circuito.html">')
 
-    DIST.mkdir(parents=True, exist_ok=True)
-    for nome in COPIAR:
-        shutil.copy2(ICONES / nome, DIST / nome)
-    (DIST / "index.html").write_text(html_dist, encoding="utf-8")
-    (DIST / "manifest.webmanifest").write_text(
-        json.dumps(MANIFESTO, ensure_ascii=False, indent=2), encoding="utf-8")
-    (DIST / "sw.js").write_text(SERVICE_WORKER.replace("__VERSAO__", versao), encoding="utf-8")
+    for pasta in (DIST, DOCS):
+        pasta.mkdir(parents=True, exist_ok=True)
+        for nome in COPIAR:
+            shutil.copy2(ICONES / nome, pasta / nome)
+        (pasta / "index.html").write_text(html_dist, encoding="utf-8")
+        (pasta / "manifest.webmanifest").write_text(
+            json.dumps(MANIFESTO, ensure_ascii=False, indent=2), encoding="utf-8")
+        (pasta / "sw.js").write_text(SERVICE_WORKER.replace("__VERSAO__", versao), encoding="utf-8")
+        # A copia de arquivo unico viaja junto: quem abrir a pagina pode
+        # baixar o app inteiro e continuar usando sem servidor nenhum.
+        shutil.copy2(SAIDA_ARQUIVO, pasta / "circuito.html")
 
-    for arq in (SAIDA_ARQUIVO, DIST / "index.html"):
+    # O GitHub Pages passa tudo pelo Jekyll por padrao, que ignora arquivo
+    # comecado por ponto ou sublinhado. Este arquivo vazio o desliga.
+    (DOCS / ".nojekyll").write_text("", encoding="utf-8")
+
+    for arq in (SAIDA_ARQUIVO, DIST / "index.html", DOCS / "index.html"):
         print("%-28s %6.0f KB" % (arq.relative_to(RAIZ.parent), arq.stat().st_size / 1024))
-    print("(+ manifesto, service worker e ícones em treino/dist/)")
+    print("(+ manifesto, service worker, ícones e cópia do arquivo em treino/dist/ e docs/)")
     print("versão: %s" % versao)
 
 

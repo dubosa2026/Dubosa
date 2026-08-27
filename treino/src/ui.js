@@ -12,7 +12,7 @@
 
 /* eslint-disable no-undef */
 const F = window.Formato, X = window.Exercicios, M = window.Montador,
-  R = window.Relogio, P = window.Progresso, D = window.Bonecos;
+  R = window.Relogio, P = window.Progresso, D = window.Bonecos, C = window.Corpo;
 
 const CHAVE = 'circuito.v1';
 const MARCA = CHAVE + '.gravou';
@@ -24,6 +24,8 @@ let sessao = null;          // o treino em andamento, ou null
 let audio = null;
 let travaTela = null;
 let filtro = { texto: '', equipamento: '', grupo: '' };
+let abaEvolucao = 'treinos';   // treinos | corpo
+let campoGrafico = 'peso';
 
 const $ = (id) => document.getElementById(id);
 
@@ -40,6 +42,7 @@ function carregar() {
   try {
     const cru = localStorage.getItem(CHAVE);
     estado = P.normalizar(cru ? JSON.parse(cru) : null);
+    estado.medidas = C.normalizarMedidas(estado.medidas);
   } catch (e) {
     estado = P.estadoNovo();
   }
@@ -473,18 +476,68 @@ function fecharFicha() {
   $('folha').hidden = true;
 }
 
+/* Um gráfico de linha simples, em SVG.
+ *
+ * Sem biblioteca: são vinte linhas de regra de três, e uma biblioteca de
+ * gráfico custaria mais que o app inteiro. A escala nunca começa no zero —
+ * num gráfico de peso, o zero espreme oitenta quilos numa faixa de um
+ * pixel e esconde justamente a variação que a pessoa quer ver. */
+function graficoDeLinha(pontos, opcoes) {
+  const o = opcoes || {};
+  if (!pontos || pontos.length < 2) {
+    return '<div class="vazio">' + esc(o.vazio || 'Duas anotações e o gráfico aparece.') + '</div>';
+  }
+  const larg = 300, alt = 108, pad = 14;
+  const valores = pontos.map((p) => p.valor);
+  let min = Math.min.apply(null, valores);
+  let max = Math.max.apply(null, valores);
+  if (max === min) { max += 1; min -= 1; }
+  const folga = (max - min) * 0.18;
+  min -= folga; max += folga;
+
+  const x = (i) => pad + (i / (pontos.length - 1)) * (larg - pad * 2);
+  const y = (v) => pad + (1 - (v - min) / (max - min)) * (alt - pad * 2);
+
+  const linha = pontos.map((p, i) => x(i).toFixed(1) + ',' + y(p.valor).toFixed(1)).join(' ');
+  const area = pad + ',' + (alt - pad) + ' ' + linha + ' ' + (larg - pad) + ',' + (alt - pad);
+  const bolinhas = pontos.map((p, i) =>
+    '<circle class="ponto" cx="' + x(i).toFixed(1) + '" cy="' + y(p.valor).toFixed(1) + '" r="2.6"/>').join('');
+
+  const casas = o.casas === undefined ? 1 : o.casas;
+  return '<svg class="linha-grafico" viewBox="0 0 ' + larg + ' ' + alt + '" preserveAspectRatio="none">'
+    + '<polyline class="area" points="' + area + '"/>'
+    + '<polyline class="traco" points="' + linha + '"/>' + bolinhas
+    + '</svg>'
+    + '<div class="eixo"><span>' + esc(F.dataCurta(pontos[0].data)) + '</span>'
+    + '<span>' + valores[valores.length - 1].toFixed(casas).replace('.', ',')
+    + ' ' + esc(o.unidade || '') + '</span>'
+    + '<span>' + esc(F.dataCurta(pontos[pontos.length - 1].data)) + '</span></div>';
+}
+
 /* ------------------------------------------------------------------ *
- * Aba: Histórico                                                      *
+ * Aba: Evolução                                                       *
  * ------------------------------------------------------------------ */
 function telaHistorico() {
+  const pane = $('pane-historico');
+  const cabeca = '<h2>Evolução</h2><p class="sub">O que ficou registrado neste aparelho.</p>'
+    + '<div class="seg">'
+    + '<button type="button" data-evo="treinos" aria-selected="' + (abaEvolucao === 'treinos') + '">Treino</button>'
+    + '<button type="button" data-evo="corpo" aria-selected="' + (abaEvolucao === 'corpo') + '">Corpo</button>'
+    + '</div>';
+  pane.innerHTML = cabeca + (abaEvolucao === 'corpo' ? ladoCorpo() : ladoTreinos());
+  pane.querySelectorAll('[data-evo]').forEach((b) => {
+    b.onclick = () => { abaEvolucao = b.dataset.evo; telaHistorico(); };
+  });
+  if (abaEvolucao === 'corpo') ligarCorpo(pane); else ligarTreinos(pane);
+}
+
+function ladoTreinos() {
   const r = P.resumo(estado.historico);
   const dias = P.ultimosDias(estado.historico, 14);
   const teto = Math.max(30, ...dias.map((d) => d.minutos));
   const meta = estado.ajustes.metaSemanal;
 
-  let h = '<h2>Histórico</h2><p class="sub">O que ficou registrado neste aparelho.</p>';
-
-  h += '<div class="linhas" style="margin-bottom:14px">'
+  let h = '<div class="linhas" style="margin-bottom:14px">'
     + '<div class="mini' + (r.sequencia ? ' viva' : '') + '"><b>' + r.sequencia + '</b><small>dias seguidos</small></div>'
     + '<div class="mini' + (r.semana.treinos >= meta ? ' bom' : '') + '"><b>' + r.semana.treinos + '/' + meta
     + '</b><small>na semana</small></div>'
@@ -499,6 +552,47 @@ function telaHistorico() {
       + ' title="' + esc(F.dataCurta(d.data)) + '"></i>').join('')
     + '</div><div class="eixo"><span>' + esc(F.dataCurta(dias[0].data)) + '</span><span>hoje</span></div>'
     + '</div>';
+
+  // --- carga das semanas ---
+  const semanas = P.cargaPorSemana(estado.historico, 8);
+  const tetoCarga = Math.max(10, ...semanas.map((x) => x.carga));
+  h += '<div class="cartao"><div class="bloco-cab"><b>Carga das últimas 8 semanas</b>'
+    + '<small>' + semanas[semanas.length - 1].carga + ' esta semana</small></div>'
+    + '<div class="semanas">'
+    + semanas.map((x) => '<i class="' + (x.carga ? 'tem' : '') + (x.atual ? ' agora' : '')
+      + '" style="height:' + Math.max(3, Math.round((x.carga / tetoCarga) * 86)) + 'px"'
+      + ' title="' + esc(F.dataCurta(x.inicio)) + ': ' + x.carga + '"></i>').join('')
+    + '</div><div class="eixo"><span>' + esc(F.dataCurta(semanas[0].inicio))
+    + '</span><span>esta semana</span></div>'
+    + '<p class="ajuda">Carga é o tempo de esforço multiplicado pelo peso do nível. '
+    + 'Serve para comparar semanas entre si, não com as de outra pessoa.</p></div>';
+
+  // --- tendencia ---
+  const t = P.tendencia(estado.historico);
+  h += '<div class="cartao"><div class="bloco-cab"><b>Tendência</b></div>'
+    + '<div class="tend" style="margin-top:10px"><div class="bolha ' + esc(t.faixa) + '">'
+    + (t.razao === null ? '—' : t.razao.toFixed(2).replace('.', ','))
+    + '</div><p>' + esc(t.recado) + '</p></div>'
+    + (t.razao === null ? ''
+      : '<p class="ajuda">' + t.aguda + ' nos últimos 7 dias contra ' + t.cronica
+        + ' de média semanal no último mês. Perto de 1 é onde se progride sem susto.</p>')
+    + '</div>';
+
+  // --- projecao do mes ---
+  const pj = P.projecaoDoMes(estado.historico);
+  h += '<div class="cartao"><div class="bloco-cab"><b>Este mês</b>'
+    + '<small>dia ' + pj.dia + ' de ' + pj.diasNoMes + '</small></div>';
+  if (pj.cedo) {
+    h += '<p class="ajuda" style="margin-top:6px">' + F.plural(pj.treinos, 'treino', 'treinos')
+      + ' até agora. A projeção aparece a partir do dia 5 — antes disso ela só balança.</p>';
+  } else {
+    h += '<div class="linhas" style="margin-top:10px">'
+      + '<div class="mini"><b>' + pj.treinos + '</b><small>treinos até agora</small></div>'
+      + '<div class="mini viva"><b>' + pj.treinosProjetados + '</b><small>no ritmo de hoje</small></div>'
+      + '<div class="mini"><b>' + pj.minutosProjetados + '</b><small>min projetados</small></div>'
+      + '</div><p class="ajuda">Regra de três com o que já passou do mês. Nada além disso.</p>';
+  }
+  h += '</div>';
 
   const top = P.maisTreinados(estado.historico, 5);
   if (top.length) {
@@ -524,9 +618,10 @@ function telaHistorico() {
       + '</div>').join('');
   }
   h += '</div>';
+  return h;
+}
 
-  const pane = $('pane-historico');
-  pane.innerHTML = h;
+function ligarTreinos(pane) {
   pane.querySelectorAll('[data-apagar]').forEach((b) => {
     b.onclick = () => {
       const id = b.dataset.apagar;
@@ -537,6 +632,150 @@ function telaHistorico() {
       aviso('Sessão apagada', '', '', {
         texto: 'Desfazer',
         fazer: () => { estado.historico = copia; salvar(); desenhar(); },
+      });
+    };
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * Evolução do corpo                                                   *
+ * ------------------------------------------------------------------ */
+function ladoCorpo() {
+  const altura = estado.ajustes.altura;
+  const r = C.retrato(estado.medidas, altura);
+  let h = '';
+
+  // --- o cartão do IMC ---
+  if (!altura) {
+    h += '<div class="cartao"><div class="bloco-cab"><b>Sua altura</b></div>'
+      + '<p class="ajuda" style="margin:2px 0 10px">Ela quase não muda, então fica guardada '
+      + 'e você não digita de novo. Sem ela o app não calcula o IMC.</p>'
+      + '<div class="campo"><input id="campoAltura" type="number" inputmode="numeric" '
+      + 'placeholder="Altura em cm, ex. 178" min="100" max="250"></div>'
+      + '<button class="btn pri bloco" data-acao="salvar-altura">Guardar altura</button></div>';
+  } else if (r.imc) {
+    const marca = Math.max(0, Math.min(100, ((r.imc - 15) / 25) * 100));
+    h += '<div class="cartao destaque hero" style="padding-bottom:14px">'
+      + '<div class="rotulo">IMC</div>'
+      + '<div class="valor">' + r.imc.toFixed(1).replace('.', ',') + '</div>'
+      + '<div class="apoio">' + esc(F.maiuscula(r.faixa.nome)) + '</div>'
+      + '<div class="imc-faixa"><b style="left:calc(' + marca.toFixed(1) + '% - 2px)"></b></div>'
+      + '<div class="eixo"><span>15</span><span>18,5</span><span>25</span><span>30</span><span>40</span></div>'
+      + '</div>'
+      + '<div class="cartao"><p class="ajuda" style="margin:0">'
+      + 'O IMC divide peso por altura e <b>não sabe o que é músculo</b>. Quem começa a treinar '
+      + 'às vezes ganha peso e “piora” no IMC enquanto melhora de verdade. '
+      + (r.referencia ? 'Para ' + altura + ' cm, a faixa normal vai de '
+        + r.referencia.de.toFixed(0) + ' a ' + r.referencia.ate.toFixed(0)
+        + ' kg — referência, não meta. ' : '')
+      + 'A cintura responde melhor à pergunta que você está fazendo.</p></div>';
+  } else {
+    h += '<div class="cartao"><div class="bloco-cab"><b>Anote seu peso</b></div>'
+      + '<p class="ajuda" style="margin-top:4px">Com a altura já guardada (' + altura
+      + ' cm), o IMC aparece assim que houver um peso.</p></div>';
+  }
+
+  // --- anotar ---
+  h += '<div class="cartao"><div class="bloco-cab"><b>Anotar hoje</b>'
+    + '<small>' + esc(F.dataCurta(F.hoje())) + '</small></div>'
+    + '<p class="ajuda" style="margin:2px 0 10px">Preencha só o que mediu. '
+    + 'Anotar de novo hoje corrige a anotação de hoje, não cria outra.</p>'
+    + '<div class="medida-linha">'
+    // `type="text"` de proposito, com teclado decimal. O `type="number"` do
+    // navegador RECUSA a virgula: no teclado brasileiro a pessoa digita
+    // "84,2", o campo devolve vazio e a anotacao some sem nenhum aviso.
+    // Aqui o texto entra como veio e o modulo do corpo troca a virgula por
+    // ponto, que e onde essa conversao tem que morar.
+    + C.CAMPOS.map((c) => '<div class="campo"><label>' + esc(c.nome) + ' (' + c.unidade + ')</label>'
+      + '<input type="text" inputmode="decimal" autocomplete="off" data-medida="' + c.id + '" '
+      + 'placeholder="' + (r[c.id] ? String(r[c.id][c.id]).replace('.', ',') : '—') + '"></div>').join('')
+    + '</div>'
+    + '<button class="btn pri bloco" data-acao="anotar">Anotar</button></div>';
+
+  // --- o gráfico ---
+  const serie = C.serie(estado.medidas, campoGrafico);
+  const campo = C.campoPorId(campoGrafico);
+  h += '<div class="cartao"><div class="bloco-cab"><b>Evolução</b></div>'
+    + '<div class="opcoes chips" style="margin:8px 0 6px">'
+    + C.CAMPOS.map((c) => '<button type="button" data-campo="' + c.id + '" aria-pressed="'
+      + (campoGrafico === c.id) + '">' + esc(c.nome) + '</button>').join('')
+    + '</div>'
+    + graficoDeLinha(serie, { unidade: campo.unidade, casas: campo.casas,
+      vazio: 'Duas anotações de ' + campo.nome.toLowerCase() + ' e a linha aparece.' });
+
+  const v = campoGrafico === 'cintura' ? r.variacaoCintura
+    : (campoGrafico === 'peso' ? r.variacaoPeso : C.variacao(estado.medidas, campoGrafico));
+  if (v) {
+    const sinal = v.diferenca > 0 ? '+' : '';
+    h += '<p class="ajuda">' + sinal + v.diferenca.toFixed(campo.casas).replace('.', ',') + ' '
+      + campo.unidade + ' em ' + F.plural(v.dias, 'dia', 'dias') + ' — '
+      + sinal + (v.porSemana).toFixed(1).replace('.', ',') + ' ' + campo.unidade + ' por semana.</p>';
+  }
+  h += '</div>';
+
+  // --- a lista ---
+  h += '<div class="secao"><h3>Anotações</h3></div><div class="cartao">';
+  if (!(estado.medidas || []).length) {
+    h += '<div class="vazio">Nada anotado ainda.</div>';
+  } else {
+    h += estado.medidas.slice(0, 40).map((m) => '<div class="item">'
+      + '<div class="txt"><b>' + esc(F.maiuscula(F.dataAmigavel(m.data))) + '</b><small>'
+      + esc(C.CAMPOS.filter((c) => m[c.id] !== undefined)
+        .map((c) => c.nome.toLowerCase() + ' ' + String(m[c.id]).replace('.', ',') + ' ' + c.unidade)
+        .join(' · ')) + '</small></div>'
+      + '<div class="val"><button class="btn peq" data-apagar-medida="' + esc(m.id) + '">apagar</button></div>'
+      + '</div>').join('');
+  }
+  h += '</div>';
+
+  if (altura) {
+    h += '<div class="cartao"><div class="troca"><div class="txt"><b>Altura</b>'
+      + '<small>Usada só para o IMC</small></div>'
+      + '<div style="width:110px"><input id="campoAltura" type="number" inputmode="numeric" '
+      + 'value="' + altura + '" min="100" max="250"></div></div>'
+      + '<button class="btn peq" data-acao="salvar-altura" style="margin-top:10px">Guardar altura</button>'
+      + '</div>';
+  }
+  return h;
+}
+
+function ligarCorpo(pane) {
+  const botaoAltura = pane.querySelector('[data-acao="salvar-altura"]');
+  if (botaoAltura) {
+    botaoAltura.onclick = () => {
+      const v = Math.round(Number($('campoAltura').value));
+      if (!(v >= 100 && v <= 250)) { aviso('Altura fora do esperado', 'Entre 100 e 250 cm.', 'ruim'); return; }
+      estado.ajustes.altura = v;
+      salvar();
+      desenhar();
+      aviso('Altura guardada', 'Agora o IMC aparece com o peso.', 'bom');
+    };
+  }
+  pane.querySelectorAll('[data-campo]').forEach((b) => {
+    b.onclick = () => { campoGrafico = b.dataset.campo; telaHistorico(); };
+  });
+  const anotar = pane.querySelector('[data-acao="anotar"]');
+  if (anotar) {
+    anotar.onclick = () => {
+      const bruta = { data: F.hoje() };
+      pane.querySelectorAll('[data-medida]').forEach((i) => { bruta[i.dataset.medida] = i.value; });
+      const novo = C.anotar(estado, bruta);
+      if (!novo) { aviso('Nada para anotar', 'Preencha ao menos um campo com um número plausível.', 'ruim'); return; }
+      estado = novo;
+      salvar();
+      desenhar();
+      aviso('Anotado', F.dataCurta(F.hoje()) + ' guardado.', 'bom');
+    };
+  }
+  pane.querySelectorAll('[data-apagar-medida]').forEach((b) => {
+    b.onclick = () => {
+      const antes = (estado.medidas || []).slice();
+      estado = C.apagar(estado, b.dataset.apagarMedida);
+      salvar();
+      desenhar();
+      aviso('Anotação apagada', '', '', {
+        texto: 'Desfazer',
+        fazer: () => { estado.medidas = antes; salvar(); desenhar(); },
       });
     };
   });
@@ -594,6 +833,8 @@ function telaAjustes() {
       + (a.metaSemanal === n) + '">' + n + '</button>').join('')
     + '</div><p class="ajuda">Treinos por semana. A semana começa na segunda.</p></div>';
 
+  h += cartaoInstalar();
+
   h += '<div class="cartao"><div class="bloco-cab"><b>Seus dados</b></div>'
     + '<p class="ajuda" style="margin:2px 0 12px">Nada sai deste aparelho. Se trocar de celular ou '
     + 'limpar o navegador, o histórico vai junto — exporte antes.</p>'
@@ -640,6 +881,8 @@ function telaAjustes() {
   pane.querySelectorAll('input[data-ligar]').forEach((c) => {
     c.onchange = () => { estado.ajustes[c.dataset.ligar] = c.checked; salvar(); desenhar(); };
   });
+  const bi = pane.querySelector('[data-acao="instalar"]');
+  if (bi) bi.onclick = instalar;
   pane.querySelector('[data-acao="exportar"]').onclick = exportar;
   pane.querySelector('[data-acao="importar"]').onclick = () => $('arquivo').click();
   pane.querySelector('[data-acao="apagar"]').onclick = () => {
@@ -675,6 +918,7 @@ function importar(ev) {
   leitor.onload = () => {
     try {
       estado = P.normalizar(JSON.parse(String(leitor.result)));
+      estado.medidas = C.normalizarMedidas(estado.medidas);
       salvar();
       desenhar();
       aviso('Dados importados', F.plural(estado.historico.length, 'treino', 'treinos') + ' no histórico.', 'bom');
@@ -684,6 +928,94 @@ function importar(ev) {
   };
   leitor.readAsText(arq);
   ev.target.value = '';
+}
+
+/* ------------------------------------------------------------------ *
+ * Instalar na tela de inicio                                          *
+ * ------------------------------------------------------------------ */
+
+/* O Android avisa que da para instalar disparando `beforeinstallprompt` —
+ * uma vez so, e antes de a tela existir. Por isso o convite e guardado
+ * assim que chega, e o botao dos Ajustes so o usa depois. Perder esse
+ * evento significa nunca mais poder oferecer a instalacao nesta visita.
+ *
+ * O iPhone nao dispara nada: la a instalacao e manual, pelo botao de
+ * compartilhar. Entao o app detecta o Safari e ensina o caminho em vez de
+ * mostrar um botao que nao faria nada.
+ */
+let convite = null;
+
+function instalado() {
+  try {
+    return window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+  } catch (e) { return false; }
+}
+
+function noIphone() {
+  const ua = navigator.userAgent || '';
+  return /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+}
+
+function ligarInstalacao() {
+  window.addEventListener('beforeinstallprompt', (ev) => {
+    ev.preventDefault();
+    convite = ev;
+    if (aba === 'ajustes') desenhar();
+  });
+  window.addEventListener('appinstalled', () => {
+    convite = null;
+    desenhar();
+    aviso('Instalado', 'Agora ele abre pelo ícone, em tela cheia.', 'bom');
+  });
+}
+
+function instalar() {
+  if (!convite) return;
+  convite.prompt();
+  convite.userChoice.then((escolha) => {
+    if (escolha && escolha.outcome === 'accepted') convite = null;
+    desenhar();
+  }).catch(() => {});
+}
+
+/* O endereco do arquivo unico, quando existe um do lado. */
+function arquivoParaBaixar() {
+  const m = document.querySelector('meta[name="circuito-arquivo"]');
+  return m ? m.content : '';
+}
+
+function cartaoInstalar() {
+  if (instalado()) {
+    return '<div class="cartao"><div class="bloco-cab"><b>Instalado</b></div>'
+      + '<p class="ajuda" style="margin-top:4px">Você está usando o Circuito como aplicativo: '
+      + 'tela cheia, sem barra de navegador, e ele abre sem internet.</p></div>';
+  }
+
+  let h = '<div class="cartao"><div class="bloco-cab"><b>Instalar no celular</b></div>';
+  if (convite) {
+    h += '<p class="ajuda" style="margin:2px 0 10px">Ele vira um ícone na sua tela de início e '
+      + 'abre em tela cheia, sem barra de navegador — e funciona sem internet.</p>'
+      + '<button class="btn pri bloco" data-acao="instalar">Instalar o app</button>';
+  } else if (noIphone()) {
+    h += '<p class="ajuda" style="margin-top:4px">No iPhone a instalação é manual: toque em '
+      + '<b>Compartilhar</b> (o quadrado com a seta para cima), role e escolha '
+      + '<b>Adicionar à Tela de Início</b>. Depois ele abre pelo ícone, em tela cheia.</p>';
+  } else {
+    h += '<p class="ajuda" style="margin-top:4px">Abra este endereço no <b>Chrome do Android</b> '
+      + 'e o botão de instalar aparece aqui. No computador, o ícone de instalar fica na barra de '
+      + 'endereço. Abrindo o arquivo direto (sem endereço), não dá para instalar — mas o app '
+      + 'funciona igual.</p>';
+  }
+
+  const arquivo = arquivoParaBaixar();
+  if (arquivo) {
+    h += '<div class="troca" style="margin-top:12px;border-top:1px solid var(--line);'
+      + 'border-bottom:0;padding-top:14px"><div class="txt"><b>Baixar o programa</b>'
+      + '<small>O app inteiro num arquivo só, para guardar ou passar adiante</small></div></div>'
+      + '<a class="btn bloco" href="' + esc(arquivo) + '" download="circuito.html">Baixar o arquivo</a>';
+  }
+  return h + '</div>';
 }
 
 /* ------------------------------------------------------------------ *
@@ -986,6 +1318,7 @@ function desenhar() {
 function ligar() {
   carregar();
   armazenamento = conferirArmazenamento();
+  ligarInstalacao();
 
   document.querySelectorAll('.aba').forEach((b) => {
     b.onclick = () => { aba = b.dataset.pane; desenhar(); };

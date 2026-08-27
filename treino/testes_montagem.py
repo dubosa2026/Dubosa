@@ -40,7 +40,9 @@ def rodar(js):
         "const X=require('%s/exercicios.js');"
         "const M=require('%s/montador.js');"
         "const R=require('%s/relogio.js');"
-        "const P=require('%s/progresso.js');" % (SRC, SRC, SRC, SRC, SRC)
+        "const P=require('%s/progresso.js');"
+        "const B=require('%s/bonecos.js');"
+        "const C=require('%s/corpo.js');" % (SRC, SRC, SRC, SRC, SRC, SRC, SRC)
     ) + js
     r = subprocess.run(["node", "-e", programa], capture_output=True, text=True)
     if r.returncode != 0:
@@ -351,6 +353,183 @@ ok(migrado["locais"]["apartamento"]["semImpacto"] is True,
 ok(len(migrado["locais"]["academia"]["equipamentos"]) >= 6,
    "a academia dele ganha os pesos que sempre existiram lá")
 ok(migrado["minutos"] == 45 and migrado["nivel"] == 3, "o resto dos ajustes sobrevive à migração")
+
+# ------------------------------------------------------------------
+# 8. O corpo: medidas e IMC
+# ------------------------------------------------------------------
+print("\nMedidas e IMC")
+
+imcs = rodar(
+    "console.log(JSON.stringify([[82,178],[95,170],[54,178],[70,175]]"
+    ".map(([p,a])=>({valor:C.imc(p,a), faixa:C.faixaDoImc(C.imc(p,a)).nome}))));"
+)
+ok(abs(imcs[0]["valor"] - 82 / 1.78 ** 2) < 0.01, "o IMC é peso dividido pela altura ao quadrado",
+   imcs[0]["valor"])
+ok(imcs[0]["faixa"] == "sobrepeso", "25,9 é sobrepeso", imcs[0]["faixa"])
+ok(imcs[1]["faixa"] == "obesidade grau 1", "32,9 é obesidade grau 1", imcs[1]["faixa"])
+ok(imcs[2]["faixa"] == "abaixo do peso", "17,0 é abaixo do peso", imcs[2]["faixa"])
+ok(imcs[3]["faixa"] == "peso normal", "22,9 é peso normal", imcs[3]["faixa"])
+
+# As viradas exatas das faixas da OMS.
+bordas = rodar("console.log(JSON.stringify([18.4,18.5,24.9,25,29.9,30]"
+               ".map(v=>C.faixaDoImc(v).nome)));")
+ok(bordas == ["abaixo do peso", "peso normal", "peso normal", "sobrepeso", "sobrepeso",
+              "obesidade grau 1"], "as bordas das faixas caem onde a OMS diz", bordas)
+
+anotacoes = rodar(
+    "let e={medidas:[]};"
+    "e=C.anotar(e,{data:'2026-08-01',peso:86.4,cintura:97,quadril:103});"
+    "e=C.anotar(e,{data:'2026-08-15',peso:85.1,cintura:96});"
+    "e=C.anotar(e,{data:'2026-08-27',peso:84.2,cintura:95,quadril:102});"
+    "const dupla=C.anotar(e,{data:'2026-08-27',peso:83.9});"
+    "console.log(JSON.stringify({n:e.medidas.length, primeira:e.medidas[0],"
+    " duplaN:dupla.medidas.length, duplaPeso:dupla.medidas[0].peso,"
+    " lixo:C.anotar({medidas:[]},{peso:900}), vazio:C.anotar({medidas:[]},{}),"
+    " serie:C.serie(e.medidas,'peso'), var:C.variacao(e.medidas,'peso'),"
+    " retrato:C.retrato(e.medidas,178)}));"
+)
+ok(anotacoes["n"] == 3, "três anotações, três linhas", anotacoes["n"])
+ok(anotacoes["primeira"]["data"] == "2026-08-27", "a mais recente vem primeiro")
+ok(anotacoes["duplaN"] == 3 and anotacoes["duplaPeso"] == 83.9,
+   "pesar de novo no mesmo dia corrige, não duplica",
+   (anotacoes["duplaN"], anotacoes["duplaPeso"]))
+ok(anotacoes["lixo"] is None, "900 kg é recusado", anotacoes["lixo"])
+ok(anotacoes["vazio"] is None, "anotação sem nenhum campo não vira linha")
+ok([x["valor"] for x in anotacoes["serie"]] == [86.4, 85.1, 84.2],
+   "a série do gráfico vai do mais antigo para o mais novo", anotacoes["serie"])
+ok(abs(anotacoes["var"]["diferenca"] + 2.2) < 0.001,
+   "a variação compara com um ponto distante o bastante", anotacoes["var"])
+ok(anotacoes["var"]["dias"] == 26, "e diz em quantos dias", anotacoes["var"]["dias"])
+ok(anotacoes["retrato"]["cintura"]["cintura"] == 95,
+   "o retrato pega a última medida de cada campo")
+ok(abs(anotacoes["retrato"]["rcq"] - 95 / 102) < 0.001, "e calcula cintura sobre quadril")
+
+# Campo em branco não apaga o que já existia em outro dia.
+parcial = rodar(
+    "let e={medidas:[]};"
+    "e=C.anotar(e,{data:'2026-08-01',peso:80,cintura:95});"
+    "e=C.anotar(e,{data:'2026-08-20',peso:79});"
+    "console.log(JSON.stringify({ultimaCintura:C.ultima(e.medidas,'cintura'),"
+    " ultimoPeso:C.ultima(e.medidas,'peso')}));"
+)
+ok(parcial["ultimaCintura"]["cintura"] == 95,
+   "quem só pesou não perde a cintura medida antes", parcial["ultimaCintura"])
+ok(parcial["ultimoPeso"]["peso"] == 79, "e o peso novo é o que vale")
+
+# Corrigir o peso de HOJE não pode apagar a cintura medida hoje de manhã.
+mescla = rodar(
+    "let e={medidas:[]};"
+    "e=C.anotar(e,{data:'2026-08-27',peso:84.2,cintura:95,quadril:102});"
+    "e=C.anotar(e,{data:'2026-08-27',peso:83.9});"
+    "console.log(JSON.stringify(e.medidas[0]));"
+)
+ok(mescla["peso"] == 83.9, "anotar de novo no mesmo dia corrige o campo dado")
+ok(mescla["cintura"] == 95 and mescla["quadril"] == 102,
+   "e mantém os campos que a pessoa não mexeu", mescla)
+
+# ------------------------------------------------------------------
+# 9. Carga, tendência e projeção
+# ------------------------------------------------------------------
+print("\nCarga e tendência")
+
+
+def sessoes(dias, minutos=20, nivel=2):
+    return [{"id": "c%d" % i, "data": d(-n), "minutos": minutos, "esforco": minutos - 6,
+             "nivel": nivel, "exercicios": []} for i, n in enumerate(dias)]
+
+
+cargas = rodar("console.log(JSON.stringify({"
+               " n1:P.carga({esforco:30,nivel:1}), n2:P.carga({esforco:30,nivel:2}),"
+               " n3:P.carga({esforco:30,nivel:3}), semNivel:P.carga({minutos:20})}));")
+ok(cargas["n1"] == 30, "no nível 1, carga é o próprio esforço")
+ok(cargas["n3"] > cargas["n2"] > cargas["n1"], "e sobe com o nível", cargas)
+ok(cargas["semNivel"] > 0, "sessão antiga sem esforço usa os minutos", cargas["semNivel"])
+
+semanas = rodar("console.log(JSON.stringify(P.cargaPorSemana(%s, 4, '%s')));"
+                % (json.dumps(sessoes([0, 2, 4, 9, 11, 20])), d(0)))
+ok(len(semanas) == 4, "quatro semanas pedidas, quatro devolvidas")
+ok(semanas[-1]["atual"] is True, "a última é a semana atual")
+ok(semanas[-1]["inicio"] <= d(0) <= semanas[-1]["fim"], "e hoje cai dentro dela")
+ok(sum(s["treinos"] for s in semanas) >= 5, "os treinos aparecem nas semanas certas",
+   [s["treinos"] for s in semanas])
+
+cedo = rodar("console.log(JSON.stringify(P.tendencia(%s, '%s')));"
+             % (json.dumps(sessoes([0, 2, 5])), d(0)))
+ok(cedo["faixa"] == "cedo", "com pouco histórico o app diz que ainda não sabe", cedo["faixa"])
+ok(cedo["razao"] is None, "e não inventa razão nenhuma")
+
+# Ritmo constante por seis semanas: a razão tem que ficar perto de 1.
+constante = rodar("console.log(JSON.stringify(P.tendencia(%s, '%s')));"
+                  % (json.dumps(sessoes(list(range(0, 42, 3)))), d(0)))
+ok(constante["faixa"] == "boa", "ritmo constante cai na faixa boa", constante["faixa"])
+ok(abs(constante["razao"] - 1) < 0.35, "com razão perto de 1", constante["razao"])
+
+# Cinco semanas paradas e uma semana pesada: tem que acusar subida rápida.
+pulo = json.dumps(sessoes([28, 31, 34, 37, 40]) + sessoes([0, 1, 2, 3, 4], 45, 3))
+rapido = rodar("console.log(JSON.stringify(P.tendencia(%s, '%s')));" % (pulo, d(0)))
+ok(rapido["faixa"] == "rapido", "salto de carga é acusado como rápido demais", rapido["faixa"])
+ok("lesão" in rapido["recado"], "e o recado diz por que isso importa")
+
+sumiu = json.dumps(sessoes([10, 13, 16, 19, 22, 25, 28, 31]))
+caiu = rodar("console.log(JSON.stringify(P.tendencia(%s, '%s')));" % (sumiu, d(0)))
+ok(caiu["faixa"] in ("caiu", "caindo"), "parar de treinar aparece como queda", caiu["faixa"])
+
+proj = rodar("console.log(JSON.stringify(P.projecaoDoMes(%s, '2026-08-10')));"
+             % json.dumps([{"id": "a", "data": "2026-08-%02d" % n, "minutos": 20, "esforco": 14,
+                            "nivel": 2} for n in (2, 4, 6, 8)]))
+ok(proj["treinos"] == 4, "conta os treinos do mês", proj["treinos"])
+ok(proj["treinosProjetados"] == round(4 / 10 * 31),
+   "e projeta pelo ritmo até aqui", proj["treinosProjetados"])
+ok(proj["diasNoMes"] == 31, "agosto tem 31 dias")
+
+fevereiro = rodar("console.log(JSON.stringify(P.projecaoDoMes([], '2028-02-20')));")
+ok(fevereiro["diasNoMes"] == 29, "e fevereiro de ano bissexto tem 29", fevereiro["diasNoMes"])
+
+comeco = rodar("console.log(JSON.stringify(P.projecaoDoMes([], '2026-08-03')));")
+ok(comeco["cedo"] is True, "no começo do mês a projeção não aparece")
+
+# ------------------------------------------------------------------
+# 10. Os desenhos
+# ------------------------------------------------------------------
+print("\nOs desenhos do movimento")
+
+desenhos = rodar(
+    "const sem=X.LISTA.filter(e=>!B.DO_EXERCICIO[e.id]).map(e=>e.id);"
+    "const quebrados=Object.keys(B.DO_EXERCICIO).filter(i=>!B.MOVIMENTOS[B.DO_EXERCICIO[i]]);"
+    "const poses=[]; Object.keys(B.MOVIMENTOS).forEach(m=>B.MOVIMENTOS[m].poses"
+    "  .forEach(p=>{ if(!B.POSES[p]) poses.push(m+'/'+p); }));"
+    "const fora=[]; Object.keys(B.POSES).forEach(n=>{ const q=B.pontos(B.POSES[n]);"
+    "  ['tronco','bracoLonge','bracoPerto','pernaLonge','pernaPerto'].forEach(parte=>"
+    "    q[parte].forEach(pt=>{ if(!isFinite(pt[0])||!isFinite(pt[1])||pt[1]>100||pt[0]<-8||pt[0]>108)"
+    "      fora.push(n+'/'+parte); }));});"
+    "console.log(JSON.stringify({sem:sem, quebrados:quebrados, poses:poses, fora:fora,"
+    " tamanho:B.svg('agachamento-livre').length,"
+    " padraoDesconhecido:B.movimentoDe('nao-existe','empurrar')}));"
+)
+ok(desenhos["sem"] == [], "todos os exercícios do catálogo têm desenho", desenhos["sem"])
+ok(desenhos["quebrados"] == [], "nenhum desenho aponta para movimento inexistente")
+ok(desenhos["poses"] == [], "nenhum movimento usa pose que não existe")
+ok(desenhos["fora"] == [], "nenhum boneco atravessa o chão ou sai da caixa", desenhos["fora"][:4])
+ok(desenhos["padraoDesconhecido"] == "flexao",
+   "exercício sem desenho próprio cai no do seu padrão", desenhos["padraoDesconhecido"])
+ok(desenhos["tamanho"] < 5000, "e cada desenho é pequeno", desenhos["tamanho"])
+
+# A cinemática inversa tem que chegar ao ponto pedido.
+ik = rodar(
+    "const a=B.resolver(0,0,[6,20],17,17,1);"
+    "const j=[17*Math.sin(a[0]*Math.PI/180),17*Math.cos(a[0]*Math.PI/180)];"
+    "const f=[j[0]+17*Math.sin(a[1]*Math.PI/180), j[1]+17*Math.cos(a[1]*Math.PI/180)];"
+    "const b=B.resolver(0,0,[6,20],17,17,-1);"
+    "const j2=[17*Math.sin(b[0]*Math.PI/180),17*Math.cos(b[0]*Math.PI/180)];"
+    "const longe=B.resolver(0,0,[0,900],17,17,1);"
+    "console.log(JSON.stringify({pe:f, joelho:j, joelhoOutroLado:j2, longe:longe}));"
+)
+ok(abs(ik["pe"][0] - 6) < 0.01 and abs(ik["pe"][1] - 20) < 0.01,
+   "o pé chega exatamente onde a pose mandou", ik["pe"])
+ok(ik["joelho"][0] * ik["joelhoOutroLado"][0] < 0,
+   "e o lado da dobra troca o joelho de lado", (ik["joelho"][0], ik["joelhoOutroLado"][0]))
+ok(all(isinstance(x, (int, float)) and x == x for x in ik["longe"]),
+   "alvo longe demais encosta no limite em vez de sumir com a perna", ik["longe"])
 
 print("\n%d testes, %d falhas" % (len(feitas), len(falhas)))
 if falhas:

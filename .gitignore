@@ -23,3 +23,4 @@ node_modules/
 # Os icones do app de treino sao parte do app, nao captura de tela.
 !treino/src/icones/*.png
 !treino/dist/*.png
+!docs/*.png

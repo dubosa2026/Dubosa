@@ -223,6 +223,50 @@ input:focus,select:focus{outline:2px solid var(--y);outline-offset:1px;border-co
 .busca input{padding-left:38px;}
 .busca svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-3);}
 
+/* ---------------- evolucao ---------------- */
+/* Alternador de duas telas dentro da mesma aba. Treino e corpo sao a mesma
+   pergunta ("estou melhorando?") medida de dois jeitos, entao moram juntos
+   — mas nao cabem na mesma tela sem virar sopa. */
+.seg{display:flex;gap:4px;background:var(--panel-2);border:1px solid var(--line);
+  border-radius:11px;padding:4px;margin-bottom:16px;}
+.seg button{flex:1;appearance:none;background:none;border:0;color:var(--text-3);cursor:pointer;
+  padding:9px 4px;border-radius:8px;font-size:.86rem;font-weight:600;font-family:inherit;}
+.seg button[aria-selected="true"]{background:var(--y);color:#0A0A0B;}
+
+.linha-grafico{width:100%;height:120px;display:block;overflow:visible;margin:4px 0 2px;}
+.linha-grafico .traco{fill:none;stroke:var(--y);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round;}
+.linha-grafico .area{fill:var(--y);opacity:.10;}
+.linha-grafico .ponto{fill:var(--y);}
+.linha-grafico .guia{stroke:var(--line);stroke-width:1;stroke-dasharray:3 4;}
+.linha-grafico .rotulo{fill:var(--text-3);font-family:var(--mono);font-size:8px;}
+
+/* A barra da semana atual fica destacada: e a unica que a pessoa ainda pode
+   mudar. */
+.semanas{display:flex;align-items:flex-end;gap:5px;height:86px;margin:10px 0 4px;}
+.semanas i{flex:1;background:var(--panel-3);border-radius:3px 3px 0 0;min-height:3px;display:block;}
+.semanas i.tem{background:var(--y-dim,#8A6A12);}
+.semanas i.agora{background:var(--y);}
+
+.tend{display:flex;align-items:center;gap:12px;}
+.tend .bolha{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;flex:none;
+  font-family:var(--dp);font-weight:800;font-size:1.05rem;border:2px solid var(--line-2);
+  color:var(--text-2);}
+.tend .bolha.boa{border-color:var(--ok);color:var(--ok);background:var(--ok-wash);}
+.tend .bolha.subindo,.tend .bolha.caindo{border-color:var(--at);color:var(--at);background:var(--at-wash);}
+.tend .bolha.rapido,.tend .bolha.caiu{border-color:var(--no);color:var(--no);background:var(--no-wash);}
+.tend p{margin:0;font-size:.86rem;color:var(--text-2);line-height:1.5;}
+
+.medida-linha{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.medida-linha .campo{margin-bottom:0;}
+/* A regua vai de 15 a 40 de IMC, e as viradas de cor caem exatamente em
+   18,5 / 25 / 30 — que sao 14%, 40% e 60% da regua. Cor decorativa que nao
+   bate com o numero seria pior que regua nenhuma. */
+.imc-faixa{height:8px;border-radius:99px;margin:14px 0 6px;position:relative;
+  background:linear-gradient(90deg,var(--az) 0%,var(--az) 14%,var(--ok) 14%,var(--ok) 40%,
+    var(--at) 40%,var(--at) 60%,var(--no) 60%,var(--no) 100%);opacity:.8;}
+.imc-faixa b{position:absolute;top:-5px;width:4px;height:18px;border-radius:2px;background:var(--text);
+  box-shadow:0 0 0 2px var(--panel);}
+
 /* ---------------- historico ---------------- */
 .barras{display:flex;align-items:flex-end;gap:3px;height:74px;margin:10px 0 4px;}
 .barras i{flex:1;background:var(--panel-3);border-radius:3px 3px 0 0;min-height:3px;display:block;}
@@ -382,7 +426,7 @@ input:focus,select:focus{outline:2px solid var(--y);outline-offset:1px;border-co
     </div>
     <button class="aba" role="tab" data-pane="historico" aria-selected="false">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Histórico</button>
+        stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Evolução</button>
     <button class="aba" role="tab" data-pane="ajustes" aria-selected="false">
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round"><circle cx="12" cy="12" r="3"/>
