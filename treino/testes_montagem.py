@@ -290,11 +290,67 @@ ok(set(recentes) == {"prancha", "agachamento-livre"}, "os recentes vêm dos últ
 # Guardar lixo não pode derrubar o app na próxima abertura.
 lixo = rodar(
     "console.log(JSON.stringify(P.normalizar({versao:99,ajustes:{nivel:'abc',minutos:null,"
-    "equipamentos:'halter'},historico:[{data:'2026-01-01'},null,{sem:'data'}]})));"
+    "local:'marte',locais:'nao-e-objeto'},historico:[{data:'2026-01-01'},null,{sem:'data'}]})));"
 )
 ok(lixo["ajustes"]["nivel"] in (1, 2, 3), "nível inválido volta para um valor válido", lixo["ajustes"])
-ok(isinstance(lixo["ajustes"]["equipamentos"], list), "equipamento estragado vira lista")
+ok(lixo["ajustes"]["local"] == "apartamento", "lugar inexistente volta para apartamento",
+   lixo["ajustes"]["local"])
+ok(isinstance(lixo["ajustes"]["locais"]["casa"]["equipamentos"], list),
+   "lugares estragados voltam ao padrão")
 ok(len(lixo["historico"]) == 1, "linha sem data é descartada", lixo["historico"])
+
+# ------------------------------------------------------------------
+# 7. Onde a pessoa vai treinar
+# ------------------------------------------------------------------
+print("\nO lugar do treino")
+
+lugares = rodar(
+    "const e=P.estadoNovo();"
+    "const ver=(nome)=>P.localAtual(Object.assign({},e.ajustes,{local:nome}));"
+    "console.log(JSON.stringify({apartamento:ver('apartamento'), casa:ver('casa'),"
+    " academia:ver('academia'), arLivre:ver('ar-livre'), inventado:ver('lua')}));"
+)
+ok(lugares["apartamento"]["semImpacto"] is True,
+   "apartamento já nasce sem barulho para o andar de baixo")
+ok(lugares["casa"]["semImpacto"] is False, "em casa dá para pular")
+ok(len(lugares["academia"]["equipamentos"]) >= 6,
+   "a academia já vem com os pesos", lugares["academia"]["equipamentos"])
+ok(set(lugares["arLivre"]["equipamentos"]) <= {"elastico", "corda"},
+   "no ar livre, só o que dá para levar", lugares["arLivre"]["equipamentos"])
+ok(lugares["inventado"]["nome"] == "apartamento", "lugar desconhecido cai no apartamento")
+
+# O treino montado para cada lugar respeita o lugar.
+por_lugar = rodar(
+    "const e=P.estadoNovo();"
+    "const monta=(nome)=>{const l=P.localAtual(Object.assign({},e.ajustes,{local:nome}));"
+    "  const t=M.montar({minutos:30,nivel:3,semente:'lug',equipamentos:l.equipamentos,"
+    "    semImpacto:l.semImpacto});"
+    "  const ids=t.aquecimento.concat(t.blocos.reduce((a,b)=>a.concat(b.exercicios),[])).concat(t.solta);"
+    "  return {impactos:ids.map(i=>X.porId(i).impacto), equip:M.equipamentoNecessario(t)};};"
+    "console.log(JSON.stringify({apartamento:monta('apartamento'), academia:monta('academia'),"
+    " arLivre:monta('ar-livre')}));"
+)
+ok("alto" not in por_lugar["apartamento"]["impactos"],
+   "o treino de apartamento não tem um salto sequer",
+   por_lugar["apartamento"]["impactos"].count("alto"))
+ok(por_lugar["apartamento"]["equip"] == [],
+   "e não pede equipamento que ninguém disse ter", por_lugar["apartamento"]["equip"])
+ok(por_lugar["academia"]["equip"] != [], "o treino de academia usa os pesos de lá")
+ok(set(por_lugar["arLivre"]["equip"]) <= {"elastico", "corda"},
+   "o do parque só usa o que coube na mochila", por_lugar["arLivre"]["equip"])
+
+# Quem já usava o app tinha o equipamento solto, valendo em todo lugar.
+migrado = rodar(
+    "console.log(JSON.stringify(P.normalizar({ajustes:{minutos:45,nivel:3,"
+    "equipamentos:['halter','elastico'],semImpacto:true},historico:[]}).ajustes));"
+)
+ok(migrado["locais"]["casa"]["equipamentos"] == ["halter", "elastico"],
+   "o halter de quem já usava o app vai para casa", migrado["locais"]["casa"])
+ok(migrado["locais"]["apartamento"]["semImpacto"] is True,
+   "e o silêncio dele continua valendo no apartamento")
+ok(len(migrado["locais"]["academia"]["equipamentos"]) >= 6,
+   "a academia dele ganha os pesos que sempre existiram lá")
+ok(migrado["minutos"] == 45 and migrado["nivel"] == 3, "o resto dos ajustes sobrevive à migração")
 
 print("\n%d testes, %d falhas" % (len(feitas), len(falhas)))
 if falhas:

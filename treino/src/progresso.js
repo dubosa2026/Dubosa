@@ -14,20 +14,64 @@
 const F = (typeof require !== 'undefined' && typeof module !== 'undefined')
   ? require('./formato.js') : window.Formato;
 
+/* Onde a pessoa vai treinar muda tudo: o que existe para usar e o que da
+   para fazer sem incomodar. Por isso cada lugar guarda o SEU equipamento e
+   a SUA regra de barulho — quem tem halter em casa nao tem halter no
+   parque, e quem mora em apartamento nao pula as 6h da manha, mas pula na
+   academia no mesmo dia. Um interruptor so, global, obrigava a pessoa a
+   reconfigurar o app toda vez que trocasse de lugar. */
+const LOCAIS_PADRAO = {
+  apartamento: { equipamentos: [], semImpacto: true },
+  casa: { equipamentos: [], semImpacto: false },
+  academia: {
+    equipamentos: ['halter', 'kettlebell', 'elastico', 'caixa', 'corda', 'barra', 'bola'],
+    semImpacto: false,
+  },
+  'ar-livre': { equipamentos: ['elastico', 'corda'], semImpacto: false },
+};
+
 const AJUSTES_PADRAO = {
   minutos: 20,
   foco: 'corpo-todo',
   nivel: 2,
-  semImpacto: false,
-  equipamentos: [],
+  local: 'apartamento',
   som: true,
   vibrar: true,
   telaAcesa: true,
   metaSemanal: 3,
 };
 
+function locaisNovos() {
+  const l = {};
+  Object.keys(LOCAIS_PADRAO).forEach((nome) => {
+    l[nome] = { equipamentos: LOCAIS_PADRAO[nome].equipamentos.slice(),
+      semImpacto: LOCAIS_PADRAO[nome].semImpacto };
+  });
+  return l;
+}
+
 function estadoNovo() {
-  return { versao: 1, ajustes: Object.assign({}, AJUSTES_PADRAO), historico: [], doDia: null };
+  return {
+    versao: 2,
+    ajustes: Object.assign({}, AJUSTES_PADRAO, { locais: locaisNovos() }),
+    historico: [],
+    medidas: [],
+    doDia: null,
+  };
+}
+
+/* O lugar escolhido agora, ja com o equipamento e a regra de barulho dele. */
+function localAtual(ajustes) {
+  const a = ajustes || {};
+  const nome = LOCAIS_PADRAO[a.local] ? a.local : 'apartamento';
+  const guardado = (a.locais || {})[nome] || {};
+  return {
+    nome: nome,
+    equipamentos: Array.isArray(guardado.equipamentos)
+      ? guardado.equipamentos.slice() : LOCAIS_PADRAO[nome].equipamentos.slice(),
+    semImpacto: guardado.semImpacto === undefined
+      ? LOCAIS_PADRAO[nome].semImpacto : !!guardado.semImpacto,
+  };
 }
 
 /* Le o que estava salvo sem confiar em nada: versao antiga, campo que
@@ -48,6 +92,31 @@ function normalizar(bruto) {
     else if (Array.isArray(padrao)) v = Array.isArray(v) ? v.slice() : padrao.slice();
     novo.ajustes[k] = v;
   });
+  if (!LOCAIS_PADRAO[novo.ajustes.local]) novo.ajustes.local = 'apartamento';
+
+  // Versao 1 guardava equipamento e impacto soltos, valendo em qualquer
+  // lugar. Quem ja usava o app tinha o halter marcado ali: esse halter vai
+  // para casa e para o apartamento, que e onde ele de fato esta. A academia
+  // fica com o padrao dela, que ja tem tudo.
+  novo.ajustes.locais = locaisNovos();
+  const antigosEquip = Array.isArray(a.equipamentos) ? a.equipamentos.slice() : null;
+  Object.keys(novo.ajustes.locais).forEach((nome) => {
+    const guardado = (a.locais || {})[nome];
+    if (guardado) {
+      if (Array.isArray(guardado.equipamentos)) {
+        novo.ajustes.locais[nome].equipamentos = guardado.equipamentos.map(String);
+      }
+      if (guardado.semImpacto !== undefined) {
+        novo.ajustes.locais[nome].semImpacto = !!guardado.semImpacto;
+      }
+    } else if (antigosEquip && (nome === 'casa' || nome === 'apartamento')) {
+      novo.ajustes.locais[nome].equipamentos = antigosEquip.slice();
+      if (a.semImpacto !== undefined && nome === 'apartamento') {
+        novo.ajustes.locais[nome].semImpacto = !!a.semImpacto;
+      }
+    }
+  });
+
   novo.ajustes.nivel = Math.min(3, Math.max(1, Math.round(novo.ajustes.nivel)));
   novo.ajustes.minutos = Math.min(90, Math.max(5, Math.round(novo.ajustes.minutos)));
   novo.ajustes.metaSemanal = Math.min(7, Math.max(1, Math.round(novo.ajustes.metaSemanal)));
@@ -62,6 +131,7 @@ function normalizar(bruto) {
       esforco: Number(s.esforco) || 0,
       foco: String(s.foco || 'corpo-todo'),
       nivel: Number(s.nivel) || 2,
+      local: String(s.local || 'apartamento'),
       completo: s.completo !== false,
       exercicios: Array.isArray(s.exercicios) ? s.exercicios.map(String) : [],
     }))
@@ -89,6 +159,7 @@ function registrar(estado, sessao) {
     esforco: Math.max(0, Math.round(Number(s.esforco) || 0)),
     foco: String(s.foco || 'corpo-todo'),
     nivel: Number(s.nivel) || 2,
+    local: String(s.local || 'apartamento'),
     completo: s.completo !== false,
     exercicios: Array.isArray(s.exercicios) ? s.exercicios.slice() : [],
   };
@@ -239,7 +310,7 @@ function recado(historico, ajustes, refIso) {
 }
 
 const Progresso = {
-  AJUSTES_PADRAO, estadoNovo, normalizar, registrar, apagarSessao,
+  AJUSTES_PADRAO, LOCAIS_PADRAO, estadoNovo, normalizar, registrar, apagarSessao, localAtual,
   sequencia, maiorSequencia, resumo, ultimosDias, recentes, maisTreinados, recado,
 };
 

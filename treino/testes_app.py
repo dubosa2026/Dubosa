@@ -99,29 +99,72 @@ with sync_playwright() as p:
     ok(pg.eval_on_selector_all(".estacao .n2", "els => els.map(e => e.innerText)") == guardado,
        "recarregar mantém o treino do dia")
 
-    print("\nEquipamento e impacto")
+    print("\nOnde vou treinar")
+
+    def barulhentos_de_hoje():
+        """Os exercícios do treino de hoje que fazem barulho no andar de baixo.
+
+        Lido do próprio estado do app e cruzado com o catálogo que ele
+        carregou, em vez de procurar nomes na tela: se amanhã entrar um
+        exercício de impacto novo, este teste pega sozinho."""
+        return pg.evaluate("""() => {
+          const e = JSON.parse(localStorage.getItem('circuito.v1'));
+          const t = e.doDia.treino;
+          const ids = t.aquecimento
+            .concat(t.blocos.reduce((a, b) => a.concat(b.exercicios), []))
+            .concat(t.solta);
+          return ids.filter((i) => window.Exercicios.porId(i).impacto === 'alto');
+        }""")
+
+    pg.click('[data-pane="hoje"]')
+    pg.wait_for_selector(".hero .valor")
+    ok(pg.get_attribute('[data-local="apartamento"]', "aria-pressed") == "true",
+       "o app começa em apartamento")
+    ok(barulhentos_de_hoje() == [],
+       "em apartamento não entra nada que faça barulho embaixo", barulhentos_de_hoje())
+
+    pg.click('[data-local="academia"]')
+    pg.wait_for_timeout(80)
+    precisa = pg.inner_text("#pane-hoje")
+    ok("Academia" in precisa, "a tela diz onde é o treino")
+    equipamento_academia = pg.evaluate(
+        "() => window.Montador.equipamentoNecessario("
+        "JSON.parse(localStorage.getItem('circuito.v1')).doDia.treino)")
+    ok(equipamento_academia != [],
+       "na academia o treino já usa os pesos, sem precisar configurar nada", equipamento_academia)
+
+    pg.click('[data-local="ar-livre"]')
+    pg.wait_for_timeout(80)
+    ok(set(pg.evaluate(
+        "() => window.Montador.equipamentoNecessario("
+        "JSON.parse(localStorage.getItem('circuito.v1')).doDia.treino)")) <= {"elastico", "corda"},
+       "no ar livre só entra o que dá para levar")
+
+    print("\nCada lugar guarda o seu equipamento")
     pg.click('[data-pane="ajustes"]')
     pg.wait_for_selector('input[data-equip="halter"]')
+    pg.click('#pane-ajustes [data-local="casa"]')
+    pg.wait_for_timeout(60)
     pg.check('input[data-equip="halter"]')
     pg.wait_for_timeout(60)
+    ok(pg.is_checked('input[data-equip="halter"]'), "liguei o halter em casa")
+    pg.click('#pane-ajustes [data-local="ar-livre"]')
+    pg.wait_for_timeout(60)
+    ok(not pg.is_checked('input[data-equip="halter"]'),
+       "e o halter de casa não virou halter do parque")
+    pg.click('#pane-ajustes [data-local="casa"]')
+    pg.wait_for_timeout(60)
+    ok(pg.is_checked('input[data-equip="halter"]'), "voltando para casa, o halter continua lá")
+
+    guardado = pg.evaluate("() => JSON.parse(localStorage.getItem('circuito.v1')).ajustes.locais")
+    ok(guardado["casa"]["equipamentos"] == ["halter"], "e ficou guardado por lugar", guardado["casa"])
+    ok(guardado["apartamento"]["semImpacto"] is True,
+       "o apartamento continua sem barulho", guardado["apartamento"])
+
     pg.click('[data-pane="hoje"]')
     pg.wait_for_selector(".hero .valor")
-    tudo = pg.inner_text("#pane-hoje")
-    ok("Halteres" in tudo, "ligar halteres muda o que o treino pede", tudo[:120])
-
-    pg.click('[data-pane="ajustes"]')
-    pg.check('input[data-ligar="semImpacto"]')
-    pg.wait_for_timeout(60)
-    pg.click('[data-pane="hoje"]')
-    pg.wait_for_selector(".hero .valor")
-    nomes = pg.eval_on_selector_all(".estacao .n2", "els => els.map(e => e.innerText)")
-    barulhentos = [n for n in nomes if "Polichinelo" in n or "Burpee" in n and "sem salto" not in n
-                   or "salto" in n and "sem salto" not in n]
-    ok(not barulhentos, "sem pulo tira mesmo os exercícios de impacto", barulhentos)
-
-    pg.click('[data-pane="ajustes"]')
-    pg.uncheck('input[data-ligar="semImpacto"]')
-    pg.wait_for_timeout(60)
+    pg.click('[data-local="apartamento"]')
+    pg.wait_for_timeout(80)
 
     print("\nO catálogo")
     pg.click('[data-pane="exercicios"]')

@@ -12,7 +12,7 @@
 
 /* eslint-disable no-undef */
 const F = window.Formato, X = window.Exercicios, M = window.Montador,
-  R = window.Relogio, P = window.Progresso;
+  R = window.Relogio, P = window.Progresso, D = window.Bonecos;
 
 const CHAVE = 'circuito.v1';
 const MARCA = CHAVE + '.gravou';
@@ -170,24 +170,39 @@ function aviso(titulo, texto, tom, acao) {
 /* A impressao digital dos ajustes. Se ela muda, o treino guardado nao
    serve mais: pedir 40 minutos e continuar vendo o circuito de 20 seria o
    app ignorando o que a pessoa acabou de escolher. */
+const LOCAIS = [
+  ['apartamento', 'Apartamento', 'Sem barulho para o andar de baixo'],
+  ['casa', 'Casa', 'Pode pular e fazer barulho'],
+  ['academia', 'Academia', 'Com os pesos e aparelhos de lá'],
+  ['ar-livre', 'Ar livre', 'Parque, praia, quadra — o que dá para levar'],
+];
+
+function nomeLocal(id) {
+  const achado = LOCAIS.filter((l) => l[0] === id)[0];
+  return achado ? achado[1] : id;
+}
+
 function assinatura(a) {
-  return [a.minutos, a.foco, a.nivel, a.semImpacto ? 1 : 0,
-    (a.equipamentos || []).slice().sort().join('+')].join('|');
+  const l = P.localAtual(a);
+  return [a.minutos, a.foco, a.nivel, l.nome, l.semImpacto ? 1 : 0,
+    l.equipamentos.slice().sort().join('+')].join('|');
 }
 
 function sortearTreino(variacao) {
   const hoje = F.hoje();
   const a = estado.ajustes;
   const ass = assinatura(a);
+  const local = P.localAtual(a);
   const treino = M.montar({
-    minutos: a.minutos, foco: a.foco, nivel: a.nivel, semImpacto: a.semImpacto,
-    equipamentos: a.equipamentos,
+    minutos: a.minutos, foco: a.foco, nivel: a.nivel, semImpacto: local.semImpacto,
+    equipamentos: local.equipamentos,
     // A semente amarra o treino ao dia: fechar e abrir o app a tarde
     // devolve o mesmo circuito da manha. Trocar de ideia so acontece se a
     // pessoa pedir outro, e ai a variacao muda.
     semente: hoje + '|' + ass + '|' + (variacao || 0),
     evitar: P.recentes(estado.historico, 3),
   });
+  treino.local = local.nome;
   estado.doDia = { data: hoje, assinatura: ass, variacao: variacao || 0, treino: treino };
   salvar();
   return treino;
@@ -212,11 +227,26 @@ function nomeEquip(q) {
   return X.EQUIPAMENTOS[q] || q;
 }
 
+/* O desenho do exercicio. Guardado num cache porque a mesma figura e pedida
+   varias vezes por tela (lista, ficha, execucao) e montar o SVG e string
+   pura: melhor montar uma vez. */
+const cacheBoneco = {};
+
+function boneco(id, animar) {
+  const chave = id + (animar ? '|anima' : '');
+  if (!cacheBoneco[chave]) {
+    const ex = X.porId(id);
+    cacheBoneco[chave] = D.svg(id, { padrao: ex ? ex.padrao : 'agachar', animar: !!animar });
+  }
+  return cacheBoneco[chave];
+}
+
 function linhaEstacao(id, n) {
   const e = X.porId(id);
   if (!e) return '';
   return '<div class="estacao" data-ficha="' + esc(id) + '">'
     + '<div class="n">' + n + '</div>'
+    + '<div class="mini-boneco">' + boneco(id, false) + '</div>'
     + '<div class="n2">' + esc(e.nome)
     + '<small>' + esc(X.PADROES[e.padrao] || e.padrao)
     + (e.equipamento.length ? ' · ' + esc(F.listar(e.equipamento.map(nomeEquip))) : '')
@@ -254,7 +284,15 @@ function telaHoje() {
     + '<div class="mini"><b>' + Math.round(M.tempoDeEsforco(t) / 60) + '</b><small>min de esforço</small></div>'
     + '</div>';
 
+  const local = P.localAtual(a);
   h += '<div class="cartao">'
+    + '<label>Onde você vai treinar</label><div class="opcoes" style="margin-bottom:6px">'
+    + LOCAIS.map(([id, nome]) => '<button type="button" data-local="' + id + '" aria-pressed="'
+      + (a.local === id) + '">' + esc(nome) + '</button>').join('')
+    + '</div><p class="ajuda" style="margin-bottom:14px">'
+    + esc(LOCAIS.filter((l) => l[0] === a.local).map((l) => l[2])[0] || '')
+    + (local.semImpacto ? ' · nada que saia do chão entra no treino.' : '')
+    + '</p>'
     + '<label>Tempo</label><div class="opcoes" style="margin-bottom:14px">'
     + TEMPOS.map((m) => '<button type="button" data-tempo="' + m + '" aria-pressed="'
       + (a.minutos === m) + '">' + m + '</button>').join('')
@@ -265,7 +303,8 @@ function telaHoje() {
     + '</div></div>';
 
   h += '<div class="cartao">'
-    + '<div class="bloco-cab"><b>O que você vai precisar</b></div>'
+    + '<div class="bloco-cab"><b>O que você vai precisar</b>'
+    + '<small>' + esc(nomeLocal(a.local)) + '</small></div>'
     + '<p class="ajuda" style="margin-top:4px">'
     + (precisa.length ? esc(F.maiuscula(F.listar(precisa.map(nomeEquip))))
       + '. O resto é peso do corpo.' : 'Nada além do seu corpo e um espaço de dois passos.')
@@ -299,6 +338,9 @@ function telaHoje() {
   });
   pane.querySelectorAll('[data-foco]').forEach((b) => {
     b.onclick = () => { estado.ajustes.foco = b.dataset.foco; salvar(); desenhar(); };
+  });
+  pane.querySelectorAll('[data-local]').forEach((b) => {
+    b.onclick = () => { estado.ajustes.local = b.dataset.local; salvar(); desenhar(); };
   });
   ligarFichas(pane);
   pane.querySelector('[data-acao="comecar"]').onclick = comecar;
@@ -354,7 +396,7 @@ function telaExercicios() {
 
   h += '<div class="cartao">' + (lista.length ? lista.map((e) =>
     '<div class="item clicavel" data-ficha="' + esc(e.id) + '">'
-    + '<div class="ico">' + esc((X.PADROES[e.padrao] || '??').slice(0, 3)) + '</div>'
+    + '<div class="ico">' + boneco(e.id, false) + '</div>'
     + '<div class="txt"><b>' + esc(e.nome) + '</b><small>'
     + (e.tipo === 'aquecimento' ? 'Aquecimento · ' : (e.tipo === 'solta' ? 'Volta à calma · ' : ''))
     + esc(X.GRUPOS[e.grupo])
@@ -398,6 +440,7 @@ function abrirFicha(id) {
   const dificil = X.vizinho(id, 'dificulta');
 
   let h = '<div class="puxador"></div><h2>' + esc(e.nome) + '</h2>'
+    + '<div class="boneco-caixa">' + boneco(id, true) + '</div>'
     + '<div class="selos">' + selo(X.GRUPOS[e.grupo]) + selo(X.PADROES[e.padrao])
     + selo('nível ' + e.nivel)
     + selo(e.equipamento.length ? F.listar(e.equipamento.map(nomeEquip)) : 'peso do corpo')
@@ -518,18 +561,25 @@ function telaAjustes() {
     + '</div><p class="ajuda">O nível também esconde os exercícios acima dele — '
     + 'barra fixa não aparece para quem está começando.</p></div>';
 
-  h += '<div class="cartao"><div class="bloco-cab"><b>O que você tem</b></div>'
-    + '<p class="ajuda" style="margin:2px 0 8px">Só entra no treino o que estiver ligado aqui.</p>'
+  const local = P.localAtual(a);
+  h += '<div class="cartao"><div class="bloco-cab"><b>Cada lugar, o seu equipamento</b></div>'
+    + '<p class="ajuda" style="margin:2px 0 10px">Escolha o lugar e diga o que tem lá. '
+    + 'O app guarda separado: o halter de casa não vira halter do parque.</p>'
+    + '<div class="opcoes chips" style="margin-bottom:12px">'
+    + LOCAIS.map(([id, nome]) => '<button type="button" data-local="' + id + '" aria-pressed="'
+      + (a.local === id) + '">' + esc(nome) + '</button>').join('')
+    + '</div>'
     + X.equipamentosUsados().map((q) => '<div class="troca"><div class="txt"><b>' + esc(nomeEquip(q))
       + '</b></div><label class="switch"><input type="checkbox" data-equip="' + q + '"'
-      + (a.equipamentos.indexOf(q) >= 0 ? ' checked' : '') + '><i></i></label></div>').join('')
+      + (local.equipamentos.indexOf(q) >= 0 ? ' checked' : '') + '><i></i></label></div>').join('')
+    + '<div class="troca"><div class="txt"><b>Sem pulo, sem barulho</b>'
+    + '<small>Em ' + esc(nomeLocal(a.local).toLowerCase())
+    + ': tira polichinelo, burpee e tudo que sai do chão</small></div>'
+    + '<label class="switch"><input type="checkbox" data-local-impacto="1"'
+    + (local.semImpacto ? ' checked' : '') + '><i></i></label></div>'
     + '</div>';
 
   h += '<div class="cartao">'
-    + '<div class="troca"><div class="txt"><b>Sem pulo, sem barulho</b>'
-    + '<small>Tira polichinelo, burpee e tudo que sai do chão</small></div>'
-    + '<label class="switch"><input type="checkbox" data-ligar="semImpacto"'
-    + (a.semImpacto ? ' checked' : '') + '><i></i></label></div>'
     + '<div class="troca"><div class="txt"><b>Apito</b><small>Avisa a troca e os 3 segundos finais</small></div>'
     + '<label class="switch"><input type="checkbox" data-ligar="som"' + (a.som ? ' checked' : '') + '><i></i></label></div>'
     + '<div class="troca"><div class="txt"><b>Vibrar</b><small>Para treinar com fone ou no silencioso</small></div>'
@@ -566,12 +616,23 @@ function telaAjustes() {
   pane.querySelectorAll('[data-meta]').forEach((b) => {
     b.onclick = () => { estado.ajustes.metaSemanal = Number(b.dataset.meta); salvar(); desenhar(); };
   });
+  pane.querySelectorAll('[data-local]').forEach((b) => {
+    b.onclick = () => { estado.ajustes.local = b.dataset.local; salvar(); desenhar(); };
+  });
   pane.querySelectorAll('input[data-equip]').forEach((c) => {
     c.onchange = () => {
       const q = c.dataset.equip;
-      const l = estado.ajustes.equipamentos.filter((x) => x !== q);
+      const atual = P.localAtual(estado.ajustes);
+      const l = atual.equipamentos.filter((x) => x !== q);
       if (c.checked) l.push(q);
-      estado.ajustes.equipamentos = l;
+      estado.ajustes.locais[atual.nome].equipamentos = l;
+      salvar();
+      desenhar();
+    };
+  });
+  pane.querySelectorAll('input[data-local-impacto]').forEach((c) => {
+    c.onchange = () => {
+      estado.ajustes.locais[P.localAtual(estado.ajustes).nome].semImpacto = c.checked;
       salvar();
       desenhar();
     };
@@ -796,6 +857,16 @@ function pintarExec() {
   $('execCron').textContent = F.relogio(e.restante);
   $('execCron').classList.toggle('fim', e.restante <= 3 && p.tipo === 'trabalho');
 
+  // O desenho so e trocado quando o exercicio muda: reescrever o SVG a cada
+  // pintura (oito vezes por segundo) reiniciaria a animacao sem parar, e o
+  // boneco ficaria tremendo em vez de se mexer.
+  const desenhar_ex = descansando ? p.proximoExercicio : p.exercicio;
+  const caixa = $('execBoneco');
+  if (caixa.dataset.ex !== String(desenhar_ex)) {
+    caixa.dataset.ex = String(desenhar_ex);
+    caixa.innerHTML = desenhar_ex ? boneco(desenhar_ex, true) : '';
+  }
+
   const lado = $('execLado');
   if (e.lado) {
     lado.hidden = false;
@@ -844,6 +915,7 @@ function encerrar(completo) {
         : esforco.feitas * (sessao.treino.blocos[0] || { trabalho: 40 }).trabalho),
       foco: sessao.treino.foco,
       nivel: sessao.treino.nivel,
+      local: sessao.treino.local || estado.ajustes.local,
       completo: !!completo,
       exercicios: M.exerciciosDoTreino(sessao.treino),
     });

@@ -43,8 +43,9 @@ FAVICON = (
 )
 
 # Ordem importa: cada arquivo usa os anteriores.
-# formato -> exercicios -> montador -> relogio -> progresso -> ui.
-MODULOS = ["formato.js", "exercicios.js", "montador.js", "relogio.js", "progresso.js", "ui.js"]
+# formato -> exercicios -> bonecos -> montador -> relogio -> progresso -> ui.
+MODULOS = ["formato.js", "exercicios.js", "bonecos.js", "montador.js", "relogio.js",
+           "progresso.js", "ui.js"]
 
 SUBSTITUICOES = {
     "__ARCHIVO__": "archivo-var.woff2",
