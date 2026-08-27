@@ -42,6 +42,14 @@ voltar funcionam a qualquer momento.
 últimos 14 dias e a lista de sessões. Parar no meio também conta: quem
 aqueceu e fez um bloco treinou.
 
+**E avisa quando o navegador não guarda.** Tudo fica no aparelho, no
+armazenamento do navegador — e há três situações em que ele apaga: aba
+anônima, arquivo aberto direto do anexo no iPhone e prévia de
+visualizador. O app confere isso ao abrir e mostra uma faixa dizendo o que
+aconteceu e como resolver, com um botão de exportar. Ele não consegue
+impedir a perda (quem apaga é o navegador), mas a pessoa não fica achando
+que o app está quebrado.
+
 ## Os módulos, em ordem de dependência
 
 Os fontes ficam em `src/` e viram um arquivo só pelo `build_app.py`:

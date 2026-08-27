@@ -15,7 +15,10 @@ const F = window.Formato, X = window.Exercicios, M = window.Montador,
   R = window.Relogio, P = window.Progresso;
 
 const CHAVE = 'circuito.v1';
+const MARCA = CHAVE + '.gravou';
 let estado = P.estadoNovo();
+let armazenamento = 'ok';   // ok | recusado | esqueceu | previa
+let alertaFechado = false;
 let aba = 'hoje';
 let sessao = null;          // o treino em andamento, ou null
 let audio = null;
@@ -45,9 +48,99 @@ function carregar() {
 function salvar() {
   try {
     localStorage.setItem(CHAVE, JSON.stringify(estado));
+    // Marca que esta aba ja gravou. E so com esta marca que da para
+    // descobrir, na proxima abertura, que o navegador aceitou salvar e
+    // esqueceu — o caso em que tudo some sem nenhum erro aparecer.
+    try { sessionStorage.setItem(MARCA, '1'); } catch (e2) { /* nem sempre existe */ }
   } catch (e) {
-    aviso('Não consegui salvar', 'O navegador recusou o armazenamento. Exporte seus dados em Ajustes.', 'ruim');
+    // Um aviso por vez, na faixa fixa. Antes isto era um toast a cada
+    // gravacao: a pessoa via o mesmo recado piscar dez vezes e nao via o
+    // que fazer com ele.
+    if (armazenamento !== 'recusado') {
+      armazenamento = 'recusado';
+      alertaFechado = false;
+      pintarAlerta();
+    }
   }
+}
+
+/* Este navegador guarda mesmo o que a gente pede?
+ *
+ * Tres respostas diferentes, e o app trata as tres, porque para quem usa
+ * elas parecem a mesma coisa: "sumiu".
+ *
+ * - `recusado`: gravar levanta erro, ou o que volta nao e o que foi
+ *   gravado. Aba anonima do Safari e arquivo aberto direto no iPhone.
+ * - `esqueceu`: gravar funcionou nesta aba e, ao recarregar, nao voltou
+ *   nada. E o pior dos tres, porque nenhum erro aparece.
+ * - `previa`: rodando dentro de uma moldura — visualizador de anexo,
+ *   previa de mensagem. Costuma nao guardar entre uma abertura e outra.
+ *
+ * A conferencia roda ANTES de qualquer gravacao: depois da primeira, o
+ * armazenamento nunca mais estaria vazio e o caso `esqueceu` nao apareceria.
+ */
+function conferirArmazenamento() {
+  try {
+    const teste = CHAVE + '.teste';
+    localStorage.setItem(teste, '1');
+    const voltou = localStorage.getItem(teste) === '1';
+    localStorage.removeItem(teste);
+    if (!voltou) return 'recusado';
+  } catch (e) {
+    return 'recusado';
+  }
+
+  try {
+    if (sessionStorage.getItem(MARCA) === '1' && !localStorage.getItem(CHAVE)) return 'esqueceu';
+  } catch (e) { /* sem sessionStorage nao da para saber; segue */ }
+
+  try {
+    if (window.self !== window.top) return 'previa';
+  } catch (e) {
+    return 'previa';   // moldura de outro endereco: nem da para perguntar
+  }
+  return 'ok';
+}
+
+const ALERTAS = {
+  recusado: {
+    titulo: 'Este navegador não está guardando nada',
+    texto: 'Ele recusou o armazenamento, então o treino de hoje funciona mas some ao fechar. '
+      + 'Costuma ser aba anônima, ou o arquivo aberto direto do anexo no iPhone. '
+      + 'Abrindo pelo navegador do celular, ele guarda.',
+    acao: 'Exportar o que tenho',
+  },
+  esqueceu: {
+    titulo: 'O navegador apagou o que você tinha feito',
+    texto: 'Ele aceitou salvar e esqueceu ao recarregar — é o que a aba anônima faz. '
+      + 'Abra numa aba normal, ou instale o app na tela de início, para o histórico ficar.',
+    acao: 'Exportar o que tenho',
+  },
+  previa: {
+    titulo: 'Isto é uma prévia',
+    texto: 'Prévia de arquivo costuma não guardar nada entre uma abertura e outra: o treino '
+      + 'funciona, o histórico some. Baixe o arquivo e abra no navegador do celular.',
+    acao: '',
+  },
+};
+
+function pintarAlerta() {
+  const barra = $('alerta');
+  const info = ALERTAS[armazenamento];
+  if (!info || alertaFechado) { barra.hidden = true; return; }
+
+  barra.innerHTML = '<div class="txt"><b>' + esc(info.titulo) + '</b>' + esc(info.texto) + '</div>'
+    + '<div class="btns">'
+    + (info.acao ? '<button type="button" data-acao="exportar">' + esc(info.acao) + '</button>' : '')
+    + '<button type="button" class="fraco" data-acao="fechar">Entendi</button>'
+    + '</div>';
+  barra.hidden = false;
+  const botaoExportar = barra.querySelector('[data-acao="exportar"]');
+  if (botaoExportar) botaoExportar.onclick = exportar;
+  barra.querySelector('[data-acao="fechar"]').onclick = () => {
+    alertaFechado = true;
+    barra.hidden = true;
+  };
 }
 
 /* ------------------------------------------------------------------ *
@@ -494,6 +587,9 @@ function telaAjustes() {
     salvar();
     desenhar();
     aviso('Tudo apagado', 'O app voltou ao estado de fábrica.');
+    // Apagar de proposito nao e o navegador esquecendo: sem isto, a
+    // proxima abertura acusaria perda de dados que a pessoa mandou apagar.
+    if (armazenamento === 'esqueceu') { armazenamento = 'ok'; pintarAlerta(); }
   };
   $('arquivo').onchange = importar;
 }
@@ -796,6 +892,7 @@ function mostrarMedalha(minutos, estacoes) {
  * Desenho geral e partida                                             *
  * ------------------------------------------------------------------ */
 function desenhar() {
+  pintarAlerta();
   const r = P.resumo(estado.historico);
   const chip = $('chipSequencia');
   chip.textContent = r.sequencia ? F.plural(r.sequencia, 'dia seguido', 'dias seguidos') : 'sem sequência';
@@ -816,6 +913,7 @@ function desenhar() {
 
 function ligar() {
   carregar();
+  armazenamento = conferirArmazenamento();
 
   document.querySelectorAll('.aba').forEach((b) => {
     b.onclick = () => { aba = b.dataset.pane; desenhar(); };

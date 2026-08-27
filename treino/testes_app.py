@@ -253,6 +253,83 @@ with sync_playwright() as p:
     ok(largura <= 1, "cabe num celular pequeno sem rolar para o lado", largura)
 
     pg.screenshot(path=str(Path(__file__).parent / "tela-hoje.png"))
+
+    # ------------------------------------------------------------------
+    # Quando o navegador nao guarda nada
+    # ------------------------------------------------------------------
+    # Tres jeitos diferentes de perder tudo, que para quem usa parecem a
+    # mesma coisa: "sumiu". O app nao consegue impedir nenhum dos tres — quem
+    # apaga e o navegador —, mas nao pode deixar a pessoa achar que o app
+    # esta quebrado.
+    print("\nQuando o navegador não guarda nada")
+
+    RECUSA = """
+    Object.defineProperty(window, 'localStorage', { configurable:true, get(){
+      return { getItem(){ return null; }, setItem(){ throw new DOMException('recusado'); },
+               removeItem(){}, clear(){} };
+    }});
+    """
+    ESQUECE = """
+    (() => { let m = {};
+      Object.defineProperty(window, 'localStorage', { configurable:true, get(){
+        return { getItem:(k)=> (k in m ? m[k] : null), setItem:(k,v)=>{ m[k]=String(v); },
+                 removeItem:(k)=>{ delete m[k]; }, clear:()=>{ m={}; } };
+      }});
+    })();
+    """
+
+    def faixa(pagina):
+        el = pagina.query_selector("#alerta:not([hidden])")
+        return el.inner_text().strip() if el else ""
+
+    ctx2 = navegador.new_context(viewport={"width": 390, "height": 844}, locale="pt-BR")
+    p2 = ctx2.new_page()
+    p2.add_init_script(RECUSA)
+    p2.goto(APP.as_uri())
+    p2.wait_for_selector(".hero .valor")
+    ok("não está guardando nada" in faixa(p2),
+       "armazenamento recusado: avisa já na primeira abertura", faixa(p2)[:60])
+    p2.click('[data-tempo="45"]')
+    p2.wait_for_timeout(80)
+    ok(p2.query_selector_all(".toast") == [],
+       "e não fica piscando o mesmo aviso a cada gravação")
+    p2.click('#alerta [data-acao="fechar"]')
+    p2.wait_for_timeout(50)
+    ok(faixa(p2) == "", "dá para fechar a faixa")
+    ctx2.close()
+
+    ctx3 = navegador.new_context(viewport={"width": 390, "height": 844}, locale="pt-BR")
+    p3 = ctx3.new_page()
+    p3.add_init_script(ESQUECE)
+    p3.goto(APP.as_uri())
+    p3.wait_for_selector(".hero .valor")
+    ok(faixa(p3) == "", "armazenamento que esquece: nada a acusar na primeira abertura", faixa(p3)[:60])
+    p3.click('[data-tempo="45"]')
+    p3.wait_for_timeout(80)
+    p3.reload()
+    p3.wait_for_selector(".hero .valor")
+    ok("apagou o que você tinha feito" in faixa(p3),
+       "e acusa a perda exatamente quando ela acontece", faixa(p3)[:60])
+    ctx3.close()
+
+    # Dentro de uma moldura: visualizador de anexo, prévia de mensagem.
+    moldura = Path(__file__).resolve().parent / "dist" / "_moldura_teste.html"
+    moldura.write_text('<!doctype html><meta charset="utf-8">'
+                       '<iframe src="index.html" style="width:100%;height:98vh;border:0"></iframe>',
+                       encoding="utf-8")
+    try:
+        ctx4 = navegador.new_context(viewport={"width": 390, "height": 844}, locale="pt-BR")
+        p4 = ctx4.new_page()
+        p4.goto(moldura.as_uri())
+        dentro = p4.frame_locator("iframe")
+        dentro.locator(".hero .valor").wait_for()
+        ok(dentro.locator("#alerta").is_visible(), "dentro de uma moldura, avisa que é prévia")
+        ok("prévia" in dentro.locator("#alerta").inner_text(),
+           "e diz o que fazer", dentro.locator("#alerta").inner_text()[:60])
+        ctx4.close()
+    finally:
+        moldura.unlink(missing_ok=True)
+
     navegador.close()
 
 print("\n%d testes, %d falhas" % (len(feitas), len(falhas)))
