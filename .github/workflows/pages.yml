@@ -1,0 +1,52 @@
+# Publica o app de treino num endereço, que é o que falta para ele virar
+# aplicativo de verdade no celular.
+#
+# Por que isso precisa existir: o Chrome só oferece "instalar" para páginas
+# servidas por HTTPS, com manifesto e service worker. Um arquivo .html
+# baixado abre e funciona, mas o navegador nunca vai oferecer instalação —
+# é regra dele, não do app. Então o mesmo conteúdo de `docs/` vai para o
+# GitHub Pages, e é desse endereço que sai o botão de instalar.
+#
+# `enablement: true` liga o Pages sozinho na primeira vez, sem ninguém
+# precisar mexer em Settings.
+name: Publicar o app de treino
+
+on:
+  push:
+    branches: [claude/functional-exercise-app-q6d8k1]
+    paths: ['docs/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Uma publicação por vez. Se duas saírem juntas, a segunda espera em vez de
+# atropelar a primeira.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    environment:
+      name: github-pages
+      url: ${{ steps.publicacao.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar o Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Empacotar docs/
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Publicar
+        id: publicacao
+        uses: actions/deploy-pages@v4
