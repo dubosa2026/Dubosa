@@ -345,6 +345,14 @@ function planoHtml(p) {
 /* ------------------------------------------------------------------ *
  * Aba AJUSTES                                                         *
  * ------------------------------------------------------------------ */
+/* Qual versão está rodando neste aparelho. Existe porque, com o app já no
+   celular repetindo lançamento, não havia como saber se a correção tinha
+   chegado — e "feche e abra de novo" não é diagnóstico, é torcida. */
+function versaoDoApp() {
+  const m = document.querySelector('meta[name="bussola-versao"]');
+  return (m && m.content) || 'arquivo local';
+}
+
 function paneAjustes() {
   const fixo = N.mensalFixo(estado);
   const temMic = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -492,7 +500,8 @@ function paneAjustes() {
   </div>
 
   <p class="rodape">Bússola — assessor financeiro de bolso.<br>
-    Feito para um aparelho só: o seu. Sem cadastro, sem nuvem, sem banco.</p>`;
+    Feito para um aparelho só: o seu. Sem cadastro, sem nuvem, sem banco.<br>
+    <span class="mono" style="font-size:.72rem">versão ${esc(versaoDoApp())}</span></p>`;
 }
 
 /* ------------------------------------------------------------------ *
@@ -531,6 +540,23 @@ function lancar(dados, silencioso) {
     criadoEm: Date.now(),
   };
   if (!l.valor) { aviso('Faltou o valor', 'Diga ou digite quanto foi.', 'ruim'); return null; }
+
+  /* A última trava contra lançamento repetido — e a que importa, porque é
+     aqui que a fala vira dinheiro na conta. O microfone já filtra o eco do
+     reconhecimento, mas se algum aparelho escapar dali, o estrago aparece
+     no saldo. Vale só para o que veio por voz: quem toca duas vezes no
+     botão está lançando dois cafés de propósito. */
+  if (l.origem === 'voz') {
+    const agora = Date.now();
+    const repetido = estado.lancamentos.find((x) => x.origem === 'voz'
+      && x.valor === l.valor && x.tipo === l.tipo && x.categoria === l.categoria
+      && x.data === l.data && agora - (Number(x.criadoEm) || 0) < 6000);
+    if (repetido) {
+      aviso('Ignorei uma repetição', F.dinheiro(l.valor) + ' já tinha entrado agora há pouco.', '');
+      return repetido;
+    }
+  }
+
   estado.lancamentos.unshift(l);
   estado.lancamentos.sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : b.criadoEm - a.criadoEm));
   salvar();

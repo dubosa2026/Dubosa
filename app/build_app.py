@@ -168,6 +168,7 @@ ESQUELETO = """<!doctype html>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Bússola">
+<meta name="bussola-versao" content="{versao}">
 <link rel="icon" href="{favicon}">
 {extra_head}
 {cabeca}
@@ -191,11 +192,27 @@ if ('serviceWorker' in navigator) {
 </script>"""
 
 
+def versao_das_fontes() -> str:
+    """Impressao digital do que o app e, hoje.
+
+    Serve para duas coisas: nomear o cache do service worker (que precisa
+    mudar quando — e so quando — o app muda) e aparecer no rodape dos
+    Ajustes. Este segundo uso nasceu de um aperto real: com o app no celular
+    repetindo lancamento, nao havia como saber se a correcao ja tinha
+    chegado ou se ela e que nao funcionava. Um numero na tela responde isso
+    em dois segundos.
+    """
+    juntos = "".join(
+        (SRC / nome).read_text(encoding="utf-8") for nome in MODULOS
+    ) + (SRC / "app_shell.html").read_text(encoding="utf-8")
+    return hashlib.sha1(juntos.encode("utf-8")).hexdigest()[:8]
+
+
 def b64(nome: str) -> str:
     return base64.b64encode((FONTES / nome).read_bytes()).decode("ascii")
 
 
-def montar(shell: str, extra_head: str, extra_body: str) -> str:
+def montar(shell: str, extra_head: str, extra_body: str, versao: str = "") -> str:
     corte = shell.index("</style>") + len("</style>")
     cabeca, corpo = shell[:corte], shell[corte:]
 
@@ -210,6 +227,7 @@ def montar(shell: str, extra_head: str, extra_body: str) -> str:
 
     return ESQUELETO.format(
         favicon=FAVICON,
+        versao=versao,
         extra_head=extra_head,
         cabeca=cabeca,
         corpo=corpo + "\n" + script,
@@ -219,27 +237,22 @@ def montar(shell: str, extra_head: str, extra_body: str) -> str:
 
 def main() -> None:
     shell = (SRC / "app_shell.html").read_text(encoding="utf-8")
+    versao = versao_das_fontes()
     for marcador, fonte in SUBSTITUICOES.items():
         shell = shell.replace(marcador, b64(fonte))
 
     # Versao arquivo unico: nada de manifesto nem service worker, que
     # dependem de um servidor e so renderiam 404 no console.
-    SAIDA_ARQUIVO.write_text(montar(shell, "", ""), encoding="utf-8")
+    SAIDA_ARQUIVO.write_text(montar(shell, "", "", versao), encoding="utf-8")
 
     # O iPhone ignora o manifesto para o icone da tela de inicio: ele quer o
     # `apple-touch-icon`, e so em PNG. Sem esta linha, o Safari recorta a
     # propria tela do app e usa como icone.
     cabeca_dist = ('<link rel="manifest" href="manifest.webmanifest">\n'
                    '<link rel="apple-touch-icon" href="apple-touch-icon.png">')
-    html_dist = montar(shell, cabeca_dist, REGISTRO_SW)
+    html_dist = montar(shell, cabeca_dist, REGISTRO_SW, versao)
     manifesto = json.dumps(MANIFESTO, ensure_ascii=False, indent=2)
 
-    # A versao do cache e a impressao digital do conteudo publicado: muda
-    # quando (e so quando) o app muda. Com `hash()` do Python ela mudava a
-    # cada build, porque aquele hash e aleatorio por processo — e isso
-    # jogava fora o cache do aparelho sem motivo. E antes ela olhava so dois
-    # arquivos: uma correcao em voz.js nao trocava a versao nenhuma.
-    versao = hashlib.sha1(html_dist.encode("utf-8")).hexdigest()[:10]
     sw = SERVICE_WORKER.replace("__VERSAO__", versao)
 
     for pasta in (DIST, DOCS):
@@ -257,6 +270,7 @@ def main() -> None:
     for arq in (SAIDA_ARQUIVO, DIST / "index.html", DOCS / "index.html"):
         print("%-26s %6.0f KB" % (arq.relative_to(RAIZ.parent), arq.stat().st_size / 1024))
     print("(+ manifesto, service worker e ícones em app/dist/ e docs/)")
+    print("versão: %s" % versao)
 
 
 if __name__ == "__main__":

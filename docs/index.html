@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Bússola">
+<meta name="bussola-versao" content="33c40128">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230A0A0B'/%3E%3Ccircle cx='16' cy='16' r='11' fill='none' stroke='%233A3A43' stroke-width='2'/%3E%3Cpath d='M22 10 L13.5 13 L10 22 L18.5 19 Z' fill='%23FFC72C'/%3E%3Ccircle cx='16' cy='16' r='1.6' fill='%230A0A0B'/%3E%3C/svg%3E">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -1578,7 +1579,16 @@ function criarEscuta(op) {
 
     rec = new Motor();
     rec.lang = o.idioma || 'pt-BR';
-    rec.continuous = true;
+    /* Modo continuo DESLIGADO, de proposito.
+     *
+     * Com `continuous = true` o Chrome do Android acumula os resultados da
+     * sessao inteira e reentrega os antigos a cada evento — e e dai que
+     * saem os lancamentos repetidos. Desligado, cada sessao devolve UM
+     * resultado final e acaba; a escuta continua porque o `onend` abaixo
+     * reinicia sozinho enquanto voce quiser ouvir e a tela estiver acesa.
+     * Para quem usa, nao muda nada: o microfone segue aberto. Muda que cada
+     * frase chega uma vez. */
+    rec.continuous = false;
     rec.interimResults = true;
     rec.maxAlternatives = 1;
 
@@ -1613,7 +1623,9 @@ function criarEscuta(op) {
       }
 
       const agora = Date.now();
-      if (texto === ultimaFrase && agora - ultimaHora < 3000) return;
+      // Vale entre sessoes tambem: ao reiniciar, ha motor que reentrega o
+      // final da sessao anterior.
+      if (texto === ultimaFrase && agora - ultimaHora < 4000) return;
       ultimaFrase = texto;
       ultimaHora = agora;
       if (o.onTexto) o.onTexto(texto, { confianca: r[0] && r[0].confidence });
@@ -2429,6 +2441,14 @@ function planoHtml(p) {
 /* ------------------------------------------------------------------ *
  * Aba AJUSTES                                                         *
  * ------------------------------------------------------------------ */
+/* Qual versão está rodando neste aparelho. Existe porque, com o app já no
+   celular repetindo lançamento, não havia como saber se a correção tinha
+   chegado — e "feche e abra de novo" não é diagnóstico, é torcida. */
+function versaoDoApp() {
+  const m = document.querySelector('meta[name="bussola-versao"]');
+  return (m && m.content) || 'arquivo local';
+}
+
 function paneAjustes() {
   const fixo = N.mensalFixo(estado);
   const temMic = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -2576,7 +2596,8 @@ function paneAjustes() {
   </div>
 
   <p class="rodape">Bússola — assessor financeiro de bolso.<br>
-    Feito para um aparelho só: o seu. Sem cadastro, sem nuvem, sem banco.</p>`;
+    Feito para um aparelho só: o seu. Sem cadastro, sem nuvem, sem banco.<br>
+    <span class="mono" style="font-size:.72rem">versão ${esc(versaoDoApp())}</span></p>`;
 }
 
 /* ------------------------------------------------------------------ *
@@ -2615,6 +2636,23 @@ function lancar(dados, silencioso) {
     criadoEm: Date.now(),
   };
   if (!l.valor) { aviso('Faltou o valor', 'Diga ou digite quanto foi.', 'ruim'); return null; }
+
+  /* A última trava contra lançamento repetido — e a que importa, porque é
+     aqui que a fala vira dinheiro na conta. O microfone já filtra o eco do
+     reconhecimento, mas se algum aparelho escapar dali, o estrago aparece
+     no saldo. Vale só para o que veio por voz: quem toca duas vezes no
+     botão está lançando dois cafés de propósito. */
+  if (l.origem === 'voz') {
+    const agora = Date.now();
+    const repetido = estado.lancamentos.find((x) => x.origem === 'voz'
+      && x.valor === l.valor && x.tipo === l.tipo && x.categoria === l.categoria
+      && x.data === l.data && agora - (Number(x.criadoEm) || 0) < 6000);
+    if (repetido) {
+      aviso('Ignorei uma repetição', F.dinheiro(l.valor) + ' já tinha entrado agora há pouco.', '');
+      return repetido;
+    }
+  }
+
   estado.lancamentos.unshift(l);
   estado.lancamentos.sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : b.criadoEm - a.criadoEm));
   salvar();

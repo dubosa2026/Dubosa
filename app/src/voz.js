@@ -403,7 +403,16 @@ function criarEscuta(op) {
 
     rec = new Motor();
     rec.lang = o.idioma || 'pt-BR';
-    rec.continuous = true;
+    /* Modo continuo DESLIGADO, de proposito.
+     *
+     * Com `continuous = true` o Chrome do Android acumula os resultados da
+     * sessao inteira e reentrega os antigos a cada evento — e e dai que
+     * saem os lancamentos repetidos. Desligado, cada sessao devolve UM
+     * resultado final e acaba; a escuta continua porque o `onend` abaixo
+     * reinicia sozinho enquanto voce quiser ouvir e a tela estiver acesa.
+     * Para quem usa, nao muda nada: o microfone segue aberto. Muda que cada
+     * frase chega uma vez. */
+    rec.continuous = false;
     rec.interimResults = true;
     rec.maxAlternatives = 1;
 
@@ -438,7 +447,9 @@ function criarEscuta(op) {
       }
 
       const agora = Date.now();
-      if (texto === ultimaFrase && agora - ultimaHora < 3000) return;
+      // Vale entre sessoes tambem: ao reiniciar, ha motor que reentrega o
+      // final da sessao anterior.
+      if (texto === ultimaFrase && agora - ultimaHora < 4000) return;
       ultimaFrase = texto;
       ultimaHora = agora;
       if (o.onTexto) o.onTexto(texto, { confianca: r[0] && r[0].confidence });

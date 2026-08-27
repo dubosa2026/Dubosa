@@ -15,7 +15,7 @@
  * Nenhum lancamento passa por aqui — eles ficam no armazenamento do
  * aparelho e nunca viram rede.
  */
-const CACHE = 'bussola-17a7d6ee9f';
+const CACHE = 'bussola-33c40128';
 const ARQUIVOS = ['./', './index.html', './manifest.webmanifest',
   './icone-192.png', './icone-512.png', './icone-maskable-512.png', './apple-touch-icon.png'];
 

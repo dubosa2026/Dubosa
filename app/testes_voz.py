@@ -258,6 +258,32 @@ console.log(JSON.stringify({ouvidas}));
 ok(r["ouvidas"] == ["gastei 50 no uber"],
    "a mesma frase repetida na hora conta uma vez só", r["ouvidas"])
 
+print("\n== modo contínuo desligado (é nele que o Android duplica) ==")
+r = rodar(MOTOR + """
+const {reg, Falso} = fazerMotor();
+const doc = ouvintes(), win = ouvintes();
+const e = V.criarEscuta({motor:Falso, doc, win, telaVisivel:()=>true});
+e.ligar();
+const i = reg.inst;
+console.log(JSON.stringify({continuo:i.continuous, parciais:i.interimResults, idioma:i.lang}));
+""")
+ok(r["continuo"] is False, "pede uma frase por sessão, não escuta acumulada", r)
+ok(r["parciais"] is True, "mas continua mostrando o que está ouvindo", r)
+ok(r["idioma"] == "pt-BR", "em português do Brasil", r)
+
+print("\n== a escuta continua mesmo sem o modo contínuo ==")
+r = rodar(MOTOR + """
+const {reg, Falso} = fazerMotor();
+const doc = ouvintes(), win = ouvintes();
+const e = V.criarEscuta({motor:Falso, doc, win, telaVisivel:()=>true});
+e.ligar();
+/* O motor encerra sozinho depois de cada frase, como o do celular faz. */
+reg.vivo = false; reg.inst.onend();
+console.log(JSON.stringify({vivo:reg.vivo, starts:reg.starts}));
+""")
+ok(r["vivo"] is True and r["starts"] == 2,
+   "acabou uma frase, ele reabre sozinho para a próxima", r)
+
 print("\n== silêncio prolongado desliga sozinho ==")
 r = rodar(MOTOR + """
 const {reg, Falso} = fazerMotor();

@@ -157,6 +157,55 @@ with sync_playwright() as p:
     ok(len(fixos) == 1 and fixos[0]["valor"] == 1800 and fixos[0]["dia"] == 10,
        "'todo dia 10' cria conta fixa", fixos)
 
+    print("\n== a trava final contra repetição ==")
+    # Mesmo que o microfone deixe passar um eco, o lançamento não pode
+    # entrar duas vezes: é aqui que a fala vira dinheiro na conta.
+    # Frase idêntica: quem barra é o microfone, em silêncio — eco não merece
+    # aviso na tela.
+    n_antes = len(estado(pg)["lancamentos"])
+    falar(pg, "gastei 25 na padaria")
+    pg.wait_for_timeout(250)
+    falar(pg, "gastei 25 na padaria")
+    pg.wait_for_timeout(300)
+    ok(len(estado(pg)["lancamentos"]) == n_antes + 1,
+       "a mesma fala repetida na hora entra uma vez só",
+       len(estado(pg)["lancamentos"]) - n_antes)
+
+    # Frases DIFERENTES que dão no mesmo lançamento: aqui o microfone não
+    # tem como saber, e quem barra é a trava final — essa avisa.
+    n_antes = len(estado(pg)["lancamentos"])
+    falar(pg, "gastei 31 no cinema")
+    pg.wait_for_timeout(250)
+    falar(pg, "cinema 31 reais")
+    pg.wait_for_timeout(300)
+    ok(len(estado(pg)["lancamentos"]) == n_antes + 1,
+       "duas falas diferentes com o mesmo gasto entram uma vez só",
+       len(estado(pg)["lancamentos"]) - n_antes)
+    ok("repetição" in pg.inner_text("#toast").lower(), "e a tela avisa que ignorou",
+       pg.inner_text("#toast"))
+
+    # Mas lançar de propósito pelo botão, duas vezes, tem de entrar duas.
+    n_antes = len(estado(pg)["lancamentos"])
+    for _ in range(2):
+        pg.fill("#novoValor", "7")
+        pg.select_option("#novaCat", "comida")
+        pg.click("[data-acao=lancar]")
+        pg.wait_for_timeout(250)
+    ok(len(estado(pg)["lancamentos"]) == n_antes + 2,
+       "dois toques no botão são dois cafés de propósito, e entram os dois",
+       len(estado(pg)["lancamentos"]) - n_antes)
+
+    print("\n== a versão aparece na tela ==")
+    pg.click(".aba[data-pane=ajustes]")
+    pg.wait_for_timeout(350)
+    import re as _re
+    rodape = pg.inner_text("#pane-ajustes")
+    ok(_re.search(r"vers[ãa]o [a-f0-9]{8}", rodape.lower()) is not None,
+       "os Ajustes dizem qual versão está rodando",
+       rodape[-90:].replace("\n", " "))
+    pg.click(".aba[data-pane=hoje]")
+    pg.wait_for_timeout(300)
+
     print("\n== perguntas ==")
     falar(pg, "quanto posso gastar hoje")
     pg.wait_for_timeout(300)
