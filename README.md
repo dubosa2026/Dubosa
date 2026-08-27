@@ -15,36 +15,60 @@ servidor com os seus lançamentos.
 
 ## Como colocar no celular
 
-Há dois caminhos. O primeiro não depende de nada nem de ninguém; o segundo
-deixa o app com cara de aplicativo instalado.
+Instalado, ele fica com **ícone próprio na tela de início** e abre em tela
+cheia, sem barra de navegador — do jeito que um aplicativo abre. Some da
+lista de abas e aparece na lista de aplicativos recentes.
 
-### 1. Arquivo único (o mais simples)
+Para isso o app precisa estar num endereço `https`. Não é capricho: o
+navegador **só libera o microfone em endereço seguro**. Duas hospedagens
+gratuitas servem, e o repositório está pronto para as duas.
 
-`app/bussola.html` é o app inteiro em um arquivo só — telas, fontes e
-contas. Mande para o seu celular (WhatsApp, e-mail, Drive) e abra. Funciona
-offline e sem instalar nada.
+### GitHub Pages — grátis, sem terceiros, o código já está lá
 
-Limitação: o reconhecimento de voz costuma exigir uma página servida por
-`https://`. Aberto direto do arquivo, o microfone pode não ligar em alguns
-navegadores — nesse caso use o caminho 2, ou lance digitando.
+O build também escreve em `docs/`, que é a pasta que o GitHub Pages publica.
 
-### 2. Publicado, com ícone na tela de início (recomendado)
+1. No repositório: **Settings → Pages**.
+2. *Source*: **Deploy from a branch**.
+3. *Branch*: `claude/financial-advisor-voice-recognition-jxuqfw`, pasta
+   **`/docs`** → *Save*.
+4. Em um ou dois minutos o endereço aparece nessa mesma tela.
 
-O repositório já vem pronto para o [Netlify](https://netlify.com):
+É estático: não tem a análise por IA (que precisa de um servidor). Todo o
+resto funciona — inclusive a voz e o modo offline.
 
-1. Crie um site novo apontando para este repositório.
-   O `netlify.toml` já traz o build (`python3 app/build_app.py`) e a pasta
-   publicada (`app/dist`).
-2. Abra o endereço do site no celular.
-3. No Android (Chrome): menu → **Adicionar à tela inicial**.
-   No iPhone (Safari): compartilhar → **Adicionar à Tela de Início**.
+### Netlify — igual, e com a análise por IA
 
-Depois disso ele abre em tela cheia, sem barra de navegador, e continua
-funcionando sem internet — o service worker guarda a página no aparelho.
+O `netlify.toml` já traz build e pasta publicada.
 
-Como o endereço é público, vale definir um **PIN** em Ajustes.
+1. **Add new site → Import an existing project → GitHub** → escolher este
+   repositório.
+2. **Branch to deploy**: trocar para
+   `claude/financial-advisor-voice-recognition-jxuqfw`. A branch padrão
+   deste repositório é outro projeto — deixar como vem publica o app errado.
+3. *Deploy*.
 
----
+Só o Netlify roda a função `/api/conselho`, que é o que liga o botão de
+análise por IA (opcional, veja [Conselhos](#conselhos)).
+
+### Instalar no aparelho
+
+Abra o endereço no celular e:
+
+- **Android (Chrome)**: menu → *Instalar aplicativo* (ou *Adicionar à tela
+  inicial*).
+- **iPhone (Safari)**: compartilhar → *Adicionar à Tela de Início*.
+
+Como o endereço é público, ponha um **PIN** em Ajustes. Vale lembrar que a
+URL aberta não expõe nada seu: quem abrir o link encontra um app vazio,
+porque os seus lançamentos ficam no armazenamento do seu aparelho e nunca
+chegam ao servidor.
+
+### Sem hospedar nada
+
+`app/bussola.html` é o app inteiro em um arquivo. Mande para o celular e
+abra. Funciona offline e sem instalar nada, mas aberto assim (`file://`) o
+navegador costuma **bloquear o microfone**, e não dá para instalar com
+ícone — é a saída para quem topa digitar em vez de falar.
 
 ## Como se usa
 
@@ -210,9 +234,12 @@ app/
     conselhos.js            o assessor que roda no aparelho
     ui.js                   as quatro telas
     app_shell.html          marcação e estilo
+  gerar_icones.py           os PNG do ícone (roda à mão, precisa de playwright)
   testes_nucleo.py          a matemática, conferida contra Python
   testes_voz.py             frases faladas + a trava da tela
   testes_app.py             o app inteiro no navegador de celular
+  testes_instalacao.py      manifesto, ícones e o app abrindo sem internet
+docs/                       cópia do dist, para o GitHub Pages publicar
 netlify/
   functions/conselho.mjs    a análise por IA (a chave fica aqui, no servidor)
   testes/testes_conselho.mjs
@@ -225,6 +252,7 @@ python3 app/build_app.py        # gera o app a partir de src/
 python3 app/testes_nucleo.py    # as contas
 python3 app/testes_voz.py       # a voz e a trava da tela
 python3 app/testes_app.py       # o app no navegador (precisa do playwright)
+python3 app/testes_instalacao.py  # cara de app instalado + modo offline
 node netlify/testes/testes_conselho.mjs   # a função da IA (precisa de npm install)
 ```
 

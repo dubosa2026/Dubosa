@@ -17,6 +17,7 @@ internet e sem instalar nada.
 
 import base64
 import json
+import shutil
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent
@@ -24,6 +25,12 @@ SRC = RAIZ / "src"
 FONTES = SRC / "fonts"
 SAIDA_ARQUIVO = RAIZ / "bussola.html"
 DIST = RAIZ / "dist"
+ICONES = SRC / "icones"
+# O GitHub Pages so publica a raiz do repositorio ou uma pasta chamada
+# `docs/`. Como o Netlify publica `app/dist`, o build escreve nos dois
+# lugares: assim da para hospedar em qualquer um dos dois, de graca, sem
+# mexer em nada. O conteudo e identico.
+DOCS = RAIZ.parent / "docs"
 
 # A rosa dos ventos da marca, embutida como data URI. Sem ela o navegador
 # pede /favicon.ico em toda visita, leva 404 e escreve erro no console — e
@@ -49,9 +56,16 @@ SUBSTITUICOES = {
     "__PLEXMONO600__": "plexmono-600.woff2",
 }
 
+# `display: standalone` e o que tira a barra do navegador: aberto pelo icone,
+# ele ocupa a tela inteira, com a propria janela na lista de aplicativos
+# recentes. Os PNGs sao o que faz o Chrome do Android oferecer "Instalar
+# aplicativo" em vez de um atalho — e o `maskable` e o que impede o recorte
+# do sistema de cortar a agulha da bussola.
 MANIFESTO = {
     "name": "Bússola — assessor financeiro",
     "short_name": "Bússola",
+    "description": "Fale o gasto e veja quanto ainda dá para gastar hoje, na semana, no mês e no ano.",
+    "id": "bussola",
     "start_url": ".",
     "scope": ".",
     "display": "standalone",
@@ -59,10 +73,18 @@ MANIFESTO = {
     "background_color": "#0A0A0B",
     "theme_color": "#0A0A0B",
     "lang": "pt-BR",
+    "dir": "ltr",
+    "categories": ["finance", "productivity"],
     "icons": [
+        {"src": "icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+        {"src": "icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+        {"src": "icone-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
         {"src": FAVICON, "sizes": "any", "type": "image/svg+xml", "purpose": "any"},
     ],
 }
+
+# Arquivos que o build so copia de src/icones para dist/.
+COPIAR = ["icone-192.png", "icone-512.png", "icone-maskable-512.png", "apple-touch-icon.png"]
 
 # Cache-first, com atualizacao por tras. O app precisa abrir no elevador,
 # no metro e no meio do mato: se depender da rede para desenhar a tela, ele
@@ -74,7 +96,8 @@ SERVICE_WORKER = """/* Service worker da Bússola: o app abre sem internet.
  * por aqui — eles ficam no localStorage do aparelho e nunca viram rede.
  */
 const CACHE = 'bussola-__VERSAO__';
-const ARQUIVOS = ['./', './index.html', './manifest.webmanifest'];
+const ARQUIVOS = ['./', './index.html', './manifest.webmanifest',
+  './icone-192.png', './icone-512.png', './icone-maskable-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', (ev) => {
   ev.waitUntil(caches.open(CACHE).then((c) => c.addAll(ARQUIVOS)).then(() => self.skipWaiting()));
@@ -171,23 +194,35 @@ def main() -> None:
     # dependem de um servidor e so renderiam 404 no console.
     SAIDA_ARQUIVO.write_text(montar(shell, "", ""), encoding="utf-8")
 
-    DIST.mkdir(parents=True, exist_ok=True)
-    (DIST / "index.html").write_text(
-        montar(shell, '<link rel="manifest" href="manifest.webmanifest">', REGISTRO_SW),
-        encoding="utf-8",
-    )
-    (DIST / "manifest.webmanifest").write_text(
-        json.dumps(MANIFESTO, ensure_ascii=False, indent=2), encoding="utf-8")
+    # O iPhone ignora o manifesto para o icone da tela de inicio: ele quer o
+    # `apple-touch-icon`, e so em PNG. Sem esta linha, o Safari recorta a
+    # propria tela do app e usa como icone.
+    cabeca_dist = ('<link rel="manifest" href="manifest.webmanifest">\n'
+                   '<link rel="apple-touch-icon" href="apple-touch-icon.png">')
+    html_dist = montar(shell, cabeca_dist, REGISTRO_SW)
+    manifesto = json.dumps(MANIFESTO, ensure_ascii=False, indent=2)
 
     # A versao do cache muda junto com o conteudo: sem isso o celular
     # continuaria servindo a tela velha depois de uma correcao.
     versao = str(abs(hash((SRC / "ui.js").read_text(encoding="utf-8")
                           + (SRC / "nucleo.js").read_text(encoding="utf-8"))))[:10]
-    (DIST / "sw.js").write_text(SERVICE_WORKER.replace("__VERSAO__", versao), encoding="utf-8")
+    sw = SERVICE_WORKER.replace("__VERSAO__", versao)
 
-    for arq in (SAIDA_ARQUIVO, DIST / "index.html"):
+    for pasta in (DIST, DOCS):
+        pasta.mkdir(parents=True, exist_ok=True)
+        for nome in COPIAR:
+            shutil.copy2(ICONES / nome, pasta / nome)
+        (pasta / "index.html").write_text(html_dist, encoding="utf-8")
+        (pasta / "manifest.webmanifest").write_text(manifesto, encoding="utf-8")
+        (pasta / "sw.js").write_text(sw, encoding="utf-8")
+
+    # O GitHub Pages passa tudo pelo Jekyll por padrao, que ignora arquivo
+    # comecado por ponto ou sublinhado. Este arquivo vazio o desliga.
+    (DOCS / ".nojekyll").write_text("", encoding="utf-8")
+
+    for arq in (SAIDA_ARQUIVO, DIST / "index.html", DOCS / "index.html"):
         print("%-26s %6.0f KB" % (arq.relative_to(RAIZ.parent), arq.stat().st_size / 1024))
-    print("app/dist/manifest.webmanifest, app/dist/sw.js")
+    print("(+ manifesto, service worker e ícones em app/dist/ e docs/)")
 
 
 if __name__ == "__main__":

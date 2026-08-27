@@ -205,8 +205,12 @@ print("\n== conselhos ==")
 r = rodar("const e=N.normalizar(%s); console.log(JSON.stringify(C.gerar(e).map(c=>c.id)));" % E)
 ok("ano" in r, "sempre mostra para onde o ano vai", r)
 
+# O saldo tem de ser MENOR que a media diaria, senao o teste depende do dia
+# do mes em que roda: com R$ 200 e média de ~R$ 39, o mês fura no dia 26 e
+# fecha de pé no dia 27, quando sobram menos dias. Abaixo da média, ele fura
+# hoje — em qualquer dia do calendário.
 sufoco = json.loads(E)
-sufoco["saldo"]["valor"] = 200.0
+sufoco["saldo"]["valor"] = 20.0
 r = rodar("const e=N.normalizar(%s); console.log(JSON.stringify(C.gerar(e)));" % json.dumps(sufoco))
 negativo = [c for c in r if c["id"] == "negativo"]
 ok(negativo, "com saldo furando, o primeiro conselho é o buraco", [c["id"] for c in r])

@@ -757,15 +757,22 @@ async function pedirIA(botao) {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ retrato: C.retrato(estado), senha: estado.ajustes.iaSenha || '' }),
     });
+    // Hospedagem estatica (GitHub Pages e afins) nao tem funcao nenhuma: o
+    // endereco simplesmente nao existe. Dizer "não deu certo" aqui manda a
+    // pessoa procurar defeito onde nao ha — o que falta e um servidor.
+    if (r.status === 404 || r.status === 405) {
+      throw new Error('Esta publicação é estática e não tem o assessor de IA. '
+        + 'Os conselhos desta tela continuam funcionando normalmente.');
+    }
     const dados = await r.json();
     if (!r.ok) throw new Error(dados.erro || 'não deu certo');
     respostaIA = dados.resposta;
     render();
   } catch (e) {
     respostaIA = null;
-    aviso('A IA não respondeu', String(e.message || e).slice(0, 120), 'ruim');
+    aviso('Sem análise por IA', String(e.message || e).slice(0, 160), 'ruim');
     botao.disabled = false;
-    botao.textContent = 'Pedir análise à IA';
+    botao.textContent = '✦ Pedir análise à IA';
   }
 }
 
