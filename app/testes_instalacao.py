@@ -113,6 +113,22 @@ with sync_playwright() as p:
     ok("Para onde isso vai" in pg.inner_text("#pane-futuro"), "e as telas continuam funcionando")
     ctx.set_offline(False)
 
+    print("\n== uma correção chega no aparelho ==")
+    # O app estava servindo a pagina do cache. Na pratica isso significava
+    # que um defeito corrigido aqui podia continuar de pe no celular. Agora
+    # a pagina vem pela rede quando ha rede — e do cache quando nao ha.
+    alvo = DIST / "index.html"
+    original = alvo.read_text(encoding="utf-8")
+    try:
+        alvo.write_text(original.replace("<title>", "<title>CORRIGIDO "), encoding="utf-8")
+        pg.goto(BASE, wait_until="domcontentloaded")
+        pg.wait_for_timeout(500)
+        ok("CORRIGIDO" in pg.title(), "com internet, a versão nova aparece na hora", pg.title())
+    finally:
+        alvo.write_text(original, encoding="utf-8")
+    pg.goto(BASE, wait_until="domcontentloaded")
+    pg.wait_for_timeout(400)
+
     print("\n== nada quebrado ==")
     ok(not erros, "nenhum erro de javascript", erros[:3])
 

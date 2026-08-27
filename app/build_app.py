@@ -16,6 +16,7 @@ internet e sem instalar nada.
 """
 
 import base64
+import hashlib
 import json
 import shutil
 from pathlib import Path
@@ -91,9 +92,20 @@ COPIAR = ["icone-192.png", "icone-512.png", "icone-maskable-512.png", "apple-tou
 # falha justamente na hora em que a pessoa quer lancar um gasto.
 SERVICE_WORKER = """/* Service worker da Bússola: o app abre sem internet.
  *
- * Estrategia: responde do cache na hora e busca a versao nova por tras. A
- * proxima abertura ja pega a atualizacao. Nenhum dado de lancamento passa
- * por aqui — eles ficam no localStorage do aparelho e nunca viram rede.
+ * Duas estrategias, de proposito.
+ *
+ * A PAGINA vem pela REDE primeiro. Ela carrega o app inteiro — telas,
+ * contas, interpretacao da voz —, entao servi-la do cache faria uma
+ * correcao levar dias para chegar ao celular. Ja aconteceu: um defeito da
+ * voz corrigido aqui continuaria repetindo lancamento no aparelho. Sem
+ * rede, o cache assume na hora e o app abre igual.
+ *
+ * O RESTO (icones) vem do cache primeiro, atualizando por tras: sao
+ * arquivos que quase nunca mudam, e esperar a rede por eles so atrasaria a
+ * tela.
+ *
+ * Nenhum lancamento passa por aqui — eles ficam no armazenamento do
+ * aparelho e nunca viram rede.
  */
 const CACHE = 'bussola-__VERSAO__';
 const ARQUIVOS = ['./', './index.html', './manifest.webmanifest',
@@ -109,16 +121,36 @@ self.addEventListener('activate', (ev) => {
     .then(() => self.clients.claim()));
 });
 
+function guardar(pedido, resposta) {
+  if (resposta && resposta.ok) {
+    const copia = resposta.clone();
+    caches.open(CACHE).then((c) => c.put(pedido, copia));
+  }
+  return resposta;
+}
+
 self.addEventListener('fetch', (ev) => {
   const url = new URL(ev.request.url);
   // A analise da IA nunca sai do cache: resposta velha de conselho e pior
   // que resposta nenhuma.
   if (ev.request.method !== 'GET' || url.pathname.startsWith('/api/')) return;
+
+  if (ev.request.mode === 'navigate') {
+    // `cache: 'reload'` pula o cache HTTP do proprio navegador. Sem isso a
+    // busca pela rede ainda podia devolver a pagina velha: o GitHub Pages
+    // manda a pagina com validade de alguns minutos, e o navegador honra
+    // essa validade antes mesmo de perguntar ao servidor. Uma correcao
+    // ficava presa nesse meio do caminho.
+    ev.respondWith(
+      fetch(ev.request, { cache: 'reload' })
+        .then((r) => guardar(ev.request, r))
+        .catch(() => caches.match(ev.request).then((achado) => achado || caches.match('./index.html'))),
+    );
+    return;
+  }
+
   ev.respondWith(caches.match(ev.request).then((achado) => {
-    const rede = fetch(ev.request).then((r) => {
-      if (r && r.ok) caches.open(CACHE).then((c) => c.put(ev.request, r.clone()));
-      return r;
-    }).catch(() => achado);
+    const rede = fetch(ev.request).then((r) => guardar(ev.request, r)).catch(() => achado);
     return achado || rede;
   }));
 });
@@ -202,10 +234,12 @@ def main() -> None:
     html_dist = montar(shell, cabeca_dist, REGISTRO_SW)
     manifesto = json.dumps(MANIFESTO, ensure_ascii=False, indent=2)
 
-    # A versao do cache muda junto com o conteudo: sem isso o celular
-    # continuaria servindo a tela velha depois de uma correcao.
-    versao = str(abs(hash((SRC / "ui.js").read_text(encoding="utf-8")
-                          + (SRC / "nucleo.js").read_text(encoding="utf-8"))))[:10]
+    # A versao do cache e a impressao digital do conteudo publicado: muda
+    # quando (e so quando) o app muda. Com `hash()` do Python ela mudava a
+    # cada build, porque aquele hash e aleatorio por processo — e isso
+    # jogava fora o cache do aparelho sem motivo. E antes ela olhava so dois
+    # arquivos: uma correcao em voz.js nao trocava a versao nenhuma.
+    versao = hashlib.sha1(html_dist.encode("utf-8")).hexdigest()[:10]
     sw = SERVICE_WORKER.replace("__VERSAO__", versao)
 
     for pasta in (DIST, DOCS):

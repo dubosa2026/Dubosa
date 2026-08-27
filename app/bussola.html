@@ -1379,7 +1379,10 @@ const NUMEROS_FALADOS = new Set(['zero', 'um', 'uma', 'dois', 'duas', 'tres', 'q
   'setecentos', 'oitocentos', 'novecentos', 'mil', 'milhao', 'milhoes']);
 
 const SUPERFLUAS = new Set(VERBOS_SAIDA.concat(VERBOS_ENTRADA).concat([
-  'reais', 'real', 'conto', 'contos', 'pila', 'centavos', 'centavo',
+  // O reconhecimento do Android escreve "cinquenta reais" como "R$ 50".
+  // Sem estas duas entradas, o "R$" sobra e a lista mostra lancamento
+  // chamado "R$" e "R$ Uber" — foi o que apareceu no celular.
+  'reais', 'real', 'conto', 'contos', 'pila', 'centavos', 'centavo', 'r', 'rs',
   'de', 'do', 'da', 'dos', 'das', 'no', 'na', 'nos', 'nas', 'em', 'com', 'pra',
   'para', 'por', 'o', 'a', 'os', 'as', 'ao', 'aos', 'e', 'que', 'me', 'meu',
   'minha', 'foi', 'era', 'hoje', 'ontem', 'anteontem', 'agora', 'todo', 'toda',
@@ -1578,19 +1581,41 @@ function criarEscuta(op) {
     rec.interimResults = true;
     rec.maxAlternatives = 1;
 
+    /* Uma fala, um lancamento.
+     *
+     * O motor do Android manda, a CADA evento, a lista INTEIRA de
+     * resultados da sessao — e com `resultIndex` em zero, sem apontar para
+     * o pedaco novo. Quem percorre a lista a partir desse indice processa
+     * tudo de novo a cada palavra reconhecida: um "gastei 50 no uber" virou
+     * quatro lancamentos de R$ 50 num celular de verdade.
+     *
+     * A saida e nao percorrer lista nenhuma. So o ULTIMO resultado
+     * interessa: os anteriores, se ja eram finais, ja viraram lancamento no
+     * evento em que apareceram. Isso vale para os dois tipos de motor — o
+     * que empilha os resultados e o que manda so o novo.
+     *
+     * A frase repetida em menos de tres segundos e eco do reconhecimento,
+     * nao um gasto novo: ninguem fala a mesma conta duas vezes nesse
+     * intervalo. */
+    let ultimaFrase = '', ultimaHora = 0;
+
     rec.onresult = (ev) => {
       armarSilencio();
-      let parcial = '';
-      for (let i = ev.resultIndex; i < ev.results.length; i++) {
-        const r = ev.results[i];
-        const texto = (r[0] && r[0].transcript) || '';
-        if (r.isFinal) {
-          if (o.onTexto) o.onTexto(texto.trim(), { confianca: r[0] && r[0].confidence });
-        } else {
-          parcial += texto;
-        }
+      const r = ev.results[ev.results.length - 1];
+      if (!r) return;
+      const texto = ((r[0] && r[0].transcript) || '').trim();
+      if (!texto) return;
+
+      if (!r.isFinal) {
+        if (o.onParcial) o.onParcial(texto);
+        return;
       }
-      if (parcial && o.onParcial) o.onParcial(parcial.trim());
+
+      const agora = Date.now();
+      if (texto === ultimaFrase && agora - ultimaHora < 3000) return;
+      ultimaFrase = texto;
+      ultimaHora = agora;
+      if (o.onTexto) o.onTexto(texto, { confianca: r[0] && r[0].confidence });
     };
 
     rec.onerror = (ev) => {

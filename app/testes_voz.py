@@ -196,6 +196,68 @@ ok(["bloqueado", "tela"] in [[a, b] for a, b in r["estados"]]
    or any(a == "bloqueado" for a, b in r["estados"]),
    "a tela é avisada de que o microfone foi bloqueado", r["estados"])
 
+
+print("\n== uma fala, um lançamento (o defeito do celular de verdade) ==")
+# O motor do Android manda, a cada evento, a LISTA INTEIRA de resultados com
+# `resultIndex` em 0 — e não só o pedaço novo. Quem confia nesse índice
+# processa a mesma frase de novo a cada palavra reconhecida: um "gastei 50 no
+# uber" vira quatro lançamentos de R$ 50. Este teste imita esse motor.
+r = rodar("""
+const doc = {addEventListener:()=>{}}, win = {addEventListener:()=>{}};
+const ouvidas = [];
+let inst = null;
+class Android {
+  constructor(){ inst = this; this.res = []; }
+  start(){ this.res = []; }
+  stop(){ if(this.onend) this.onend(); }
+  abort(){ this.stop(); }
+  /* Cada evento repete tudo o que ja veio, com resultIndex 0. */
+  emitir(texto, final){
+    if (this.res.length && !this.res[this.res.length-1].isFinal) this.res.pop();
+    this.res.push(Object.assign([{transcript:texto, confidence:.9}], {isFinal:!!final, length:1}));
+    this.onresult({ resultIndex: 0, results: this.res });
+  }
+}
+const e = V.criarEscuta({motor:Android, doc, win, telaVisivel:()=>true,
+  onTexto:(t)=>ouvidas.push(t)});
+e.ligar();
+inst.emitir('gastei', false);
+inst.emitir('gastei 50', false);
+inst.emitir('gastei 50 no uber', true);
+inst.emitir('almoco', false);
+inst.emitir('almoco 32', true);
+inst.emitir('mercado 90', true);
+console.log(JSON.stringify({ouvidas}));
+""")
+ok(r["ouvidas"] == ["gastei 50 no uber", "almoco 32", "mercado 90"],
+   "três falas viram três lançamentos, não doze", r["ouvidas"])
+
+print("\n== eco do motor não vira gasto novo ==")
+r = rodar("""
+const doc = {addEventListener:()=>{}}, win = {addEventListener:()=>{}};
+const ouvidas = [];
+let inst = null;
+class Ecoante {
+  constructor(){ inst = this; this.res = []; }
+  start(){ this.res = []; }
+  stop(){ if(this.onend) this.onend(); }
+  abort(){ this.stop(); }
+  /* Repete o mesmo final num indice novo — alguns motores fazem isso. */
+  emitir(texto){
+    this.res.push(Object.assign([{transcript:texto, confidence:.9}], {isFinal:true, length:1}));
+    this.onresult({ resultIndex: this.res.length-1, results: this.res });
+  }
+}
+const e = V.criarEscuta({motor:Ecoante, doc, win, telaVisivel:()=>true,
+  onTexto:(t)=>ouvidas.push(t)});
+e.ligar();
+inst.emitir('gastei 50 no uber');
+inst.emitir('gastei 50 no uber');
+console.log(JSON.stringify({ouvidas}));
+""")
+ok(r["ouvidas"] == ["gastei 50 no uber"],
+   "a mesma frase repetida na hora conta uma vez só", r["ouvidas"])
+
 print("\n== silêncio prolongado desliga sozinho ==")
 r = rodar(MOTOR + """
 const {reg, Falso} = fazerMotor();
