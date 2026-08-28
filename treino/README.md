@@ -17,12 +17,36 @@ lado, para publicar num endereço e **instalar na tela de início**. Aberto
 pelo ícone, o app ocupa a tela toda, sem barra de navegador, e abre sem
 internet.
 
+### Onde ele está publicado
+
+**https://dubosa2026.github.io/Dubosa/treino/**
+
+O GitHub Pages deste repositório publica **uma** pasta: a `docs/` da branch
+da Bússola. Por isso o Circuito mora numa subpasta dela — `docs/treino/` —,
+e os dois convivem sem que nenhum arquivo de um encoste no outro:
+
+| endereço | app |
+|---|---|
+| `.../Dubosa/` | Bússola |
+| `.../Dubosa/treino/` | Circuito |
+
+Cada um tem o seu service worker. O da Bússola tem escopo `/Dubosa/` e
+cobriria a subpasta, mas escopo mais específico ganha: `/Dubosa/treino/` é
+controlado pelo service worker do Circuito. Offline, cada endereço abre o
+seu app.
+
+Ao mexer em `treino/src/`, rode o build e copie `docs/` para `docs/treino/`
+na branch publicada — é de lá que o site sai.
+
 ### Instalar no Android
 
-1. Publique `docs/` (Settings → Pages → branch, pasta `/docs`) ou
-   `treino/dist/` em qualquer hospedagem.
-2. Abra o endereço no **Chrome do Android**.
-3. Vá em **Ajustes** dentro do app: o botão **Instalar o app** aparece lá.
+1. Abra **https://dubosa2026.github.io/Dubosa/treino/** no Chrome do Android.
+2. Vá em **Ajustes** dentro do app: o botão **Instalar o app** está lá.
+
+Não adianta procurar esse botão no arquivo `circuito.html` baixado: instalar
+exige HTTPS, manifesto e service worker, e service worker não existe fora de
+um endereço. É regra do navegador, não limite do app — e o app diz isso na
+tela quando percebe que foi aberto como arquivo.
 
 No iPhone não existe esse botão — a instalação é manual, por
 **Compartilhar → Adicionar à Tela de Início**, e o app ensina o caminho na

@@ -138,7 +138,7 @@ const ALERTAS = {
     titulo: 'Aberto como arquivo — não dá para instalar assim',
     texto: 'O app funciona inteiro, mas o navegador só oferece “instalar na tela de início” '
       + 'para página com endereço (https). Abrindo o arquivo baixado, esse botão não existe '
-      + 'em navegador nenhum. Veja em Ajustes onde conseguir o endereço.',
+      + 'em navegador nenhum. Em Ajustes está o endereço para abrir e instalar.',
     acao: '',
   },
   previa: {
@@ -1001,6 +1001,11 @@ function instalar() {
   }).catch(() => {});
 }
 
+/* Onde o app mora publicado. Fica escrito aqui porque a pessoa que abriu o
+   arquivo baixado precisa saber para onde ir — mandar "abra pelo endereco
+   publicado" sem dizer qual endereco nao ajuda ninguem. */
+const ENDERECO = 'https://dubosa2026.github.io/Dubosa/treino/';
+
 /* O endereco do arquivo unico, quando existe um do lado. */
 function arquivoParaBaixar() {
   const m = document.querySelector('meta[name="circuito-arquivo"]');
@@ -1020,8 +1025,14 @@ function cartaoInstalar() {
       + 'Assim o app funciona inteiro — treino, cronômetro, histórico —, mas o botão de '
       + 'instalar <b>não aparece em navegador nenhum</b>: instalar exige uma página com '
       + 'endereço (https), e um arquivo não tem endereço.</p>'
-      + '<p class="ajuda">Para virar ícone na tela de início, abra o Circuito pelo endereço '
-      + 'publicado — o mesmo app, servido por um endereço. Aí este cartão mostra o botão.</p>';
+      + '<p class="ajuda">Para virar ícone na tela de início, abra este endereço no navegador '
+      + 'do celular:</p>'
+      + '<a class="btn bloco" href="' + ENDERECO + '" target="_blank" rel="noopener">'
+      + 'Abrir o Circuito no navegador</a>'
+      + '<p class="ajuda" style="margin-top:8px;word-break:break-all">'
+      + '<span class="mono">' + esc(ENDERECO) + '</span></p>'
+      + '<p class="ajuda">É o mesmo app, servido por um endereço. Lá este cartão mostra o '
+      + 'botão de instalar, e o histórico fica guardado.</p>';
   } else if (convite) {
     h += '<p class="ajuda" style="margin:2px 0 10px">Ele vira um ícone na sua tela de início e '
       + 'abre em tela cheia, sem barra de navegador — e funciona sem internet.</p>'

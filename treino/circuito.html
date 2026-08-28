@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Circuito">
-<meta name="circuito-versao" content="2e2c4cbb">
+<meta name="circuito-versao" content="5d6f1271">
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230A0A0B'/%3E%3Ccircle cx='16' cy='16' r='9.5' fill='none' stroke='%233A3A43' stroke-width='3'/%3E%3Cpath d='M16 6.5a9.5 9.5 0 0 1 8.6 5.5' fill='none' stroke='%23FFC72C' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='2.8' fill='%23FFC72C'/%3E%3C/svg%3E">
 
@@ -2920,7 +2920,7 @@ const ALERTAS = {
     titulo: 'Aberto como arquivo — não dá para instalar assim',
     texto: 'O app funciona inteiro, mas o navegador só oferece “instalar na tela de início” '
       + 'para página com endereço (https). Abrindo o arquivo baixado, esse botão não existe '
-      + 'em navegador nenhum. Veja em Ajustes onde conseguir o endereço.',
+      + 'em navegador nenhum. Em Ajustes está o endereço para abrir e instalar.',
     acao: '',
   },
   previa: {
@@ -3783,6 +3783,11 @@ function instalar() {
   }).catch(() => {});
 }
 
+/* Onde o app mora publicado. Fica escrito aqui porque a pessoa que abriu o
+   arquivo baixado precisa saber para onde ir — mandar "abra pelo endereco
+   publicado" sem dizer qual endereco nao ajuda ninguem. */
+const ENDERECO = 'https://dubosa2026.github.io/Dubosa/treino/';
+
 /* O endereco do arquivo unico, quando existe um do lado. */
 function arquivoParaBaixar() {
   const m = document.querySelector('meta[name="circuito-arquivo"]');
@@ -3802,8 +3807,14 @@ function cartaoInstalar() {
       + 'Assim o app funciona inteiro — treino, cronômetro, histórico —, mas o botão de '
       + 'instalar <b>não aparece em navegador nenhum</b>: instalar exige uma página com '
       + 'endereço (https), e um arquivo não tem endereço.</p>'
-      + '<p class="ajuda">Para virar ícone na tela de início, abra o Circuito pelo endereço '
-      + 'publicado — o mesmo app, servido por um endereço. Aí este cartão mostra o botão.</p>';
+      + '<p class="ajuda">Para virar ícone na tela de início, abra este endereço no navegador '
+      + 'do celular:</p>'
+      + '<a class="btn bloco" href="' + ENDERECO + '" target="_blank" rel="noopener">'
+      + 'Abrir o Circuito no navegador</a>'
+      + '<p class="ajuda" style="margin-top:8px;word-break:break-all">'
+      + '<span class="mono">' + esc(ENDERECO) + '</span></p>'
+      + '<p class="ajuda">É o mesmo app, servido por um endereço. Lá este cartão mostra o '
+      + 'botão de instalar, e o histórico fica guardado.</p>';
   } else if (convite) {
     h += '<p class="ajuda" style="margin:2px 0 10px">Ele vira um ícone na sua tela de início e '
       + 'abre em tela cheia, sem barra de navegador — e funciona sem internet.</p>'
