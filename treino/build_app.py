@@ -194,9 +194,19 @@ def versao_das_fontes() -> str:
     Ajustes, para dar para saber, em dois segundos, se a correcao ja chegou
     ao aparelho ou se e ela que nao funciona.
     """
-    juntos = "".join((SRC / nome).read_text(encoding="utf-8") for nome in MODULOS)
-    juntos += (SRC / "app_shell.html").read_text(encoding="utf-8")
-    return hashlib.sha1(juntos.encode("utf-8")).hexdigest()[:8]
+    digital = hashlib.sha1()
+    for nome in MODULOS:
+        digital.update((SRC / nome).read_bytes())
+    digital.update((SRC / "app_shell.html").read_bytes())
+    # Os icones entram na conta. Eles sao servidos pelo service worker com
+    # estrategia de cache primeiro, entao trocar um icone sem trocar a
+    # versao deixaria o icone velho no aparelho para sempre: o cache nunca
+    # seria invalidado. Foi o que quase aconteceu ao corrigir o recorte do
+    # icone no Android -- o arquivo mudou, a versao nao, e o celular
+    # continuaria com o desenho antigo.
+    for nome in sorted(COPIAR):
+        digital.update((ICONES / nome).read_bytes())
+    return digital.hexdigest()[:8]
 
 
 def b64(nome: str) -> str:

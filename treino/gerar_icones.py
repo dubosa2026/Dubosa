@@ -111,14 +111,24 @@ def montar_png(tamanho, linhas):
 
 def main():
     SAIDA.mkdir(parents=True, exist_ok=True)
-    # O `maskable` e recortado pelo sistema em circulo, coracao, o que o
-    # fabricante quiser: a arte encolhe para caber na area segura (80% do
-    # quadrado) e o fundo vai ate a borda, sem canto arredondado.
+    # NENHUM icone tem canto transparente, e nenhum encosta na borda.
+    #
+    # A primeira versao desenhava os icones "any" como quadrado arredondado
+    # com os cantos transparentes, do jeito que fica bonito num navegador de
+    # computador. No celular isso da errado duas vezes: o Android aplica o
+    # PROPRIO recorte (circulo, quadrado arredondado, o que o fabricante
+    # quiser) e, com a arte encostando na borda, ele cortava o arco amarelo
+    # em cima; e o canto transparente faz alguns lancadores desenharem uma
+    # placa branca atras, que e o oposto de parecer um app instalado.
+    #
+    # Entao: fundo ate a borda, sempre, e a arte encolhida para caber em
+    # qualquer recorte. O `maskable` encolhe mais (76%), porque a area
+    # segura dele e menor — o sistema pode cortar ate 20% de cada lado.
     trabalhos = [
-        ("icone-192.png", 192, True, 1.0),
-        ("icone-512.png", 512, True, 1.0),
+        ("icone-192.png", 192, False, 0.86),
+        ("icone-512.png", 512, False, 0.86),
         ("icone-maskable-512.png", 512, False, 0.76),
-        ("apple-touch-icon.png", 180, False, 1.0),
+        ("apple-touch-icon.png", 180, False, 0.86),
     ]
     for nome, tam, arredondar, arte in trabalhos:
         dados = gerar(tam, arredondar, arte)

@@ -148,6 +148,17 @@ finally:
     alvo.write_text(original, encoding="utf-8")
 ok(build_app.versao_das_fontes() == antes, "e desfazer devolve a versão de antes")
 
+# O ícone também é o app: o service worker o guarda em cache, então trocar
+# o desenho sem trocar a versão deixaria o ícone velho preso no aparelho.
+icone = RAIZ / "src" / "icones" / "icone-192.png"
+original_icone = icone.read_bytes()
+try:
+    icone.write_bytes(original_icone[:-1])
+    ok(build_app.versao_das_fontes() != antes, "mexer num ícone também muda a versão")
+finally:
+    icone.write_bytes(original_icone)
+ok(build_app.versao_das_fontes() == antes, "e desfazer devolve a versão de antes, de novo")
+
 print("\n%d testes, %d falhas" % (len(feitas), len(falhas)))
 if falhas:
     print("Falhou: " + ", ".join(falhas))
