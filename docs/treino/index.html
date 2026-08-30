@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Circuito">
-<meta name="circuito-versao" content="3495fd40">
+<meta name="circuito-versao" content="a21c1c12">
 <meta name="circuito-arquivo" content="circuito.html">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230A0A0B'/%3E%3Ccircle cx='16' cy='16' r='9.5' fill='none' stroke='%233A3A43' stroke-width='3'/%3E%3Cpath d='M16 6.5a9.5 9.5 0 0 1 8.6 5.5' fill='none' stroke='%23FFC72C' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='2.8' fill='%23FFC72C'/%3E%3C/svg%3E">
 <link rel="manifest" href="manifest.webmanifest">
@@ -3688,6 +3688,8 @@ function telaAjustes() {
   });
   const bi = pane.querySelector('[data-acao="instalar"]');
   if (bi) bi.onclick = instalar;
+  const diag = pane.querySelector('#diagnostico');
+  if (diag) pintarDiagnostico(diag);
   pane.querySelector('[data-acao="exportar"]').onclick = exportar;
   pane.querySelector('[data-acao="importar"]').onclick = () => $('arquivo').click();
   pane.querySelector('[data-acao="apagar"]').onclick = () => {
@@ -3789,6 +3791,68 @@ function instalar() {
    publicado" sem dizer qual endereco nao ajuda ninguem. */
 const ENDERECO = 'https://dubosa2026.github.io/Dubosa/treino/';
 
+/* O que o navegador responde sobre a instalacao, neste aparelho.
+ *
+ * Existe porque adivinhar a distancia nao funcionou. "Instalei e nao criou
+ * icone" tem meia duzia de causas que dao exatamente a mesma tela — app
+ * aberto dentro da janela de OUTRO app instalado, arquivo sem endereco,
+ * navegador que nao mandou o convite, app ja instalado e so sem atalho na
+ * tela inicial. Cada uma tem uma saida diferente, e o navegador sabe
+ * distinguir. Entao ele que responda.
+ */
+function diagnostico() {
+  const linhas = [];
+  const modo = ['standalone', 'minimal-ui', 'fullscreen', 'browser']
+    .filter((m) => { try { return window.matchMedia('(display-mode: ' + m + ')').matches; } catch (e) { return false; } });
+  let moldura = false;
+  try { moldura = window.self !== window.top; } catch (e) { moldura = true; }
+
+  linhas.push(['Endereço', String(window.location.href)]);
+  linhas.push(['Modo de exibição', modo.length ? modo.join(', ') : 'desconhecido']);
+  linhas.push(['Dentro de outra janela', moldura ? 'SIM' : 'não']);
+  linhas.push(['Convite de instalação', convite ? 'RECEBIDO' : 'não recebido']);
+  linhas.push(['Versão', (document.querySelector('meta[name="circuito-versao"]') || {}).content || '—']);
+  return linhas;
+}
+
+function pintarDiagnostico(alvo) {
+  const linhas = diagnostico();
+  const escopo = document.querySelector('link[rel="manifest"]');
+  const mostra = (extra) => {
+    alvo.innerHTML = linhas.concat(extra || []).map(([n, v]) =>
+      '<div class="conta-fila"><div class="n">' + esc(n) + '</div>'
+      + '<div class="v mono" style="max-width:60%;word-break:break-all;text-align:right">'
+      + esc(v) + '</div></div>').join('')
+      + '<button class="btn peq bloco" style="margin-top:10px" data-acao="copiar">'
+      + 'Copiar este diagnóstico</button>';
+    alvo.querySelector('[data-acao="copiar"]').onclick = () => {
+      const texto = linhas.concat(extra || []).map(([n, v]) => n + ': ' + v).join('\n');
+      try {
+        navigator.clipboard.writeText(texto);
+        aviso('Copiado', 'Cole na conversa para eu ver o que seu celular está dizendo.', 'bom');
+      } catch (e) {
+        aviso('Não consegui copiar', 'Tire um print desta lista.', 'ruim');
+      }
+    };
+  };
+  mostra([]);
+
+  if (!escopo) return;
+  // O service worker responde depois; a lista se completa quando ele volta.
+  const extra = [];
+  (navigator.serviceWorker ? navigator.serviceWorker.getRegistrations() : Promise.resolve([]))
+    .then((rs) => {
+      extra.push(['Service worker', rs.length
+        ? (rs[0].active ? 'ativo' : 'registrado') + ', escopo ' + rs[0].scope
+        : 'NENHUM — sem ele não há instalação']);
+      if (rs.length > 1) {
+        extra.push(['Outros escopos', rs.slice(1).map((r) => r.scope).join(' · ')]);
+      }
+      mostra(extra);
+    })
+    .catch(() => {});
+}
+
 /* O endereco do arquivo unico, quando existe um do lado. */
 function arquivoParaBaixar() {
   const m = document.querySelector('meta[name="circuito-arquivo"]');
@@ -3830,6 +3894,11 @@ function cartaoInstalar() {
       + 'endereço. Abrindo o arquivo direto (sem endereço), não dá para instalar — mas o app '
       + 'funciona igual.</p>';
   }
+
+  h += '<div class="secao" style="margin:18px 0 4px"><h3>Se o ícone não aparecer</h3></div>'
+    + '<p class="ajuda" style="margin:0 0 8px">O que o navegador deste aparelho responde. '
+    + 'Copie e me mande: cada resposta aponta uma causa diferente.</p>'
+    + '<div id="diagnostico"></div>';
 
   const arquivo = arquivoParaBaixar();
   if (arquivo) {
