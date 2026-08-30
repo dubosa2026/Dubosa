@@ -382,6 +382,18 @@ with sync_playwright() as p:
        "apontando para o arquivo que o build deixou do lado",
        baixar and baixar.get_attribute("href"))
 
+    print("\nDiagnóstico da instalação")
+    pg.click('[data-pane="ajustes"]')
+    pg.wait_for_selector("#diagnostico .conta-fila")
+    pg.wait_for_timeout(400)
+    diag = pg.inner_text("#diagnostico")
+    ok("Endereço" in diag and "Modo de exibição" in diag, "o diagnóstico lista o essencial", diag[:80])
+    ok("Service worker" in diag, "e diz o estado do service worker", diag[:200])
+    ok("ativo" in diag, "que aqui está ativo, porque há endereço", diag[diag.find("Service"):][:90])
+    ok("Convite de instalação" in diag, "e se o navegador mandou o convite de instalação")
+    ok(pg.query_selector('#diagnostico [data-acao="copiar"]') is not None,
+       "com um botão para copiar tudo de uma vez")
+
     print("\nParar no meio")
     pg.click('[data-pane="hoje"]')
     pg.wait_for_selector("#btnComecar")
