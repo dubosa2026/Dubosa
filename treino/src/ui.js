@@ -1424,10 +1424,22 @@ function desenhar() {
   else telaAjustes();
 }
 
+/* Um link que abre direto na ajuda da instalacao.
+ *
+ * `.../treino/?ajuda=instalacao` cai nos Ajustes com o diagnostico ja na
+ * tela. Existe porque explicar "va em Ajustes, role ate o fim, ache a
+ * secao" por escrito falhou: quem esta com o problema na mao precisa de um
+ * toque, nao de um roteiro. */
+function pedidoDeAjuda() {
+  const alvo = String(window.location.search || '') + String(window.location.hash || '');
+  return alvo.indexOf('instalacao') >= 0;
+}
+
 function ligar() {
   carregar();
   armazenamento = conferirArmazenamento();
   ligarInstalacao();
+  if (pedidoDeAjuda()) aba = 'ajustes';
 
   document.querySelectorAll('.aba').forEach((b) => {
     b.onclick = () => { aba = b.dataset.pane; desenhar(); };
@@ -1455,6 +1467,15 @@ function ligar() {
   });
 
   desenhar();
+
+  if (pedidoDeAjuda()) {
+    // Depois de desenhar: o diagnostico so existe no DOM apos a aba
+    // Ajustes ser montada.
+    setTimeout(() => {
+      const d = $('diagnostico');
+      if (d) d.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 260);
+  }
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ligar);

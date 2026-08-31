@@ -394,6 +394,17 @@ with sync_playwright() as p:
     ok(pg.query_selector('#diagnostico [data-acao="copiar"]') is not None,
        "com um botão para copiar tudo de uma vez")
 
+    print("\nO link que abre direto na ajuda")
+    pg.goto(BASE + "?ajuda=instalacao")
+    pg.wait_for_selector("#diagnostico .conta-fila")
+    ok(pg.get_attribute('[data-pane="ajustes"]', "aria-selected") == "true",
+       "o link com ?ajuda=instalacao abre já nos Ajustes")
+    ok(pg.is_visible("#diagnostico"), "com o diagnóstico na tela, sem ninguém procurar")
+    pg.goto(BASE)
+    pg.wait_for_selector(".hero .valor")
+    ok(pg.get_attribute('[data-pane="hoje"]', "aria-selected") == "true",
+       "e sem o link ele continua abrindo em Hoje")
+
     print("\nParar no meio")
     pg.click('[data-pane="hoje"]')
     pg.wait_for_selector("#btnComecar")
