@@ -87,6 +87,12 @@ def texto(pg, selecao):
     return el.inner_text().strip() if el else ""
 
 
+def faixa(pagina):
+    """O texto da faixa de aviso do topo, ou vazio quando não há aviso."""
+    el = pagina.query_selector("#alerta:not([hidden])")
+    return el.inner_text().strip() if el else ""
+
+
 casa, BASE = servidor()
 
 with sync_playwright() as p:
@@ -405,6 +411,34 @@ with sync_playwright() as p:
     ok(pg.get_attribute('[data-pane="hoje"]', "aria-selected") == "true",
        "e sem o link ele continua abrindo em Hoje")
 
+    print("\nNavegador embutido em outro aplicativo")
+    # Um WebView nao implementa a consulta `display-mode`: nenhum modo
+    # responde. E a assinatura que o app usa para reconhecer o caso.
+    SEM_MODO = """
+    (() => { const real = window.matchMedia.bind(window);
+      window.matchMedia = (q) => String(q).indexOf('display-mode') >= 0
+        ? { matches:false, media:q, addListener(){}, removeListener(){},
+            addEventListener(){}, removeEventListener(){} }
+        : real(q);
+    })();
+    """
+    ctx6 = navegador.new_context(viewport={"width": 390, "height": 844}, locale="pt-BR")
+    p6 = ctx6.new_page()
+    p6.add_init_script(SEM_MODO)
+    p6.goto(BASE)
+    p6.wait_for_selector(".hero .valor")
+    ok("não instala aplicativos" in faixa(p6),
+       "a faixa avisa que ali não dá para instalar", faixa(p6)[:60])
+    p6.click('[data-pane="ajustes"]')
+    p6.wait_for_selector("#diagnostico .conta-fila")
+    texto6 = p6.inner_text("#pane-ajustes")
+    ok("dentro de outro aplicativo" in texto6,
+       "os Ajustes explicam que o navegador é embutido", texto6[texto6.find("Instalar"):][:120])
+    ok("Abrir no Chrome" in texto6, "e dizem exatamente o que tocar")
+    ok("NÃO — navegador dentro de outro app" in p6.inner_text("#diagnostico"),
+       "e o diagnóstico responde a pergunta direto")
+    ctx6.close()
+
     print("\nParar no meio")
     pg.click('[data-pane="hoje"]')
     pg.wait_for_selector("#btnComecar")
@@ -470,10 +504,6 @@ with sync_playwright() as p:
       }});
     })();
     """
-
-    def faixa(pagina):
-        el = pagina.query_selector("#alerta:not([hidden])")
-        return el.inner_text().strip() if el else ""
 
     ctx2 = navegador.new_context(viewport={"width": 390, "height": 844}, locale="pt-BR")
     p2 = ctx2.new_page()

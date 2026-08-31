@@ -103,6 +103,9 @@ function conferirArmazenamento() {
     return 'previa';   // moldura de outro endereco: nem da para perguntar
   }
   if (comoArquivo()) return 'arquivo';
+  // Navegador embutido: nao e problema de armazenamento, mas e a mesma
+  // faixa, e e o recado mais util que o app tem para dar a quem chegou ali.
+  if (navegadorLimitado()) return 'navegador';
   return 'ok';
 }
 
@@ -133,6 +136,13 @@ const ALERTAS = {
     texto: 'Ele aceitou salvar e esqueceu ao recarregar — é o que a aba anônima faz. '
       + 'Abra numa aba normal, ou instale o app na tela de início, para o histórico ficar.',
     acao: 'Exportar o que tenho',
+  },
+  navegador: {
+    titulo: 'Este navegador não instala aplicativos',
+    texto: 'Você abriu dentro de outro aplicativo, não no Chrome. Aqui o app funciona, mas o '
+      + 'botão de instalar não existe. Toque no menu ⋮ deste navegador e escolha "Abrir no '
+      + 'Chrome" — lá o botão aparece.',
+    acao: '',
   },
   arquivo: {
     titulo: 'Aberto como arquivo — não dá para instalar assim',
@@ -976,6 +986,30 @@ function instalado() {
   } catch (e) { return false; }
 }
 
+/* Navegador embutido dentro de outro aplicativo (WhatsApp, Gmail, app de
+ * conversa) — o que abre quando se toca num link sem sair do app.
+ *
+ * Ele NUNCA instala aplicativo: nao dispara o convite de instalacao e nao
+ * tem menu para isso. E o Chrome de verdade sempre responde alguma coisa
+ * em `display-mode` (num aba normal, "browser"); quando NENHUM dos modos
+ * responde, e porque o motor nem implementa a consulta — assinatura de
+ * WebView.
+ *
+ * Isto custou quatro rodadas para ser descoberto: o app dizia "va em
+ * Ajustes e toque em Instalar", e o botao nunca existia porque a pagina
+ * nem estava no Chrome. Diagnosticar isso a distancia sem perguntar ao
+ * proprio navegador era impossivel.
+ */
+function navegadorLimitado() {
+  try {
+    if (!window.matchMedia) return true;
+    return !['browser', 'standalone', 'minimal-ui', 'fullscreen']
+      .some((m) => window.matchMedia('(display-mode: ' + m + ')').matches);
+  } catch (e) {
+    return true;
+  }
+}
+
 function noIphone() {
   const ua = navigator.userAgent || '';
   return /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
@@ -1028,6 +1062,8 @@ function diagnostico() {
   linhas.push(['Modo de exibição', modo.length ? modo.join(', ') : 'desconhecido']);
   linhas.push(['Dentro de outra janela', moldura ? 'SIM' : 'não']);
   linhas.push(['Convite de instalação', convite ? 'RECEBIDO' : 'não recebido']);
+  linhas.push(['Instala aplicativos?', navegadorLimitado()
+    ? 'NÃO — navegador dentro de outro app' : 'sim']);
   linhas.push(['Versão', (document.querySelector('meta[name="circuito-versao"]') || {}).content || '—']);
   return linhas;
 }
@@ -1059,11 +1095,14 @@ function pintarDiagnostico(alvo) {
   const extra = [];
   (navigator.serviceWorker ? navigator.serviceWorker.getRegistrations() : Promise.resolve([]))
     .then((rs) => {
-      extra.push(['Service worker', rs.length
-        ? (rs[0].active ? 'ativo' : 'registrado') + ', escopo ' + rs[0].scope
-        : 'NENHUM — sem ele não há instalação']);
-      if (rs.length > 1) {
-        extra.push(['Outros escopos', rs.slice(1).map((r) => r.scope).join(' · ')]);
+      // Quem CONTROLA a pagina, nao o primeiro da lista: com dois apps no
+      // mesmo endereco a lista traz os dois, e mostrar o primeiro fazia
+      // parecer que o app errado estava no comando.
+      const dono = navigator.serviceWorker && navigator.serviceWorker.controller;
+      extra.push(['Service worker', dono ? 'ativo, controlando esta página'
+        : (rs.length ? 'registrado, ainda não assumiu' : 'NENHUM')]);
+      if (rs.length) {
+        extra.push(['Escopos registrados', rs.map((r) => r.scope).join(' · ')]);
       }
       mostra(extra);
     })
@@ -1097,6 +1136,17 @@ function cartaoInstalar() {
       + '<span class="mono">' + esc(ENDERECO) + '</span></p>'
       + '<p class="ajuda">É o mesmo app, servido por um endereço. Lá este cartão mostra o '
       + 'botão de instalar, e o histórico fica guardado.</p>';
+  } else if (navegadorLimitado()) {
+    h += '<p class="ajuda" style="margin-top:4px">Você está num <b>navegador embutido dentro de '
+      + 'outro aplicativo</b> — o que abre ao tocar num link sem sair do app. Esse navegador '
+      + '<b>não instala aplicativos</b>, então o botão não existe aqui e não vai aparecer.</p>'
+      + '<p class="ajuda">Toque no menu <b>⋮</b> (ou <b>···</b>) deste navegador e escolha '
+      + '<b>“Abrir no Chrome”</b> ou <b>“Abrir no navegador”</b>. Lá o botão de instalar '
+      + 'aparece neste mesmo cartão.</p>'
+      + '<p class="ajuda">Se não houver essa opção no menu, copie o endereço abaixo, abra o '
+      + 'Chrome pelo ícone dele e cole na barra de endereço.</p>'
+      + '<p class="ajuda" style="word-break:break-all"><span class="mono">'
+      + esc(ENDERECO) + '</span></p>';
   } else if (convite) {
     h += '<p class="ajuda" style="margin:2px 0 10px">Ele vira um ícone na sua tela de início e '
       + 'abre em tela cheia, sem barra de navegador — e funciona sem internet.</p>'
