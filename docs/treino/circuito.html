@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Circuito">
-<meta name="circuito-versao" content="a21c1c12">
+<meta name="circuito-versao" content="38939006">
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230A0A0B'/%3E%3Ccircle cx='16' cy='16' r='9.5' fill='none' stroke='%233A3A43' stroke-width='3'/%3E%3Cpath d='M16 6.5a9.5 9.5 0 0 1 8.6 5.5' fill='none' stroke='%23FFC72C' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='2.8' fill='%23FFC72C'/%3E%3C/svg%3E">
 
@@ -4206,10 +4206,22 @@ function desenhar() {
   else telaAjustes();
 }
 
+/* Um link que abre direto na ajuda da instalacao.
+ *
+ * `.../treino/?ajuda=instalacao` cai nos Ajustes com o diagnostico ja na
+ * tela. Existe porque explicar "va em Ajustes, role ate o fim, ache a
+ * secao" por escrito falhou: quem esta com o problema na mao precisa de um
+ * toque, nao de um roteiro. */
+function pedidoDeAjuda() {
+  const alvo = String(window.location.search || '') + String(window.location.hash || '');
+  return alvo.indexOf('instalacao') >= 0;
+}
+
 function ligar() {
   carregar();
   armazenamento = conferirArmazenamento();
   ligarInstalacao();
+  if (pedidoDeAjuda()) aba = 'ajustes';
 
   document.querySelectorAll('.aba').forEach((b) => {
     b.onclick = () => { aba = b.dataset.pane; desenhar(); };
@@ -4237,6 +4249,15 @@ function ligar() {
   });
 
   desenhar();
+
+  if (pedidoDeAjuda()) {
+    // Depois de desenhar: o diagnostico so existe no DOM apos a aba
+    // Ajustes ser montada.
+    setTimeout(() => {
+      const d = $('diagnostico');
+      if (d) d.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 260);
+  }
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ligar);
