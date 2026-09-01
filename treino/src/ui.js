@@ -16,6 +16,21 @@ const F = window.Formato, X = window.Exercicios, M = window.Montador,
 
 const CHAVE = 'circuito.v1';
 const MARCA = CHAVE + '.gravou';
+
+/* Onde o app mora publicado, e como fazer o Android abrir o Chrome nele.
+ *
+ * Ficam no topo porque a lista de avisos usa os dois, e ela e montada
+ * antes: `const` usada acima da propria declaracao derruba o arquivo
+ * inteiro na hora de carregar — foi o que aconteceu.
+ *
+ * O `intent://` e o unico jeito de sair de um navegador embutido sem pedir
+ * para a pessoa achar o menu dele, que e exatamente onde ela travou.
+ * `browser_fallback_url` cobre quem nao tem Chrome: abre no navegador
+ * padrao em vez de dar erro. */
+const ENDERECO = 'https://dubosa2026.github.io/Dubosa/treino/';
+const ABRIR_NO_CHROME = 'intent://dubosa2026.github.io/Dubosa/treino/'
+  + '#Intent;scheme=https;package=com.android.chrome'
+  + ';S.browser_fallback_url=' + encodeURIComponent(ENDERECO) + ';end';
 let estado = P.estadoNovo();
 let armazenamento = 'ok';   // ok | recusado | esqueceu | previa
 let alertaFechado = false;
@@ -138,11 +153,18 @@ const ALERTAS = {
     acao: 'Exportar o que tenho',
   },
   navegador: {
-    titulo: 'Este navegador não instala aplicativos',
-    texto: 'Você abriu dentro de outro aplicativo, não no Chrome. Aqui o app funciona, mas o '
-      + 'botão de instalar não existe. Toque no menu ⋮ deste navegador e escolha "Abrir no '
-      + 'Chrome" — lá o botão aparece.',
+    titulo: 'Toque aqui para abrir no Chrome',
+    texto: 'Você abriu dentro de outro aplicativo, e esse navegador não instala aplicativos. '
+      + 'O botão abaixo abre o Circuito no Chrome — lá aparece o botão de instalar.',
     acao: '',
+    link: { texto: 'Abrir no Chrome', href: ABRIR_NO_CHROME },
+  },
+  instalar: {
+    titulo: 'Instalar na tela de início',
+    texto: 'Ele vira um ícone igual aos outros aplicativos, abre em tela cheia e funciona sem '
+      + 'internet.',
+    acao: '',
+    instalar: true,
   },
   arquivo: {
     titulo: 'Aberto como arquivo — não dá para instalar assim',
@@ -159,19 +181,37 @@ const ALERTAS = {
   },
 };
 
+/* O que a faixa mostra AGORA. O convite de instalacao chega depois do
+   carregamento, entao a situacao nao pode ser decidida uma vez so na
+   partida. */
+function situacaoDaFaixa() {
+  if (armazenamento !== 'ok') return armazenamento;
+  if (convite && !instalado()) return 'instalar';
+  return 'ok';
+}
+
 function pintarAlerta() {
   const barra = $('alerta');
-  const info = ALERTAS[armazenamento];
+  const caso = situacaoDaFaixa();
+  const info = ALERTAS[caso];
   if (!info || alertaFechado) { barra.hidden = true; return; }
 
+  let botoes = '';
+  if (info.link) {
+    botoes += '<a class="btn peq" style="border-color:var(--at);color:var(--at)" href="'
+      + info.link.href + '">' + esc(info.link.texto) + '</a>';
+  }
+  if (info.instalar) botoes += '<button type="button" data-acao="instalar">Instalar</button>';
+  if (info.acao) botoes += '<button type="button" data-acao="exportar">' + esc(info.acao) + '</button>';
+  botoes += '<button type="button" class="fraco" data-acao="fechar">Entendi</button>';
+
   barra.innerHTML = '<div class="txt"><b>' + esc(info.titulo) + '</b>' + esc(info.texto) + '</div>'
-    + '<div class="btns">'
-    + (info.acao ? '<button type="button" data-acao="exportar">' + esc(info.acao) + '</button>' : '')
-    + '<button type="button" class="fraco" data-acao="fechar">Entendi</button>'
-    + '</div>';
+    + '<div class="btns">' + botoes + '</div>';
   barra.hidden = false;
   const botaoExportar = barra.querySelector('[data-acao="exportar"]');
   if (botaoExportar) botaoExportar.onclick = exportar;
+  const botaoInstalar = barra.querySelector('[data-acao="instalar"]');
+  if (botaoInstalar) botaoInstalar.onclick = instalar;
   barra.querySelector('[data-acao="fechar"]').onclick = () => {
     alertaFechado = true;
     barra.hidden = true;
@@ -1019,6 +1059,10 @@ function ligarInstalacao() {
   window.addEventListener('beforeinstallprompt', (ev) => {
     ev.preventDefault();
     convite = ev;
+    // A faixa aparece na hora, em qualquer aba: quem chegou aqui atras de
+    // instalar nao deveria precisar procurar o botao nos Ajustes.
+    alertaFechado = false;
+    pintarAlerta();
     if (aba === 'ajustes') desenhar();
   });
   window.addEventListener('appinstalled', () => {
@@ -1040,8 +1084,6 @@ function instalar() {
 /* Onde o app mora publicado. Fica escrito aqui porque a pessoa que abriu o
    arquivo baixado precisa saber para onde ir — mandar "abra pelo endereco
    publicado" sem dizer qual endereco nao ajuda ninguem. */
-const ENDERECO = 'https://dubosa2026.github.io/Dubosa/treino/';
-
 /* O que o navegador responde sobre a instalacao, neste aparelho.
  *
  * Existe porque adivinhar a distancia nao funcionou. "Instalei e nao criou
@@ -1143,8 +1185,9 @@ function cartaoInstalar() {
       + '<p class="ajuda">Toque no menu <b>⋮</b> (ou <b>···</b>) deste navegador e escolha '
       + '<b>“Abrir no Chrome”</b> ou <b>“Abrir no navegador”</b>. Lá o botão de instalar '
       + 'aparece neste mesmo cartão.</p>'
-      + '<p class="ajuda">Se não houver essa opção no menu, copie o endereço abaixo, abra o '
-      + 'Chrome pelo ícone dele e cole na barra de endereço.</p>'
+      + '<a class="btn pri bloco" href="' + ABRIR_NO_CHROME + '">Abrir no Chrome agora</a>'
+      + '<p class="ajuda" style="margin-top:10px">Se o botão acima não fizer nada, copie o '
+      + 'endereço abaixo, abra o Chrome pelo ícone dele e cole na barra de endereço.</p>'
       + '<p class="ajuda" style="word-break:break-all"><span class="mono">'
       + esc(ENDERECO) + '</span></p>';
   } else if (convite) {

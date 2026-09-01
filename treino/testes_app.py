@@ -435,9 +435,37 @@ with sync_playwright() as p:
     ok("dentro de outro aplicativo" in texto6,
        "os Ajustes explicam que o navegador é embutido", texto6[texto6.find("Instalar"):][:120])
     ok("Abrir no Chrome" in texto6, "e dizem exatamente o que tocar")
+    # O botao que tira a pessoa do WebView sem ela precisar achar o menu.
+    alvo = p6.get_attribute('#alerta a', "href") or ""
+    ok(alvo.startswith("intent://"),
+       "a faixa traz um botão que abre o Chrome de verdade", alvo[:60])
+    ok("package=com.android.chrome" in alvo, "endereçado ao Chrome do Android")
+    ok("browser_fallback_url" in alvo, "com saída para quem não tiver Chrome")
+    ok(p6.get_attribute('#pane-ajustes a.btn.pri', "href", timeout=3000) == alvo,
+       "e o mesmo botão nos Ajustes")
     ok("NÃO — navegador dentro de outro app" in p6.inner_text("#diagnostico"),
        "e o diagnóstico responde a pergunta direto")
     ctx6.close()
+
+    print("\nO convite de instalação vira faixa")
+    # Quando o navegador manda o convite, o app nao pode escondê-lo nos
+    # Ajustes: a faixa aparece onde a pessoa já está.
+    ctx7 = navegador.new_context(viewport={"width": 390, "height": 844}, locale="pt-BR")
+    p7 = ctx7.new_page()
+    p7.goto(BASE)
+    p7.wait_for_selector(".hero .valor")
+    ok(faixa(p7) == "", "sem convite, nenhuma faixa atrapalha a tela")
+    p7.evaluate("""() => {
+      const ev = new Event('beforeinstallprompt');
+      ev.prompt = () => {}; ev.userChoice = Promise.resolve({outcome:'accepted'});
+      window.dispatchEvent(ev);
+    }""")
+    p7.wait_for_timeout(150)
+    ok("Instalar na tela de início" in faixa(p7),
+       "chegando o convite, a faixa oferece instalar na hora", faixa(p7)[:60])
+    ok(p7.query_selector('#alerta [data-acao="instalar"]') is not None,
+       "com o botão ali mesmo, sem precisar ir aos Ajustes")
+    ctx7.close()
 
     print("\nParar no meio")
     pg.click('[data-pane="hoje"]')
