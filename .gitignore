@@ -19,3 +19,8 @@ node_modules/
 
 # Capturas de tela dos roteiros de teste (podem conter nomes de clientes)
 *.png
+
+# Os icones do app de treino sao parte do app, nao captura de tela.
+!treino/src/icones/*.png
+!treino/dist/*.png
+!docs/*.png

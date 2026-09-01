@@ -1,0 +1,476 @@
+<title>Circuito — treino funcional de bolso</title>
+<style>
+@font-face{font-family:'Archivo';font-style:normal;font-weight:400 800;font-display:swap;
+src:url(data:font/woff2;base64,__ARCHIVO__) format('woff2');}
+@font-face{font-family:'PlexSans';font-style:normal;font-weight:400 600;font-display:swap;
+src:url(data:font/woff2;base64,__PLEXSANS__) format('woff2');}
+@font-face{font-family:'PlexMono';font-style:normal;font-weight:400;font-display:swap;
+src:url(data:font/woff2;base64,__PLEXMONO400__) format('woff2');}
+@font-face{font-family:'PlexMono';font-style:normal;font-weight:600;font-display:swap;
+src:url(data:font/woff2;base64,__PLEXMONO600__) format('woff2');}
+
+/* Um app de celular preso no chao da sala, nao um site que encolheu. Duas
+   distancias de leitura convivem aqui: a tela de planejar, que a pessoa le
+   com o celular na mao, e a tela de executar, que ela le de longe, de
+   cabeca para baixo numa prancha, ofegante. Por isso a segunda tem numero
+   gigante, cor por fase e quase nenhum texto. */
+:root{
+  --bg:#0A0A0B; --panel:#131316; --panel-2:#1A1A1E; --panel-3:#232329;
+  --line:#2A2A31; --line-2:#3A3A43;
+  --text:#F4F4F1; --text-2:#9E9EA0; --text-3:#6B6B70;
+  --y:#FFC72C; --y-hi:#FFD966; --y-wash:#241D07;
+  --ok:#42C98B; --ok-wash:#0F2A1E;
+  --no:#FF6B6B; --no-wash:#2C1414;
+  --at:#FFA24C; --at-wash:#2A1C0D;
+  --az:#7FB2FF; --az-wash:#111A2B;
+  --radius:14px;
+  --ui:'PlexSans',system-ui,-apple-system,sans-serif;
+  --dp:'Archivo',system-ui,sans-serif;
+  --mono:'PlexMono',ui-monospace,Menlo,monospace;
+  --safe:env(safe-area-inset-bottom,0px);
+  --nav:calc(62px + var(--safe));
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:var(--ui);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;
+  overscroll-behavior-y:contain;
+}
+button,input,select,textarea{font-family:inherit;font-size:16px;color:inherit;}
+::selection{background:var(--y);color:#000;}
+.mono{font-family:var(--mono);}
+.tnum{font-variant-numeric:tabular-nums;}
+[hidden]{display:none !important;}
+
+.app{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;
+  background:var(--bg);position:relative;}
+@media(min-width:560px){
+  .app{border-left:1px solid var(--line);border-right:1px solid var(--line);}
+}
+
+/* ---------------- topo ---------------- */
+.topo{position:sticky;top:0;z-index:30;background:rgba(10,10,11,.94);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--line);
+  padding:calc(10px + env(safe-area-inset-top,0px)) 16px 10px;
+  display:flex;align-items:center;gap:10px;}
+.marca{display:flex;align-items:center;gap:9px;min-width:0;}
+.marca svg{display:block;flex:none;}
+.nome{font-family:var(--dp);font-weight:800;font-size:17px;letter-spacing:-.02em;line-height:1;}
+.nome span{color:var(--y);}
+.topo-dir{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.chip{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.04em;
+  padding:5px 9px;border-radius:99px;border:1px solid var(--line-2);color:var(--text-2);
+  background:var(--panel-2);white-space:nowrap;}
+.chip.viva{border-color:var(--y);color:var(--y);background:var(--y-wash);}
+
+/* Faixa de aviso embaixo do cabecalho. Ela existe para um caso so, e o
+   pior de todos: o navegador que aceita salvar e esquece. A pessoa monta o
+   treino, treina, volta no dia seguinte e nao tem nada. Sem esta faixa, o
+   app parecia quebrado; com ela, a pessoa sabe o que houve e como resolver. */
+.alerta{display:flex;gap:12px;align-items:flex-start;padding:12px 16px;
+  background:var(--at-wash);border-bottom:1px solid var(--at);}
+.alerta .txt{flex:1;min-width:0;font-size:.82rem;color:var(--text-2);line-height:1.5;}
+.alerta .txt b{display:block;color:var(--at);font-size:.9rem;margin-bottom:2px;font-weight:600;}
+.alerta .btns{display:flex;flex-direction:column;gap:6px;flex:none;}
+.alerta button{appearance:none;cursor:pointer;background:none;border:1px solid var(--at);
+  color:var(--at);border-radius:9px;padding:7px 10px;font-size:.78rem;font-weight:600;
+  white-space:nowrap;font-family:inherit;}
+.alerta button.fraco{border-color:var(--line-2);color:var(--text-3);}
+
+/* ---------------- conteudo ---------------- */
+main{flex:1;padding:16px 16px calc(var(--nav) + 26px);}
+.pane{animation:entra .18s ease-out;}
+@keyframes entra{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+
+h2{font-family:var(--dp);font-weight:700;font-size:1.28rem;letter-spacing:-.02em;margin:0 0 4px;}
+h3{font-family:var(--dp);font-weight:600;font-size:1rem;margin:0 0 3px;}
+.sub{color:var(--text-2);margin:0 0 16px;font-size:.9rem;}
+.kicker{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--text-3);margin:0 0 8px;}
+.secao{margin:26px 0 10px;display:flex;align-items:baseline;gap:8px;}
+.secao h3{margin:0;}
+.mais{font-size:.82rem;color:var(--y);cursor:pointer;background:none;border:0;padding:2px 0;
+  font-family:inherit;font-weight:600;margin-left:auto;}
+
+.cartao{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px;margin-bottom:12px;}
+.cartao.destaque{background:linear-gradient(160deg,var(--panel-2),var(--panel));border-color:var(--line-2);}
+
+/* O cartao do treino de hoje. E a unica coisa que a pessoa abre o app para
+   ver, entao e a unica coisa grande da tela inicial. */
+.hero{text-align:center;padding:20px 16px 16px;}
+.hero .rotulo{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--text-3);}
+.hero .valor{font-family:var(--dp);font-weight:800;font-size:clamp(2.4rem,12vw,3.2rem);
+  letter-spacing:-.04em;line-height:1.02;margin:6px 0 2px;font-variant-numeric:tabular-nums;color:var(--y);}
+.hero .apoio{color:var(--text-2);font-size:.88rem;}
+
+.linhas{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.mini{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 10px;text-align:center;}
+.mini b{display:block;font-family:var(--dp);font-size:1rem;font-weight:700;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;}
+.mini small{display:block;color:var(--text-3);font-size:.68rem;text-transform:uppercase;
+  letter-spacing:.07em;font-family:var(--mono);margin-top:3px;line-height:1.3;}
+.mini.bom b{color:var(--ok);} .mini.viva b{color:var(--y);}
+
+/* ---------------- o boneco ---------------- */
+/* O desenho herda a cor do texto (`currentColor`): assim ele fica branco na
+   ficha, amarelo na tela de trabalho e verde no descanso, sem uma linha de
+   codigo a mais. */
+.boneco{display:block;width:100%;height:100%;color:inherit;overflow:visible;}
+.bo-osso,.bo-chao,.bo-apoio{fill:none;stroke:currentColor;stroke-width:4.4;
+  stroke-linecap:round;stroke-linejoin:round;}
+.bo-cabeca{fill:currentColor;}
+.bo-chao{stroke:var(--line-2);stroke-width:2;}
+.bo-apoio{stroke:var(--y);stroke-width:3.4;}
+.bo-apoio-cheio{fill:var(--y);}
+/* O braco e a perna do outro lado do corpo ficam mais apagados: e o que da
+   profundidade a um desenho de duas dimensoes. */
+.bo-longe{opacity:.4;}
+
+.boneco-caixa{width:100%;height:190px;display:grid;place-items:center;
+  background:var(--panel-2);border:1px solid var(--line);border-radius:12px;margin:2px 0 12px;}
+.boneco-caixa .boneco{max-width:190px;}
+.item .ico .boneco{width:38px;height:38px;}
+.item .ico{padding:1px;width:44px;height:44px;}
+.estacao .mini-boneco{width:34px;height:34px;flex:none;color:var(--text-2);}
+
+/* ---------------- listas ---------------- */
+.item{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--line);}
+.item:last-child{border-bottom:0;}
+.item .ico{width:38px;height:38px;border-radius:11px;background:var(--panel-2);display:grid;
+  place-items:center;flex:none;border:1px solid var(--line);font-family:var(--mono);
+  font-size:9px;font-weight:600;letter-spacing:.04em;color:var(--text-3);text-transform:uppercase;}
+.item .txt{min-width:0;flex:1;}
+.item .txt b{display:block;font-weight:600;font-size:.94rem;}
+.item .txt small{color:var(--text-3);font-size:.76rem;display:block;}
+.item .val{font-family:var(--mono);font-size:.8rem;color:var(--text-2);white-space:nowrap;
+  font-variant-numeric:tabular-nums;}
+.item.clicavel{cursor:pointer;}
+.item.clicavel:active{background:var(--panel-2);}
+.vazio{color:var(--text-3);text-align:center;padding:24px 10px;font-size:.9rem;}
+
+/* Cada estacao numerada, para a pessoa conferir o circuito antes de comecar. */
+.estacao{display:flex;align-items:center;gap:11px;padding:9px 2px;border-bottom:1px solid var(--line);}
+.estacao:last-child{border-bottom:0;}
+.estacao .n{font-family:var(--mono);font-size:.72rem;color:var(--text-3);width:20px;flex:none;
+  text-align:right;}
+.estacao .n2{flex:1;min-width:0;font-size:.9rem;}
+.estacao .n2 small{display:block;color:var(--text-3);font-size:.72rem;font-family:var(--mono);
+  letter-spacing:.03em;text-transform:uppercase;}
+.estacao .lado{font-family:var(--mono);font-size:.66rem;color:var(--at);border:1px solid var(--at);
+  border-radius:99px;padding:2px 7px;flex:none;background:var(--at-wash);}
+
+.bloco-cab{display:flex;align-items:baseline;gap:8px;margin:0 0 4px;}
+.bloco-cab b{font-family:var(--dp);font-size:.98rem;font-weight:700;}
+.bloco-cab small{margin-left:auto;font-family:var(--mono);font-size:.72rem;color:var(--text-3);
+  letter-spacing:.04em;}
+
+/* ---------------- botoes ---------------- */
+.btn{appearance:none;cursor:pointer;border-radius:11px;border:1px solid var(--line-2);
+  background:var(--panel-2);color:var(--text);font-size:.92rem;font-weight:500;
+  padding:12px 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:46px;transition:background .14s,transform .06s;}
+.btn:active:not(:disabled){transform:translateY(1px);background:var(--panel-3);}
+.btn:disabled{opacity:.45;}
+.btn.pri{background:var(--y);color:#0A0A0B;border-color:var(--y);font-weight:700;}
+.btn.perigo{border-color:var(--no);color:var(--no);background:transparent;}
+.btn.bloco{width:100%;}
+.btn.peq{min-height:38px;padding:8px 12px;font-size:.84rem;border-radius:9px;}
+.btn-linha{display:flex;gap:8px;flex-wrap:wrap;}
+
+/* ---------------- formularios ---------------- */
+label{display:block;font-size:.76rem;color:var(--text-2);margin:0 0 5px;
+  font-family:var(--mono);letter-spacing:.05em;text-transform:uppercase;}
+input,select{width:100%;background:var(--panel-2);border:1px solid var(--line-2);
+  border-radius:11px;padding:12px 13px;min-height:46px;}
+input:focus,select:focus{outline:2px solid var(--y);outline-offset:1px;border-color:var(--y);}
+.campo{margin-bottom:12px;}
+.ajuda{font-size:.78rem;color:var(--text-3);margin:6px 0 0;line-height:1.45;}
+.troca{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line);}
+.troca:last-child{border-bottom:0;}
+.troca .txt{flex:1;min-width:0;}
+.troca .txt b{display:block;font-size:.94rem;font-weight:600;}
+.troca .txt small{color:var(--text-3);font-size:.78rem;}
+.switch{position:relative;width:50px;height:29px;flex:none;}
+.switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;z-index:2;}
+.switch i{position:absolute;inset:0;background:var(--panel-3);border-radius:99px;
+  border:1px solid var(--line-2);transition:background .18s;}
+.switch i::after{content:'';position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;
+  background:var(--text-3);transition:transform .18s,background .18s;}
+.switch input:checked + i{background:var(--y-wash);border-color:var(--y);}
+.switch input:checked + i::after{transform:translateX(21px);background:var(--y);}
+
+/* Escolha em fileira: tempo, foco, nivel. Botao grande batido com o
+   polegar, sem menu suspenso — menu no celular custa dois toques e uma
+   animacao para escolher entre quatro coisas. */
+.opcoes{display:flex;gap:6px;flex-wrap:wrap;}
+.opcoes button{appearance:none;cursor:pointer;flex:1 1 auto;min-width:64px;background:var(--panel-2);
+  border:1px solid var(--line-2);color:var(--text-2);border-radius:10px;padding:10px 8px;
+  font-size:.86rem;font-weight:600;min-height:44px;}
+.opcoes button[aria-pressed="true"]{background:var(--y);border-color:var(--y);color:#0A0A0B;}
+/* Variante para filtro e numero solto: o botao encolhe ate o tamanho da
+   palavra em vez de esticar. Esticado, "Bola" ocupava uma linha inteira e a
+   tela de Exercicios comecava com quatro fileiras de filtro antes do
+   primeiro exercicio. */
+.opcoes.chips button{flex:0 0 auto;min-width:0;padding:8px 13px;font-size:.82rem;min-height:38px;}
+.opcoes.coluna{flex-direction:column;}
+.opcoes.coluna button{text-align:left;padding:11px 13px;font-weight:500;}
+.opcoes.coluna button small{display:block;font-size:.74rem;opacity:.75;font-weight:400;}
+
+.busca{position:relative;margin-bottom:12px;}
+.busca input{padding-left:38px;}
+.busca svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-3);}
+
+/* ---------------- evolucao ---------------- */
+/* Alternador de duas telas dentro da mesma aba. Treino e corpo sao a mesma
+   pergunta ("estou melhorando?") medida de dois jeitos, entao moram juntos
+   — mas nao cabem na mesma tela sem virar sopa. */
+.seg{display:flex;gap:4px;background:var(--panel-2);border:1px solid var(--line);
+  border-radius:11px;padding:4px;margin-bottom:16px;}
+.seg button{flex:1;appearance:none;background:none;border:0;color:var(--text-3);cursor:pointer;
+  padding:9px 4px;border-radius:8px;font-size:.86rem;font-weight:600;font-family:inherit;}
+.seg button[aria-selected="true"]{background:var(--y);color:#0A0A0B;}
+
+.linha-grafico{width:100%;height:120px;display:block;overflow:visible;margin:4px 0 2px;}
+.linha-grafico .traco{fill:none;stroke:var(--y);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round;}
+.linha-grafico .area{fill:var(--y);opacity:.10;}
+.linha-grafico .ponto{fill:var(--y);}
+.linha-grafico .guia{stroke:var(--line);stroke-width:1;stroke-dasharray:3 4;}
+.linha-grafico .rotulo{fill:var(--text-3);font-family:var(--mono);font-size:8px;}
+
+/* A barra da semana atual fica destacada: e a unica que a pessoa ainda pode
+   mudar. */
+.semanas{display:flex;align-items:flex-end;gap:5px;height:86px;margin:10px 0 4px;}
+.semanas i{flex:1;background:var(--panel-3);border-radius:3px 3px 0 0;min-height:3px;display:block;}
+.semanas i.tem{background:var(--y-dim,#8A6A12);}
+.semanas i.agora{background:var(--y);}
+
+.tend{display:flex;align-items:center;gap:12px;}
+.tend .bolha{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;flex:none;
+  font-family:var(--dp);font-weight:800;font-size:1.05rem;border:2px solid var(--line-2);
+  color:var(--text-2);}
+.tend .bolha.boa{border-color:var(--ok);color:var(--ok);background:var(--ok-wash);}
+.tend .bolha.subindo,.tend .bolha.caindo{border-color:var(--at);color:var(--at);background:var(--at-wash);}
+.tend .bolha.rapido,.tend .bolha.caiu{border-color:var(--no);color:var(--no);background:var(--no-wash);}
+.tend p{margin:0;font-size:.86rem;color:var(--text-2);line-height:1.5;}
+
+.medida-linha{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.medida-linha .campo{margin-bottom:0;}
+/* A regua vai de 15 a 40 de IMC, e as viradas de cor caem exatamente em
+   18,5 / 25 / 30 — que sao 14%, 40% e 60% da regua. Cor decorativa que nao
+   bate com o numero seria pior que regua nenhuma. */
+.imc-faixa{height:8px;border-radius:99px;margin:14px 0 6px;position:relative;
+  background:linear-gradient(90deg,var(--az) 0%,var(--az) 14%,var(--ok) 14%,var(--ok) 40%,
+    var(--at) 40%,var(--at) 60%,var(--no) 60%,var(--no) 100%);opacity:.8;}
+.imc-faixa b{position:absolute;top:-5px;width:4px;height:18px;border-radius:2px;background:var(--text);
+  box-shadow:0 0 0 2px var(--panel);}
+
+/* ---------------- historico ---------------- */
+.barras{display:flex;align-items:flex-end;gap:3px;height:74px;margin:10px 0 4px;}
+.barras i{flex:1;background:var(--panel-3);border-radius:3px 3px 0 0;min-height:3px;display:block;}
+.barras i.tem{background:var(--y);}
+.barras i.hoje{outline:1px solid var(--text-3);outline-offset:1px;}
+.eixo{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;
+  color:var(--text-3);margin-top:2px;}
+
+/* ---------------- abas ---------------- */
+.abas{position:fixed;bottom:0;left:0;right:0;z-index:35;display:flex;
+  background:rgba(10,10,11,.96);backdrop-filter:blur(12px);border-top:1px solid var(--line);
+  padding-bottom:var(--safe);max-width:520px;margin:0 auto;}
+.aba{flex:1;appearance:none;background:none;border:0;color:var(--text-3);cursor:pointer;
+  padding:9px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  font-size:.66rem;font-family:var(--mono);letter-spacing:.04em;text-transform:uppercase;}
+.aba svg{display:block;}
+.aba[aria-selected="true"]{color:var(--y);}
+
+/* O botao de comecar e o centro da barra, levantado — o unico lugar da
+   tela que o polegar acha sem olhar. */
+.play-slot{width:78px;flex:none;display:flex;justify-content:center;align-items:flex-start;}
+.play{appearance:none;width:56px;height:56px;border-radius:50%;cursor:pointer;margin-top:-19px;
+  border:4px solid var(--bg);background:var(--y);color:#0A0A0B;
+  display:grid;place-items:center;box-shadow:0 6px 18px rgba(0,0,0,.6);transition:transform .12s;}
+.play:active{transform:scale(.93);}
+
+/* ---------------- tela de execucao ---------------- */
+/* Fora do fluxo do app: ocupa tudo, sem abas, sem cabecalho. Quem esta no
+   meio de um burpee nao tem como navegar. */
+.exec{position:fixed;inset:0;z-index:80;background:var(--bg);display:flex;flex-direction:column;
+  padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(14px + var(--safe));
+  transition:background .4s;}
+.exec[data-fase="trabalho"]{background:radial-gradient(120% 62% at 50% 0%,var(--y-wash),var(--bg) 72%);}
+.exec[data-fase="descanso"],.exec[data-fase="intervalo"]{background:radial-gradient(120% 62% at 50% 0%,var(--ok-wash),var(--bg) 72%);}
+.exec[data-fase="preparar"]{background:radial-gradient(120% 62% at 50% 0%,var(--at-wash),var(--bg) 72%);}
+.exec[data-fase="aquecimento"],.exec[data-fase="solta"]{background:radial-gradient(120% 62% at 50% 0%,var(--az-wash),var(--bg) 72%);}
+
+.exec-topo{display:flex;align-items:center;gap:10px;}
+.exec-topo .onde{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--text-3);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.exec-topo .fechar{margin-left:auto;appearance:none;background:none;border:1px solid var(--line-2);
+  color:var(--text-2);border-radius:9px;width:34px;height:34px;display:grid;place-items:center;
+  cursor:pointer;flex:none;}
+.fita{height:5px;border-radius:99px;background:var(--panel-3);margin:11px 0 0;overflow:hidden;}
+.fita i{display:block;height:100%;background:var(--y);border-radius:99px;transition:width .25s linear;}
+
+.exec-meio{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;gap:4px;min-height:0;padding:8px 0;}
+/* O desenho fica ACIMA do nome e do cronometro, no alto da tela: quem esta
+   no chao olha o celular de cima, e o que estiver embaixo some atras da
+   propria mao. Ele encolhe quando a tela e baixa — o cronometro nunca pode
+   ser empurrado para fora. */
+.exec-boneco{width:min(56vw,196px);height:min(30vh,196px);flex:none;margin-bottom:2px;}
+@media(max-height:620px){.exec-boneco{height:20vh;}}
+/* O boneco pega a cor da fase junto com o cronometro: amarelo trabalhando,
+   verde descansando. A tela inteira muda de cor de uma vez, e da para saber
+   em que fase esta de longe, sem ler nada. */
+.exec[data-fase="trabalho"] .exec-boneco{color:var(--y);}
+.exec[data-fase="descanso"] .exec-boneco,.exec[data-fase="intervalo"] .exec-boneco{color:var(--ok);}
+.exec[data-fase="preparar"] .exec-boneco{color:var(--at);}
+.exec[data-fase="aquecimento"] .exec-boneco,.exec[data-fase="solta"] .exec-boneco{color:var(--az);}
+.exec-fase{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--text-3);}
+.exec-fase b{color:var(--y);font-weight:600;}
+.exec-nome{font-family:var(--dp);font-weight:800;letter-spacing:-.03em;line-height:1.05;
+  font-size:clamp(1.5rem,7.2vw,2.1rem);margin:2px 0 0;}
+/* O numero que se le de longe, de cabeca para baixo, com suor no olho. */
+.cron{font-family:var(--dp);font-weight:800;font-variant-numeric:tabular-nums;
+  font-size:clamp(4.4rem,26vw,7rem);letter-spacing:-.05em;line-height:1;margin:2px 0;}
+.cron.fim{color:var(--no);}
+.exec[data-fase="trabalho"] .cron{color:var(--y);}
+.exec[data-fase="descanso"] .cron,.exec[data-fase="intervalo"] .cron{color:var(--ok);}
+.exec[data-fase="preparar"] .cron{color:var(--at);}
+.exec[data-fase="aquecimento"] .cron,.exec[data-fase="solta"] .cron{color:var(--az);}
+.exec-dicas{color:var(--text-2);font-size:.92rem;max-width:22rem;line-height:1.5;margin:6px 0 0;}
+.exec-dicas span{display:block;}
+.exec-lado{font-family:var(--mono);font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--at);border:1px solid var(--at);background:var(--at-wash);border-radius:99px;
+  padding:4px 12px;margin-top:8px;}
+.exec-prox{color:var(--text-3);font-size:.86rem;margin-top:10px;}
+.exec-prox b{color:var(--text-2);font-weight:600;}
+
+.exec-baixo{display:flex;align-items:center;justify-content:center;gap:12px;}
+.redondo{appearance:none;border-radius:50%;cursor:pointer;border:1px solid var(--line-2);
+  background:var(--panel-2);color:var(--text);width:54px;height:54px;display:grid;place-items:center;
+  flex:none;}
+.redondo:active{background:var(--panel-3);}
+.redondo.grande{width:74px;height:74px;background:var(--y);border-color:var(--y);color:#0A0A0B;}
+.exec-nota{text-align:center;color:var(--text-3);font-size:.76rem;margin-top:9px;font-family:var(--mono);
+  letter-spacing:.03em;}
+
+/* ---------------- fim do treino ---------------- */
+.medalha{text-align:center;padding:8px 0 4px;}
+.medalha .n{font-family:var(--dp);font-size:2.6rem;font-weight:800;color:var(--y);letter-spacing:-.03em;}
+
+/* ---------------- avisos ---------------- */
+.toast{position:fixed;left:12px;right:12px;bottom:calc(var(--nav) + 72px);z-index:95;
+  max-width:496px;margin:0 auto;background:var(--panel-3);border:1px solid var(--line-2);
+  border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,.6);animation:sobe .2s ease-out;}
+@keyframes sobe{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+.toast .txt{flex:1;font-size:.88rem;min-width:0;}
+.toast .txt b{display:block;font-weight:600;}
+.toast .txt small{color:var(--text-2);}
+.toast.bom{border-color:var(--ok);} .toast.ruim{border-color:var(--no);}
+.toast button{appearance:none;background:none;border:1px solid var(--line-2);color:var(--y);
+  border-radius:9px;padding:8px 11px;font-size:.82rem;cursor:pointer;font-weight:600;flex:none;}
+
+/* ---------------- ficha do exercicio ---------------- */
+.folha{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;}
+.folha .dentro{background:var(--panel);border:1px solid var(--line-2);border-radius:16px 16px 0 0;
+  width:100%;max-width:520px;margin:0 auto;padding:18px 18px calc(20px + var(--safe));
+  max-height:82vh;overflow:auto;animation:sobe .22s ease-out;}
+.folha .puxador{width:38px;height:4px;border-radius:99px;background:var(--line-2);margin:0 auto 14px;}
+.folha ul{margin:8px 0 0;padding-left:18px;color:var(--text-2);font-size:.9rem;line-height:1.6;}
+.selos{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 2px;}
+
+.rodape{color:var(--text-3);font-size:.76rem;text-align:center;padding:26px 10px 4px;line-height:1.6;}
+</style>
+<div class="app">
+  <header class="topo">
+    <div class="marca">
+      <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="11.5" fill="none" stroke="#3A3A43" stroke-width="3"/>
+        <path d="M16 4.5a11.5 11.5 0 0 1 10.4 6.6" fill="none" stroke="#FFC72C" stroke-width="3"
+              stroke-linecap="round"/>
+        <circle cx="16" cy="16" r="3.4" fill="#FFC72C"/>
+      </svg>
+      <div class="nome">Cir<span>cuito</span></div>
+    </div>
+    <div class="topo-dir">
+      <span class="chip" id="chipSequencia">sem sequência</span>
+    </div>
+  </header>
+
+  <div class="alerta" id="alerta" hidden></div>
+
+  <main>
+    <section class="pane" id="pane-hoje"></section>
+    <section class="pane" id="pane-exercicios" hidden></section>
+    <section class="pane" id="pane-historico" hidden></section>
+    <section class="pane" id="pane-ajustes" hidden></section>
+  </main>
+
+  <nav class="abas" role="tablist">
+    <button class="aba" role="tab" data-pane="hoje" aria-selected="true">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Hoje</button>
+    <button class="aba" role="tab" data-pane="exercicios" aria-selected="false">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round"><path d="M4 9v6M20 9v6M7 6v12M17 6v12"/><path d="M7 12h10"/></svg>Exercícios</button>
+    <div class="play-slot">
+      <button class="play" id="btnComecar" aria-label="Começar o treino de hoje">
+        <svg width="25" height="25" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M8 5.5v13l11-6.5z"/></svg>
+      </button>
+    </div>
+    <button class="aba" role="tab" data-pane="historico" aria-selected="false">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Evolução</button>
+    <button class="aba" role="tab" data-pane="ajustes" aria-selected="false">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round"><circle cx="12" cy="12" r="3"/>
+        <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg>Ajustes</button>
+  </nav>
+</div>
+
+<div class="exec" id="exec" hidden data-fase="preparar">
+  <div class="exec-topo">
+    <div class="onde" id="execOnde">Aquecimento</div>
+    <button class="fechar" id="execFechar" aria-label="Encerrar o treino">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div class="fita"><i id="execFita" style="width:0"></i></div>
+
+  <div class="exec-meio">
+    <div class="exec-boneco" id="execBoneco"></div>
+    <div class="exec-fase" id="execFase">Preparar</div>
+    <div class="exec-nome" id="execNome">—</div>
+    <div class="cron tnum" id="execCron">00:10</div>
+    <div class="exec-lado" id="execLado" hidden>Lado direito</div>
+    <div class="exec-dicas" id="execDicas"></div>
+    <div class="exec-prox" id="execProx"></div>
+  </div>
+
+  <div class="exec-baixo">
+    <button class="redondo" id="execVoltar" aria-label="Voltar um passo">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><path d="M18 6v12l-9-6z"/>
+        <rect x="5" y="6" width="2.4" height="12" rx="1"/></svg>
+    </button>
+    <button class="redondo grande" id="execPausa" aria-label="Pausar">
+      <svg width="27" height="27" viewBox="0 0 24 24" fill="currentColor" id="execPausaIcone">
+        <rect x="7" y="5" width="3.6" height="14" rx="1.2"/><rect x="13.4" y="5" width="3.6" height="14" rx="1.2"/></svg>
+    </button>
+    <button class="redondo" id="execPular" aria-label="Pular para o próximo">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6v12l9-6z"/>
+        <rect x="16.6" y="6" width="2.4" height="12" rx="1"/></svg>
+    </button>
+  </div>
+  <div class="exec-nota" id="execNota"></div>
+</div>
+
+<div class="folha" id="folha" hidden>
+  <div class="dentro" id="folhaDentro"></div>
+</div>

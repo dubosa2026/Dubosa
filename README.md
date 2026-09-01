@@ -189,3 +189,13 @@ python -m pytest tests/ -q
   mais equilibrada. Se você preferir manter o mesmo vendedor pra um cliente
   que ele já vem atendendo (só rebalanceando os clientes novos), dá pra
   adicionar essa regra depois — hoje não está implementada.
+
+---
+
+## Também neste repositório
+
+**[`treino/`](treino/) — Circuito, treino funcional de bolso.** Nada a ver
+com distribuição de carteira: é outro app de arquivo único, no mesmo
+formato desta pasta `app/`. Você diz quanto tempo tem e o que tem em casa,
+ele monta o circuito e conduz o treino com cronômetro. Veja
+[`treino/README.md`](treino/README.md).
