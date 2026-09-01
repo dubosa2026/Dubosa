@@ -159,6 +159,14 @@ const ALERTAS = {
     acao: '',
     link: { texto: 'Abrir no Chrome', href: ABRIR_NO_CHROME },
   },
+  atalho: {
+    titulo: 'Saiu um atalho, não um aplicativo',
+    texto: 'O navegador criou um ícone que abre uma aba, em vez de um app com janela própria. '
+      + 'Isso acontece quando outro aplicativo instalado já é dono deste endereço — no seu '
+      + 'caso, a Bússola, que ocupa dubosa2026.github.io/Dubosa/ inteiro. Veja em Ajustes o que '
+      + 'fazer.',
+    acao: '',
+  },
   instalar: {
     titulo: 'Instalar na tela de início',
     texto: 'Ele vira um ícone igual aos outros aplicativos, abre em tela cheia e funciona sem '
@@ -186,6 +194,7 @@ const ALERTAS = {
    partida. */
 function situacaoDaFaixa() {
   if (armazenamento !== 'ok') return armazenamento;
+  if (saiuAtalho && !instalado()) return 'atalho';
   if (convite && !instalado()) return 'instalar';
   return 'ok';
 }
@@ -1072,13 +1081,46 @@ function ligarInstalacao() {
   });
 }
 
+/* Instalar de verdade, e saber se deu certo.
+ *
+ * O Android faz DUAS coisas parecidas e o resultado nao e o mesmo:
+ *
+ * - APP de verdade (WebAPK): janela propria, icone sem selo do navegador,
+ *   aparece na lista de aplicativos do sistema. So o evento `appinstalled`
+ *   confirma que foi este o caso.
+ * - ATALHO: um icone com o selo do navegador, que abre uma aba. A pessoa
+ *   pediu um app e recebeu um marcador de pagina.
+ *
+ * O navegador aceita o pedido nos dois casos e responde "accepted" igual.
+ * A diferenca so aparece no `appinstalled` que nao chega. Entao o app
+ * espera por ele e, se nao vier, diz o que aconteceu em vez de deixar a
+ * pessoa achando que instalou. */
+let saiuAtalho = false;
+
 function instalar() {
   if (!convite) return;
+  let confirmou = false;
+  const marcar = () => { confirmou = true; };
+  window.addEventListener('appinstalled', marcar);
+
   convite.prompt();
   convite.userChoice.then((escolha) => {
-    if (escolha && escolha.outcome === 'accepted') convite = null;
+    if (!escolha || escolha.outcome !== 'accepted') {
+      window.removeEventListener('appinstalled', marcar);
+      return;
+    }
+    convite = null;
     desenhar();
-  }).catch(() => {});
+    // O `appinstalled` chega em um ou dois segundos quando e app de
+    // verdade. Cinco segundos e folga suficiente para nao acusar errado.
+    setTimeout(() => {
+      window.removeEventListener('appinstalled', marcar);
+      if (confirmou || instalado()) return;
+      saiuAtalho = true;
+      alertaFechado = false;
+      desenhar();
+    }, 5000);
+  }).catch(() => { window.removeEventListener('appinstalled', marcar); });
 }
 
 /* Onde o app mora publicado. Fica escrito aqui porque a pessoa que abriu o
@@ -1178,6 +1220,17 @@ function cartaoInstalar() {
       + '<span class="mono">' + esc(ENDERECO) + '</span></p>'
       + '<p class="ajuda">É o mesmo app, servido por um endereço. Lá este cartão mostra o '
       + 'botão de instalar, e o histórico fica guardado.</p>';
+  } else if (saiuAtalho) {
+    h += '<p class="ajuda" style="margin-top:4px">O navegador aceitou o pedido, mas criou um '
+      + '<b>atalho</b> — ícone com o selo do navegador, que abre uma aba — e não um '
+      + '<b>aplicativo</b> com janela própria.</p>'
+      + '<p class="ajuda">A causa é o endereço compartilhado: a <b>Bússola</b> instalada no seu '
+      + 'celular é dona de <span class="mono">/Dubosa/</span> inteiro, e o Circuito mora dentro '
+      + 'dela. O Android não cria um segundo aplicativo dentro do território de um já '
+      + 'instalado.</p>'
+      + '<p class="ajuda">Duas saídas, e as duas precisam de um toque seu: dar ao Circuito um '
+      + 'endereço próprio, ou desinstalar a Bússola por um minuto, instalar o Circuito e '
+      + 'reinstalar a Bússola. Me diga qual e eu preparo.</p>';
   } else if (navegadorLimitado()) {
     h += '<p class="ajuda" style="margin-top:4px">Você está num <b>navegador embutido dentro de '
       + 'outro aplicativo</b> — o que abre ao tocar num link sem sair do app. Esse navegador '

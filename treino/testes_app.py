@@ -467,6 +467,57 @@ with sync_playwright() as p:
        "com o botão ali mesmo, sem precisar ir aos Ajustes")
     ctx7.close()
 
+    print("\nQuando sai atalho no lugar de aplicativo")
+    # O navegador responde "accepted" tanto para app de verdade quanto para
+    # atalho. So o `appinstalled` distingue: se ele nao chega, foi atalho.
+    ctx8 = navegador.new_context(viewport={"width": 390, "height": 844}, locale="pt-BR")
+    p8 = ctx8.new_page()
+    p8.clock.install()
+    p8.goto(BASE)
+    p8.wait_for_selector(".hero .valor")
+    p8.evaluate("""() => {
+      const ev = new Event('beforeinstallprompt');
+      ev.prompt = () => {};
+      ev.userChoice = Promise.resolve({ outcome: 'accepted' });
+      window.dispatchEvent(ev);
+    }""")
+    p8.wait_for_timeout(150)
+    p8.click('#alerta [data-acao="instalar"]')
+    p8.wait_for_timeout(200)
+    ok("Saiu um atalho" not in faixa(p8),
+       "logo após aceitar, o app ainda não acusa nada — espera a confirmação")
+    p8.clock.fast_forward("00:06")
+    p8.wait_for_timeout(250)
+    ok("Saiu um atalho" in faixa(p8),
+       "sem a confirmação de instalação, ele diz que saiu atalho", faixa(p8)[:60])
+    p8.click('[data-pane="ajustes"]')
+    p8.wait_for_timeout(200)
+    texto8 = p8.inner_text("#pane-ajustes")
+    ok("janela própria" in texto8, "e explica a diferença entre atalho e aplicativo")
+    ok("Bússola" in texto8, "apontando a causa: o endereço compartilhado")
+    ctx8.close()
+
+    # E quando o aparelho confirma a instalação, nada é acusado.
+    ctx9 = navegador.new_context(viewport={"width": 390, "height": 844}, locale="pt-BR")
+    p9 = ctx9.new_page()
+    p9.clock.install()
+    p9.goto(BASE)
+    p9.wait_for_selector(".hero .valor")
+    p9.evaluate("""() => {
+      const ev = new Event('beforeinstallprompt');
+      ev.prompt = () => { setTimeout(() => window.dispatchEvent(new Event('appinstalled')), 10); };
+      ev.userChoice = Promise.resolve({ outcome: 'accepted' });
+      window.dispatchEvent(ev);
+    }""")
+    p9.wait_for_timeout(150)
+    p9.click('#alerta [data-acao="instalar"]')
+    p9.wait_for_timeout(300)
+    p9.clock.fast_forward("00:06")
+    p9.wait_for_timeout(250)
+    ok("Saiu um atalho" not in faixa(p9),
+       "instalação de verdade não vira acusação falsa", faixa(p9)[:60])
+    ctx9.close()
+
     print("\nParar no meio")
     pg.click('[data-pane="hoje"]')
     pg.wait_for_selector("#btnComecar")
