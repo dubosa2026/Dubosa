@@ -65,6 +65,7 @@ class App {
       managerTab: 'ranking',
       adminTab: 'lancar',
       selectedSeller: null,
+      previewSellerId: null,
       compareA: null,
       compareB: null,
       // No build de demonstração os links de teste já vêm prontos, para que a
@@ -290,6 +291,23 @@ class App {
   setManagerTab(tab) { this.state.managerTab = tab; this.render(); }
 
   setAdminTab(tab) { this.state.adminTab = tab; this.render(); }
+
+  /**
+   * Gestor vendo o painel de um vendedor exatamente como ele vê.
+   *
+   * Não afrouxa nada: o gestor já enxerga todos os números: o que muda é a
+   * moldura. Serve para explicar a alguém o que ele vê, e para conferir que o
+   * painel individual não expõe colega nenhum.
+   */
+  previewSeller(sellerId) {
+    this.state.previewSellerId = sellerId;
+    this.render();
+  }
+
+  sairDoPreview() {
+    this.state.previewSellerId = null;
+    this.render();
+  }
 
   openSeller(sellerId) {
     this.state.selectedSeller = sellerId;
@@ -558,6 +576,30 @@ class App {
     const atMinutes = this.now?.minutes ?? 0;
 
     try {
+      if (this.identity.role === 'manager' && this.state.previewSellerId) {
+        const alvo = this.state.previewSellerId;
+        const vm = buildSellerView({
+          today,
+          yesterday: this.data.yesterday,
+          sellerId: alvo,
+          sellerName: today.sellers.find((s) => s.sellerId === alvo)?.sellerName ?? alvo,
+          atMinutes,
+          config,
+          historyDays: this.data.historyDays,
+        });
+        mount(this.root, banner,
+          h('div', { class: 'preview-bar' },
+            h('span', {}, h('strong', { text: 'Visão do vendedor. ' }),
+              `Este é o painel de ${vm.identity.sellerName} exatamente como ele vê — sem nome, posição ou número de nenhum colega.`),
+            h('button', {
+              class: 'btn btn-sm',
+              onclick: () => this.sairDoPreview(),
+              text: '← Voltar ao painel do gestor',
+            })),
+          sellerView({ vm, config, app: this }));
+        return;
+      }
+
       if (this.identity.role === 'manager') {
         const vm = buildManagerView({
           today,

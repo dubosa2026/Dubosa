@@ -193,11 +193,18 @@ function sellerTab({ vm, config, app, awaiting }) {
 
   return h('section', { class: 'card' },
     sectionTitle('Painel individual',
+      h('div', { class: 'title-actions' },
+        h('button', {
+          class: 'btn btn-sm',
+          onclick: () => app.previewSeller(row.sellerId),
+          title: 'Ver a tela deste vendedor exatamente como ele vê',
+          text: '👁 Ver como o vendedor vê',
+        }),
       h('select', {
         class: 'select',
         'aria-label': 'Escolher vendedor',
         onchange: (e) => app.openSeller(e.target.value),
-      }, vm.rows.map((r) => h('option', { value: r.sellerId, selected: r.sellerId === row.sellerId }, `${ordinal(r.position)} — ${r.sellerName}`)))),
+      }, vm.rows.map((r) => h('option', { value: r.sellerId, selected: r.sellerId === row.sellerId }, `${ordinal(r.position)} — ${r.sellerName}`))))),
 
     h('div', { class: 'drill-head' },
       avatar(row.sellerName),
