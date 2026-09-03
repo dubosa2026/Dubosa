@@ -93,6 +93,10 @@ export class PublishedFileSource extends DataSource {
         publicado: true,
         publicadoEm: json?.publicadoEm ?? null,
         arquivo: this.caminhoDe(date),
+        // O coletor declara se a origem tem faturamento por vendedor. Sem
+        // repassar, o aplicativo leria zero como "não vendeu" em vez de
+        // "não informado", e ranquearia todo mundo empatado em R$ 0.
+        faturamentoPorVendedor: json?.faturamentoPorVendedor,
       },
     };
   }

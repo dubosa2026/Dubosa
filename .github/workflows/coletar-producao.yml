@@ -1,0 +1,66 @@
+# Coleta a produção do sistema de pedidos e grava no repositório.
+#
+# É o caminho gratuito: não exige servidor nem conta nova. A coleta acontece uma
+# vez por rodada, não uma vez por vendedor — vinte e dois aplicativos abertos o
+# dia inteiro leem o mesmo arquivo pronto e não geram chamada nenhuma.
+#
+# ANTES DE FUNCIONAR, uma coisa só:
+#   Settings → Secrets and variables → Actions → New repository secret
+#     Nome:  PEDIDOS_PIN
+#     Valor: o PIN de acesso ao sistema de pedidos
+#
+# O PIN fica nos segredos do GitHub. Ele nunca aparece no código, no histórico
+# nem no registro de execução.
+
+name: Coletar produção
+
+on:
+  schedule:
+    # A cada 10 minutos, das 8h às 21h de Brasília (11h–00h UTC), de segunda a
+    # sexta. É o mesmo ritmo em que o próprio sistema de pedidos se atualiza:
+    # coletar mais vezes não traria número novo.
+    - cron: '*/10 11-23 * * 1-5'
+  workflow_dispatch:        # permite rodar à mão pelo botão "Run workflow"
+
+permissions:
+  contents: write
+
+concurrency:
+  # Duas coletas ao mesmo tempo brigariam pelo mesmo arquivo.
+  group: coletar-producao
+  cancel-in-progress: false
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/sales-competition-app-t0sv4b
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Ler o sistema de pedidos
+        env:
+          PEDIDOS_BASE: ${{ vars.PEDIDOS_BASE || 'https://pedidos-belenergy-tega.netlify.app' }}
+          PEDIDOS_PIN: ${{ secrets.PEDIDOS_PIN }}
+        run: node scripts/coletar-producao.mjs
+
+      - name: Gravar o dia
+        run: |
+          if [ -z "$(git status --porcelain config/producao)" ]; then
+            echo "Nada mudou desde a última coleta."
+            exit 0
+          fi
+          git config user.name  "Coletor da Liga"
+          git config user.email "actions@github.com"
+          git add config/producao
+          git commit -m "Producao de $(TZ=America/Sao_Paulo date '+%d/%m/%Y as %H:%M')"
+          # Outra coleta pode ter gravado enquanto esta rodava.
+          for tentativa in 1 2 3; do
+            git pull --rebase --autostash origin claude/sales-competition-app-t0sv4b && break
+            sleep 5
+          done
+          git push origin HEAD:claude/sales-competition-app-t0sv4b

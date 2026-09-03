@@ -878,6 +878,73 @@ await check('página HTML no lugar dos dados é diagnosticada', async () => {
   assert(payload.message.includes('Publicar na web'));
 });
 
+// ------------------------------------------------------- COLETOR AUTOMÁTICO
+console.log('\nCOLETOR AUTOMÁTICO');
+const coletor = await import('../scripts/coletar-producao.mjs');
+
+const RESPOSTA_REAL = {
+  data: '03/09/2026',
+  vendedores: [
+    ['EDUARDO LUIZ DOS SANTOS', 'ERICA OLIVEIRA', 22],
+    ['EDUARDO LUIZ DOS SANTOS', 'MURILO BEDANI ROGERIO', 9],
+  ],
+};
+
+await check('converte a data do sistema para o formato do aplicativo', () => {
+  assertEqual(coletor.dataISO('03/09/2026'), '2026-09-03');
+  assertEqual(coletor.dataISO('lixo'), null);
+});
+
+await check('monta os registros com id próprio e faturamento ausente', () => {
+  const r = coletor.registrosDe(RESPOSTA_REAL, { data: DATE, hora: '15:30' });
+  assertEqual(r.length, 2);
+  assertEqual(r[0].sellerId, 'erica-oliveira');
+  assertEqual(r[0].orders, 22);
+  assertEqual(r[0].revenue, 0);
+  assertEqual(r[0].time, '15:30');
+});
+
+await check('cada coleta vira um ponto da curva', () => {
+  const dezH = coletor.registrosDe(RESPOSTA_REAL, { data: DATE, hora: '10:00' });
+  const tarde = coletor.registrosDe(
+    { vendedores: [['G', 'ERICA OLIVEIRA', 30], ['G', 'MURILO BEDANI ROGERIO', 12]] },
+    { data: DATE, hora: '15:30' },
+  );
+  const junto = coletor.acumular(dezH, tarde);
+  assertEqual(junto.length, 4, 'as duas leituras deveriam coexistir:');
+  const daErica = junto.filter((r) => r.sellerId === 'erica-oliveira');
+  assertEqual(daErica.length, 2);
+  assertEqual(daErica[1].orders, 30);
+});
+
+await check('leitura repetida não engorda o arquivo', () => {
+  const uma = coletor.registrosDe(RESPOSTA_REAL, { data: DATE, hora: '10:00' });
+  const igual = coletor.registrosDe(RESPOSTA_REAL, { data: DATE, hora: '10:10' });
+  assertEqual(coletor.acumular(uma, igual).length, 2, 'produção idêntica virou ponto novo:');
+});
+
+await check('o arquivo coletado é lido pelo aplicativo com o ranking certo', () => {
+  const registros = coletor.acumular(
+    coletor.registrosDe(RESPOSTA_REAL, { data: DATE, hora: '10:00' }),
+    coletor.registrosDe(
+      { vendedores: [['G', 'ERICA OLIVEIRA', 30], ['G', 'MURILO BEDANI ROGERIO', 12]] },
+      { data: DATE, hora: '15:30' },
+    ),
+  );
+  // exatamente o que o coletor grava em config/producao/AAAA-MM-DD.json
+  const dia = buildDayState({
+    status: 'ready',
+    semantics: 'cumulative',
+    date: DATE,
+    meta: { faturamentoPorVendedor: false },
+    records: registros,
+  });
+  assertEqual(dia.revenueAvailable, false, 'zero de faturamento virou "não vendeu":');
+  const r = ranking.rankAt(dia, toMinutes('15:30'), access.regrasDeRanking(dia, config));
+  assertEqual(r[0].sellerName, 'ERICA OLIVEIRA');
+  assertEqual(r[0].orders, 30);
+});
+
 // ------------------------------------------------- PRODUÇÃO PUBLICADA
 console.log('\nPRODUÇÃO PUBLICADA NO REPOSITÓRIO');
 const { PublishedFileSource, exportarDia } = await import('../src/data/sources/PublishedFileSource.js');

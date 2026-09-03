@@ -81,6 +81,7 @@ Passo a passo em [docs/INSTALACAO.md](docs/INSTALACAO.md).
 | [docs/PRIVACIDADE.md](docs/PRIVACIDADE.md) | as três barreiras, o que é garantido e o que ainda não é |
 | [docs/INTEGRACAO-DADOS.md](docs/INTEGRACAO-DADOS.md) | como conectar a base quando ela for definida |
 | [docs/INSTALACAO.md](docs/INSTALACAO.md) | publicar, cadastrar a equipe, instalar nas máquinas |
+| [docs/LIGAR-SEM-SERVIDOR.md](docs/LIGAR-SEM-SERVIDOR.md) | leitura automática do sistema de pedidos usando só o GitHub, de graça |
 
 ## Desenvolvimento
 
@@ -88,7 +89,7 @@ Sem framework, sem build, sem dependências. Basta servir a pasta:
 
 ```bash
 python3 -m http.server 8080
-node tests/run.js               # 104 verificações do núcleo, incluindo as de privacidade
+node tests/run.js               # 123 verificações do núcleo, incluindo as de privacidade
 node tests/funcao-producao.js   # 11 verificações da função de servidor
 ```
 
