@@ -3,7 +3,9 @@ import { loadConfig, getConfig, updateConfig, resetConfig } from './core/setting
 import {
   loadRoster, saveLocalRoster, createSellerAccess, setManagerAccess, removeSellerAccess, emptyRoster,
 } from './core/roster.js';
-import { resolveIdentity, parseRoute, buildLink } from './core/identity.js';
+import {
+  resolveIdentity, resolveFirstIdentity, parseRoute, buildLink,
+} from './core/identity.js';
 import {
   loadTeam, saveLocalTeam, indexTeam, resolveSeller, addToTeam, removeFromTeam,
   teamFromLines, emptyTeam,
@@ -109,22 +111,29 @@ class App {
     // Build de demonstração: abre já no painel, em vez de numa tela de entrada
     // vazia que não mostra nada do que o aplicativo faz.
     const inicial = parseRoute(globalThis.__LIGA_DADOS__?.rotaInicial ?? '').token;
-    const token = route.token ?? stored ?? inicial;
 
-    if (!token) {
+    const candidatos = [route.token, stored, inicial].filter(Boolean);
+    if (!candidatos.length) {
       this.identity = null;
       this.render();
       return;
     }
 
-    this.identity = await resolveIdentity(token, this.roster);
-    if (!this.identity) {
+    // Um código guardado que deixou de existir não pode trancar a porta de quem
+    // acabou de abrir um link válido. Ver core/identity.js.
+    const escolhido = await resolveFirstIdentity(candidatos, this.roster);
+    const identidade = escolhido?.identity ?? null;
+    const token = escolhido?.token ?? null;
+
+    if (!identidade) {
       this.error = 'Código de acesso não reconhecido. Peça o link ao gestor.';
       this.writePref('token', null);
+      this.identity = null;
       this.render();
       return;
     }
 
+    this.identity = identidade;
     this.error = null;
     this.writePref('token', token);
     await this.loadData();

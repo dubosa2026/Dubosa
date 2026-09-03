@@ -121,6 +121,28 @@ export async function resolveIdentity(token, roster) {
   return null;
 }
 
+/**
+ * Escolhe a identidade entre os códigos disponíveis, em ordem de preferência.
+ *
+ * Existe por um problema real: o código guardado no navegador tinha
+ * precedência sobre o do link. Quando ele deixava de valer — links regerados,
+ * versão nova do aplicativo — a pessoa batia numa porta trancada, com um
+ * "código não reconhecido" e nenhuma saída, mesmo tendo acabado de abrir um
+ * link válido.
+ *
+ * @param {(string|null)[]} candidatos  em ordem: link, guardado, embutido
+ * @param {Object} roster
+ * @returns {Promise<{identity: Object, token: string}|null>}
+ */
+export async function resolveFirstIdentity(candidatos, roster) {
+  for (const candidato of (candidatos ?? []).filter(Boolean)) {
+    // eslint-disable-next-line no-await-in-loop
+    const identity = await resolveIdentity(candidato, roster);
+    if (identity) return { identity, token: candidato };
+  }
+  return null;
+}
+
 /** Comparação de tempo constante — não vaza o prefixo correto do hash. */
 function timingSafeEqual(a, b) {
   const x = String(a);

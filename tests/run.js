@@ -728,6 +728,38 @@ await check('contexto vindo da origem carrega só magnitude, nunca identidade', 
   assertEqual(chaves.sort().join(','), 'orders,revenue', 'a distância trouxe campo além da magnitude:');
 });
 
+// ------------------------------------------------------------ ENTRADA
+console.log('\nENTRADA PELO LINK');
+const identidade = await import('../src/core/identity.js');
+
+const ROSTER_TESTE = {
+  manager: { name: 'Gestor', tokenHash: await identidade.sha256Hex('GEST-AAAA-BBBB') },
+  sellers: [{ sellerId: 'ana', name: 'Ana', tokenHash: await identidade.sha256Hex('ANAA-1111-2222') }],
+};
+
+await check('código guardado que deixou de valer não tranca a porta', async () => {
+  // O caso real: a pessoa abriu uma versão anterior, o navegador guardou aquele
+  // código, e a versão nova nao o reconhece mais. Sem o encadeamento, ela via
+  // "código não reconhecido" mesmo com um link válido em mãos.
+  const r = await identidade.resolveFirstIdentity(
+    [null, 'CODIGO-VELHO-QUE-SUMIU', 'GEST-AAAA-BBBB'], ROSTER_TESTE,
+  );
+  assert(r, 'ficou trancado do lado de fora');
+  assertEqual(r.identity.role, 'manager');
+  assertEqual(r.token, 'GEST-AAAA-BBBB');
+});
+
+await check('o código do link tem precedência sobre o guardado', async () => {
+  const r = await identidade.resolveFirstIdentity(['ANAA-1111-2222', 'GEST-AAAA-BBBB'], ROSTER_TESTE);
+  assertEqual(r.identity.role, 'seller');
+  assertEqual(r.identity.sellerId, 'ana');
+});
+
+await check('nenhum código válido continua sendo recusa', async () => {
+  const r = await identidade.resolveFirstIdentity(['XXX', 'YYY'], ROSTER_TESTE);
+  assertEqual(r, null);
+});
+
 // --------------------------------------------------- PLANILHA DO GOOGLE
 console.log('\nPLANILHA DO GOOGLE');
 const { SheetSource, parseCsv } = await import('../src/data/sources/SheetSource.js');

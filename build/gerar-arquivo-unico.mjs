@@ -87,10 +87,14 @@ if (dados.config?.dataSource?.adapter === 'arquivo') {
  * em toda tela, que os números são fictícios.
  */
 if (demonstracao) {
-  const tokenGestor = gerarToken(4);
+  // Códigos FIXOS, de propósito: cada build gerava códigos novos, e quem já
+  // tinha aberto a versão anterior ficava com um código guardado que deixara
+  // de existir. Numa demonstração o código não é segredo — ser estável vale
+  // mais.
+  const tokenGestor = 'DEMO-GESTOR';
   const tokensDeTeste = {};
-  const sellers = (dados.equipe?.vendedores ?? []).map((v) => {
-    const token = gerarToken();
+  const sellers = (dados.equipe?.vendedores ?? []).map((v, i) => {
+    const token = `DEMO-V${String(i + 1).padStart(2, '0')}`;
     tokensDeTeste[v.sellerId] = token;
     return { sellerId: v.sellerId, name: v.name, tokenHash: sha256(token) };
   });
