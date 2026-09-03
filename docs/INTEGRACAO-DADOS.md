@@ -1,9 +1,89 @@
 # Conectar a base de dados
 
-O aplicativo está em **Modo de Espera**: a fonte da base ainda não foi definida,
-e nada foi assumido a respeito dela — nem Excel, nem CSV, nem Google Sheets, nem
-API, nem banco.
+O aplicativo sai da caixa em **Modo de Espera** e já traz tudo o que é preciso
+para conectar o sistema de pedidos da direção — sem programar.
 
+---
+
+## Caminho rápido: descobrir o formato (5 minutos)
+
+O sistema de pedidos responde alguma coisa quando você clica no seu nome. O
+aplicativo precisa saber onde e em que formato.
+
+1. abra o sistema de pedidos e entre normalmente;
+2. tecle **F12** e vá na aba **Rede** (ou *Network*);
+3. clique no seu nome, como você já faz;
+4. na lista que aparecer, procure a linha cujo **Tipo** é `xhr` ou `fetch`;
+5. clique nela, abra **Resposta** (*Response*) e copie tudo;
+6. no seu painel de gestor: **Configuração → Base de dados → Analisar resposta**.
+
+O aplicativo diz, passo a passo, se encontrou a lista de vendedores, quais
+colunas reconheceu e como leu as primeiras linhas — **sem nenhuma chamada de
+rede**. Se algum campo não for reconhecido, os seletores logo abaixo ligam cada
+coluna da origem ao campo correspondente.
+
+Copie também o **endereço** da chamada (aba *Cabeçalhos*, campo *URL da
+requisição*) — é ele que vai no campo "Endereço dos dados".
+
+---
+
+## Caminho A — ler direto do navegador
+
+Preencha o endereço, a autenticação e clique em **Testar conexão**. Serve para
+você validar tudo rapidamente.
+
+Duas limitações, ditas com todas as letras:
+
+- **CORS.** O navegador só lê uma resposta de outro endereço se aquele servidor
+  autorizar. Se o sistema de pedidos não autorizar, o diagnóstico avisa
+  exatamente isso — não é erro de configuração sua.
+- **A senha fica só no seu navegador.** O aplicativo é publicado como arquivo
+  público; se a senha entrasse na configuração do repositório, ela seria
+  publicada junto. Por isso a conexão não é exportável — e, enquanto ela viver só
+  aí, **o painel dos vendedores continua sem dados**.
+
+Para a equipe inteira, use o caminho B.
+
+---
+
+## Caminho B — função de servidor (recomendado)
+
+`netlify/functions/producao.mjs` já está pronto e testado
+(`node tests/funcao-producao.js`). Ele:
+
+- guarda a senha em **variável de ambiente**, fora do repositório;
+- busca o sistema de pedidos a partir do servidor, onde CORS não existe;
+- **calcula o ranking no servidor** e devolve ao vendedor apenas os próprios
+  números mais a posição e as distâncias — nenhum nome, nenhum valor de colega
+  atravessa a função;
+- recusa com 403 qualquer código de acesso desconhecido.
+
+**Publicar:**
+
+1. no Netlify, *Add new site → Import an existing project*, apontando para este
+   repositório e esta branch;
+2. em **Site settings → Environment variables**, defina:
+
+   | variável | conteúdo |
+   |----------|----------|
+   | `PEDIDOS_URL` | o endereço descoberto no passo acima, com `{data}` no lugar da data |
+   | `PEDIDOS_SENHA` | a senha do sistema de pedidos |
+   | `PEDIDOS_AUTH` | `query`, `header`, `body` ou `none` |
+   | `PEDIDOS_CAMPO` | nome do campo da senha (padrão `senha`) |
+   | `PEDIDOS_LISTA` | caminho até a lista, se ela estiver aninhada |
+   | `ORIGEM_PERMITIDA` | endereço do aplicativo, se ele estiver hospedado fora do Netlify |
+
+3. em **Configuração → Base de dados**, escolha a origem `liga-api`.
+
+Se a resposta do sistema de pedidos tiver um formato que o normalizador não
+cobre, o único ponto a ajustar é a função `buscarProducao()` — o resto (acesso,
+escopo, ranking, agregado) já está pronto e coberto por testes.
+
+---
+
+## Modo de Espera
+
+Enquanto nenhuma origem estiver conectada, nada é assumido a respeito da base.
 Tudo o mais funciona: navegação, permissões, ranking, cálculos, projeções,
 gamificação. As telas que dependem de produção real mostram estado de espera em
 vez de números inventados.
@@ -121,6 +201,20 @@ em `config/vendedores.json`, mantido pelo gestor na aba **Equipe**:
 Nomes são casados por forma normalizada (sem acento, sem caixa), com uma segunda
 tentativa por primeiro + último nome. Combinação ambígua é recusada: é melhor
 assinalar do que atribuir a produção de um vendedor ao nome de outro.
+
+## Quando a origem não tem histórico
+
+O sistema de pedidos diz **como está agora** — não a curva do dia. Sem linha do
+tempo não existe ritmo, projeção nem comparação com o mesmo horário de ontem.
+
+Com `Horário = "A origem só diz como está agora"`, o aplicativo guarda cada
+leitura e monta a curva conforme o dia passa. **Esse acúmulo é por navegador**: a
+curva existe enquanto alguém mantém o aplicativo aberto, e cada máquina monta a
+sua.
+
+Para uma curva confiável e igual para todos, a coleta precisa acontecer no
+servidor em intervalo fixo — uma função agendada gravando cada leitura. A função
+do caminho B é o lugar natural para isso.
 
 ## Modo demonstração
 

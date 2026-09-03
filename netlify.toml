@@ -1,0 +1,34 @@
+# Publicação da Liga Comercial no Netlify.
+#
+# O site é estático: nenhum build é necessário. A função em netlify/functions
+# existe por um motivo específico — ela guarda a senha do sistema de pedidos
+# fora do repositório e calcula o ranking no servidor, para que os números dos
+# colegas nunca cheguem ao navegador do vendedor.
+
+[build]
+  publish = "."
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+    # Uso interno: não deve aparecer em buscador.
+    X-Robots-Tag = "noindex, nofollow"
+
+# Cadastro e configuração mudam sem mudar de nome: não podem ficar em cache,
+# senão a equipe continua vendo a lista antiga depois de uma correção.
+[[headers]]
+  for = "/config/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

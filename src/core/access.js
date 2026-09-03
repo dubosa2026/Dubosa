@@ -167,6 +167,7 @@ function historyContextFor(sellerId, historyDays) {
  */
 export function buildSellerView({
   today, yesterday, sellerId, sellerName, atMinutes, config, historyDays = [],
+  competitive = null, teamFromSource = null,
 }) {
   const businessHours = config.businessHours;
   const me = today?.sellers?.find((s) => s.sellerId === sellerId) ?? null;
@@ -178,7 +179,7 @@ export function buildSellerView({
   //                    Ele tem posição real, comparação real e disputa real —
   //                    e é justamente quem mais precisa ver isso.
   const awaitingData = today?.status !== 'ready';
-  const aggregate = teamAggregate(today);
+  const aggregate = teamFromSource ?? teamAggregate(today);
   const permCtx = { activeCount: aggregate.activeCount };
 
   const yAtSameTime = valueAt(meYesterday?.timeline, atMinutes);
@@ -195,12 +196,18 @@ export function buildSellerView({
     goals: config.goals,
   });
 
-  // O ranking nominal é calculado, mas NUNCA sai deste escopo de função:
-  // dele extraímos apenas a posição do próprio vendedor e magnitudes anônimas.
-  const ranked = rankAt(today, atMinutes, config.ranking);
-  const rawGaps = gapsFor(ranked, sellerId);
+  // Quando a ORIGEM já calculou a posição (adaptador com `scopedRanking`), o
+  // aplicativo usa o que veio pronto: ele não recebeu — e não precisa receber —
+  // os dados dos colegas para saber onde o vendedor está.
+  //
+  // Sem isso, o ranking nominal é calculado aqui, mas NUNCA sai desta função:
+  // dela saem apenas a posição do próprio vendedor e magnitudes anônimas.
+  const ranked = competitive ? [] : rankAt(today, atMinutes, config.ranking);
+  const rawGaps = competitive ?? gapsFor(ranked, sellerId);
   const marks = hourTicks(businessHours).filter((m) => m <= atMinutes);
-  const positions = positionHistory(today, sellerId, marks.length ? marks : [atMinutes], config.ranking);
+  const positions = competitive
+    ? { minutes: [], positions: [], best: competitive.position, worst: competitive.position, opening: competitive.position, current: competitive.position }
+    : positionHistory(today, sellerId, marks.length ? marks : [atMinutes], config.ranking);
 
   const gaps = rawGaps
     ? {

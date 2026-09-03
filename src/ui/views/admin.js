@@ -11,7 +11,7 @@ import { money, number } from '../../core/format.js';
  * Acessos, configuração das regras e estado da base de dados.
  */
 
-export function adminView({ config, app, roster, rosterOrigin, team, teamOrigin, sourceHealth }) {
+export function adminView({ config, app, roster, rosterOrigin, team, teamOrigin, connection, diagnostico, sourceHealth }) {
   const tab = app.state.adminTab ?? 'equipe';
   return h('div', { class: 'view view-admin' },
     h('header', { class: 'app-header' },
@@ -27,7 +27,7 @@ export function adminView({ config, app, roster, rosterOrigin, team, teamOrigin,
       tabBtn('instalar', 'Instalar', tab, app)),
     tab === 'equipe' ? teamPanel({ app, team, teamOrigin, roster }) : null,
     tab === 'acessos' ? accessPanel({ app, roster, rosterOrigin, team }) : null,
-    tab === 'base' ? dataPanel({ app, config, sourceHealth }) : null,
+    tab === 'base' ? dataPanel({ app, config, connection, diagnostico, sourceHealth }) : null,
     tab === 'regras' ? rulesPanel({ app, config }) : null,
     tab === 'instalar' ? installPanel({ app, roster }) : null);
 }
@@ -221,8 +221,32 @@ async function copyLink(event, link) {
 }
 
 // ------------------------------------------------------------- base de dados
-function dataPanel({ app, config, sourceHealth }) {
-  const isDemo = config.dataSource?.adapter === 'demo';
+function dataPanel({ app, config, connection, diagnostico, sourceHealth }) {
+  const c = connection ?? {};
+  const isDemo = c.adapter === 'demo';
+  const conectado = c.adapter === 'http-json';
+
+  const campo = (rotulo, valor, onchange, extra = {}) => h('label', { class: 'field' },
+    h('span', { class: 'field-label', text: rotulo }),
+    h('input', {
+      class: 'input', type: 'text', value: valor ?? '', spellcheck: 'false',
+      onchange: (e) => onchange(e.target.value), ...extra,
+    }),
+    extra.hint ? h('small', { class: 'field-hint', text: extra.hint }) : null);
+
+  const escolha = (rotulo, valor, opcoes, onchange, hint = null) => h('label', { class: 'field' },
+    h('span', { class: 'field-label', text: rotulo }),
+    h('select', { class: 'select', onchange: (e) => onchange(e.target.value) },
+      opcoes.map(([v, t]) => h('option', { value: v, selected: v === valor }, t))),
+    hint ? h('small', { class: 'field-hint', text: hint }) : null);
+
+  const colar = h('textarea', {
+    class: 'input textarea',
+    rows: '6',
+    placeholder: 'Cole aqui a resposta JSON que aparece no sistema de pedidos.',
+    'aria-label': 'Resposta para analisar',
+  });
+
   return h('section', { class: 'card' },
     sectionTitle('Base de dados'),
     h('div', { class: ['status-box', sourceHealth?.ok ? 'status-ok' : 'status-waiting'] },
@@ -232,8 +256,74 @@ function dataPanel({ app, config, sourceHealth }) {
       h('p', { class: 'muted', text: sourceHealth?.detail ?? '' })),
 
     h('div', { class: 'divider' }),
+    h('h3', { class: 'sub-title', text: 'Conectar o sistema de pedidos' }),
+    h('div', { class: 'alert alert-warn' },
+      h('strong', { text: 'A senha fica só neste navegador. ' }),
+      'O aplicativo é publicado como arquivo público: uma senha guardada na configuração '
+      + 'do repositório seria publicada junto. Por isso a conexão não entra no arquivo exportado — '
+      + 'e, enquanto ela viver só aqui, o painel dos vendedores continua sem dados. '
+      + 'Para valer para a equipe inteira, a busca precisa passar por uma função de servidor '
+      + '(instruções em docs/INTEGRACAO-DADOS.md).'),
+
+    h('div', { class: 'field-grid' },
+      campo('Endereço dos dados', c.url, (v) => app.updateConnection({ url: v }), {
+        placeholder: 'https://.../api/producao?data={data}',
+        hint: 'Use {data} para 2026-09-03, {dataBR} para 03/09/2026 e {hora} para 15:30.',
+      }),
+      escolha('Método', c.method, [['GET', 'GET'], ['POST', 'POST']],
+        (v) => app.updateConnection({ method: v }))),
+
+    h('div', { class: 'field-grid' },
+      escolha('Autenticação', c.auth?.mode, [
+        ['none', 'Nenhuma'],
+        ['query', 'Senha na URL (?senha=...)'],
+        ['header', 'Cabeçalho (Authorization)'],
+        ['body', 'No corpo do POST'],
+      ], (v) => app.updateConnection({ auth: { mode: v } }, { rerender: true })),
+      c.auth?.mode !== 'none'
+        ? campo('Nome do campo', c.auth?.field, (v) => app.updateConnection({ auth: { field: v } }), { placeholder: 'senha' })
+        : null,
+      c.auth?.mode !== 'none'
+        ? campo('Senha', c.auth?.value, (v) => app.updateConnection({ auth: { value: v } }), { type: 'password' })
+        : null),
+
+    h('div', { class: 'field-grid' },
+      campo('Caminho até a lista', c.collectionPath, (v) => app.updateConnection({ collectionPath: v }), {
+        placeholder: 'deixe vazio para procurar sozinho',
+        hint: 'Ex.: dados.vendedores',
+      }),
+      escolha('O que cada linha significa', c.semantics, [
+        ['cumulative', 'Acumulado do dia até o horário'],
+        ['incremental', 'Um pedido isolado'],
+      ], (v) => app.updateConnection({ semantics: v })),
+      escolha('Horário', c.timeMode, [
+        ['fetchTime', 'A origem só diz "como está agora"'],
+        ['field', 'A origem traz o horário de cada linha'],
+      ], (v) => app.updateConnection({ timeMode: v }),
+      'Se a origem não tem histórico, o aplicativo monta a curva do dia guardando cada leitura.')),
+
+    h('div', { class: 'button-row' },
+      h('button', { class: 'btn btn-primary', onclick: () => app.testConnection(), text: '⚡ Testar conexão' }),
+      conectado
+        ? h('button', { class: 'btn btn-danger', onclick: () => app.disconnectSource(), text: 'Desconectar' })
+        : h('button', { class: 'btn', onclick: () => app.connectHttpSource(), text: 'Usar esta origem' })),
+
+    h('div', { class: 'divider' }),
+    h('h3', { class: 'sub-title', text: 'Ou analise uma resposta colada' }),
+    h('p', { class: 'muted', text: 'No sistema de pedidos, abra as Ferramentas do Desenvolvedor (F12), aba Rede, '
+      + 'clique no seu nome e copie a resposta JSON da chamada que aparecer. Cole abaixo: o aplicativo diz '
+      + 'exatamente o que entendeu, sem tocar na rede.' }),
+    colar,
+    h('div', { class: 'button-row' },
+      h('button', { class: 'btn', onclick: () => app.analyzePasted(colar.value), text: 'Analisar resposta' })),
+
+    diagnostico ? diagnosticoBlock(diagnostico, app) : null,
+
+    h('div', { class: 'divider' }),
     h('h3', { class: 'sub-title', text: 'Modo de Espera de Dados' }),
-    h('p', { class: 'muted', text: 'A forma de carregamento da base ainda não foi definida. O aplicativo funciona por inteiro — navegação, permissões, ranking, projeções e gamificação — e as telas que dependem de produção real mostram estado de espera em vez de números inventados.' }),
+    h('p', { class: 'muted', text: 'Enquanto nenhuma origem estiver conectada, o aplicativo funciona por inteiro — '
+      + 'navegação, permissões, ranking, projeções e gamificação — e as telas que dependem de produção real '
+      + 'mostram estado de espera em vez de números inventados.' }),
     h('div', { class: 'waiting-fields' },
       h('span', { class: 'waiting-fields-label', text: 'Campos que a base deverá fornecer' }),
       h('div', { class: 'waiting-chips' },
@@ -241,23 +331,81 @@ function dataPanel({ app, config, sourceHealth }) {
 
     h('div', { class: 'divider' }),
     h('h3', { class: 'sub-title', text: 'Modo demonstração' }),
-    h('p', { class: 'muted', text: 'Liga números fictícios para você conferir telas, permissões e cálculos antes de a base existir. Fica marcado com tarja permanente e nunca se confunde com produção real.' }),
+    h('p', { class: 'muted', text: 'Liga números fictícios para conferir telas, permissões e cálculos. '
+      + 'Fica marcado com tarja permanente e nunca se confunde com produção real.' }),
     h('label', { class: 'switch' },
-      h('input', {
-        type: 'checkbox',
-        checked: isDemo,
-        onchange: (e) => app.setDemoMode(e.target.checked),
-      }),
-      h('span', { text: isDemo ? 'Demonstração LIGADA' : 'Demonstração desligada' })),
+      h('input', { type: 'checkbox', checked: isDemo, onchange: (e) => app.setDemoMode(e.target.checked) }),
+      h('span', { text: isDemo ? 'Demonstração LIGADA' : 'Demonstração desligada' })));
+}
 
-    h('div', { class: 'divider' }),
-    h('h3', { class: 'sub-title', text: 'Quando a fonte for definida' }),
-    h('ol', { class: 'steps' },
-      h('li', { text: 'Crie o adaptador em src/data/sources/ estendendo DataSource.' }),
-      h('li', { text: 'Registre-o em src/data/sources/registry.js.' }),
-      h('li', { text: 'Aponte dataSource.adapter em config/app.config.json para o id dele.' }),
-      h('li', { text: 'Nenhuma tela, cálculo ou regra de permissão precisa ser alterada.' })),
-    h('p', { class: 'muted', text: 'Detalhes em docs/INTEGRACAO-DADOS.md.' }));
+/** Relatório passo a passo do diagnóstico. */
+function diagnosticoBlock(d, app) {
+  if (d.rodando) {
+    return h('div', { class: 'alert alert-info', text: 'Testando a conexão…' });
+  }
+
+  return h('div', { class: 'diagnostico' },
+    h('h3', { class: 'sub-title', text: 'Resultado' }),
+    h('ul', { class: 'diag-list' }, (d.etapas ?? []).map((e) => h('li', { class: ['diag-item', e.ok ? 'diag-ok' : 'diag-fail'] },
+      h('span', { class: 'diag-mark', 'aria-hidden': 'true', text: e.ok ? '✓' : '✕' }),
+      h('div', {},
+        h('strong', { text: e.nome }),
+        h('div', { class: 'diag-detail', text: e.detalhe }),
+        e.dados
+          ? h('pre', { class: 'diag-pre', text: typeof e.dados === 'string' ? e.dados : JSON.stringify(e.dados, null, 2) })
+          : null)))),
+
+    d.colunas?.length
+      ? h('div', {},
+        h('h3', { class: 'sub-title', text: 'Colunas encontradas na origem' }),
+        h('div', { class: 'waiting-chips' }, d.colunas.map((col) => h('span', { class: 'chip', text: col }))),
+        h('p', { class: 'muted', text: 'Se o aplicativo não reconheceu alguma, informe abaixo qual coluna corresponde a cada campo.' }),
+        mapaDeCampos(app, d.colunas))
+      : null,
+
+    d.amostra?.length
+      ? h('div', {},
+        h('h3', { class: 'sub-title', text: 'Como o aplicativo leu as primeiras linhas' }),
+        h('div', { class: 'table-scroll' },
+          h('table', { class: 'data-table' },
+            h('thead', {}, h('tr', {},
+              h('th', { text: 'Vendedor' }),
+              h('th', { text: 'Data' }),
+              h('th', { text: 'Horário' }),
+              h('th', { class: 'num', text: 'Pedidos' }),
+              h('th', { class: 'num', text: 'Faturamento' }))),
+            h('tbody', {}, d.amostra.map((r) => h('tr', {},
+              h('td', { text: r.sellerName }),
+              h('td', { text: r.date }),
+              h('td', { text: r.time }),
+              h('td', { class: 'num', text: number(r.orders) }),
+              h('td', { class: 'num', text: money(r.revenue) })))))),
+        h('p', { class: 'muted', text: 'Se estes números batem com o que o sistema de pedidos mostra, a leitura está correta.' }))
+      : null);
+}
+
+/** Ligação manual entre coluna da origem e campo do aplicativo. */
+function mapaDeCampos(app, colunas) {
+  const campos = [
+    ['sellerName', 'Nome do vendedor'],
+    ['orders', 'Número de pedidos'],
+    ['revenue', 'Faturamento'],
+    ['date', 'Data'],
+    ['time', 'Horário'],
+  ];
+  return h('div', { class: 'field-grid' }, campos.map(([chave, rotulo]) => h('label', { class: 'field' },
+    h('span', { class: 'field-label', text: rotulo }),
+    h('select', {
+      class: 'select',
+      onchange: (e) => app.updateConnection({
+        fieldMap: { ...(app.connection.fieldMap ?? {}), [chave]: e.target.value ? [e.target.value] : undefined },
+      }),
+    },
+    h('option', { value: '' }, 'reconhecer sozinho'),
+    colunas.map((col) => h('option', {
+      value: col,
+      selected: (app.connection.fieldMap?.[chave] ?? [])[0] === col,
+    }, col))))));
 }
 
 // -------------------------------------------------------------------- regras
@@ -279,7 +427,11 @@ function rulesPanel({ app, config }) {
     }));
 
   const toggle = (label, path, value, hint = null) => h('label', { class: 'switch switch-block' },
-    h('input', { type: 'checkbox', checked: value, onchange: (e) => app.updateConfigPath(path, e.target.checked) }),
+    h('input', {
+      type: 'checkbox',
+      checked: value,
+      onchange: (e) => app.updateConfigPath(path, e.target.checked, { rerender: true }),
+    }),
     h('span', {}, h('span', { text: label }), hint ? h('small', { class: 'switch-hint', text: hint }) : null));
 
   return h('section', { class: 'card' },

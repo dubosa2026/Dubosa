@@ -20,6 +20,12 @@ https://dubosa2026.github.io/Dubosa/
 > Qualquer hospedagem estática serve — Netlify, Cloudflare Pages, um servidor
 > interno. O aplicativo é um conjunto de arquivos; não precisa de nada rodando
 > por trás.
+>
+> **Prefira o Netlify se for conectar o sistema de pedidos.** Lá o repositório
+> traz junto a função `netlify/functions/producao.mjs`, que guarda a senha fora
+> do código e calcula o ranking no servidor — o único desenho em que os números
+> dos colegas nunca chegam ao navegador do vendedor. Ver
+> [INTEGRACAO-DADOS.md](INTEGRACAO-DADOS.md).
 
 ## 2. Cadastrar a equipe e gerar os links
 

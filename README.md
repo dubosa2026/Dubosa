@@ -11,13 +11,21 @@ Dois indicadores, e só eles: **pedidos do dia** e **faturamento do dia**.
 
 ## Estado atual
 
-**Modo de Espera de Dados.** A forma de carregamento da base ainda não foi
-definida, então nenhuma origem foi assumida. Tudo o mais funciona — navegação,
-permissões, ranking, cálculos, projeções, gamificação — e as telas que dependem
-de produção real mostram estado de espera em vez de números inventados.
+**Modo de Espera de Dados**, com a conexão pronta para ser ligada.
 
-Conectar a base depois é escrever um adaptador e apontar uma linha de
-configuração. Nenhuma tela, cálculo ou regra de permissão muda.
+O aplicativo funciona por inteiro — navegação, permissões, ranking, cálculos,
+projeções, gamificação — e as telas que dependem de produção real mostram estado
+de espera em vez de números inventados.
+
+Para conectar o sistema de pedidos há dois caminhos, ambos sem programar:
+
+- **Configuração → Base de dados** tem o formulário de conexão e um diagnóstico
+  que roda no navegador do gestor, dizendo passo a passo o que entendeu da
+  resposta;
+- **`netlify/functions/producao.mjs`** faz a busca no servidor, guarda a senha
+  fora do repositório e calcula o ranking lá — o único desenho em que os números
+  dos colegas nunca chegam ao navegador do vendedor.
+
 Ver [docs/INTEGRACAO-DADOS.md](docs/INTEGRACAO-DADOS.md).
 
 ## O que o vendedor vê
@@ -74,7 +82,8 @@ Sem framework, sem build, sem dependências. Basta servir a pasta:
 
 ```bash
 python3 -m http.server 8080
-node tests/run.js      # 51 verificações do núcleo, incluindo as de privacidade
+node tests/run.js               # 84 verificações do núcleo, incluindo as de privacidade
+node tests/funcao-producao.js   # 11 verificações da função de servidor
 ```
 
 ## Estrutura
@@ -86,7 +95,8 @@ src/core/               relógio comercial, métricas, ranking, gamificação,
                         mensagens e o núcleo de privacidade
 src/data/               contrato de dados, Modo de Espera, adaptadores
 src/ui/                 telas e componentes
+netlify/functions/      busca com escopo no servidor (privacidade no transporte)
 deploy/                 instaladores para Windows, macOS e Linux
 docs/                   documentação
-tests/run.js            testes do núcleo
+tests/                  testes do núcleo e da função de servidor
 ```

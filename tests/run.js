@@ -487,6 +487,61 @@ await check('agregado da equipe soma todos', () => {
   assertEqual(managerView.team.sellerCount, 5);
 });
 
+// ------------------------------------------- ESCOPO CALCULADO NA ORIGEM 🔒
+console.log('\nESCOPO CALCULADO NA ORIGEM');
+await check('painel completo do vendedor sem NENHUM dado de colega no navegador', () => {
+  // Simula o adaptador com servidor: chega só a própria produção, mais a
+  // posição e as distâncias já calculadas. É o desenho em que a privacidade
+  // é garantida no transporte, e não apenas na exibição.
+  const soMeu = buildDayState({
+    status: 'ready', semantics: 'cumulative', date: DATE, meta: {},
+    records: [
+      { sellerId: 'joao pedro', sellerName: 'Joao Pedro', date: DATE, time: '11:00', orders: 7, revenue: 61000 },
+      { sellerId: 'joao pedro', sellerName: 'Joao Pedro', date: DATE, time: '14:00', orders: 12, revenue: 98000 },
+    ],
+  });
+  assertEqual(soMeu.sellers.length, 1, 'o navegador recebeu mais de um vendedor:');
+
+  const v = access.buildSellerView({
+    today: soMeu,
+    yesterday: null,
+    sellerId: 'joao pedro',
+    sellerName: 'Joao Pedro',
+    atMinutes: AT,
+    config,
+    competitive: {
+      position: 2, total: 22, isLeader: false, isLast: false,
+      toNext: { revenue: 8500, orders: 0 },
+      toPrevious: { revenue: 4000, orders: 1 },
+      toLeader: { revenue: 8500, orders: 0 },
+    },
+    teamFromSource: { sellerCount: 22, activeCount: 18, orders: 150, revenue: 1352300 },
+  });
+
+  // Tudo o que a tela precisa continua lá.
+  assertEqual(v.gaps.position, 2);
+  assertEqual(v.gaps.total, 22);
+  assertEqual(v.gaps.toNext.revenue, 8500);
+  assertEqual(v.performance.revenue, 98000);
+  assertEqual(v.team.visible, true);
+  assertEqual(v.team.revenue, 1352300);
+  assert(v.messages.length > 0);
+  assertEqual(v.awaitingData, false);
+  assertEqual(v.semProducao, false);
+});
+await check('contexto vindo da origem carrega só magnitude, nunca identidade', () => {
+  const soMeu = buildDayState({
+    status: 'ready', semantics: 'cumulative', date: DATE, meta: {},
+    records: [{ sellerId: 'ana', sellerName: 'Ana', date: DATE, time: '14:00', orders: 3, revenue: 30000 }],
+  });
+  const v = access.buildSellerView({
+    today: soMeu, yesterday: null, sellerId: 'ana', sellerName: 'Ana', atMinutes: AT, config,
+    competitive: { position: 5, total: 22, isLeader: false, isLast: false, toNext: { revenue: 900, orders: 1 }, toPrevious: null, toLeader: null },
+  });
+  const chaves = Object.keys(v.gaps.toNext);
+  assertEqual(chaves.sort().join(','), 'orders,revenue', 'a distância trouxe campo além da magnitude:');
+});
+
 // ------------------------------------------------------------ modo de espera
 console.log('\nMODO DE ESPERA DE DADOS');
 await check('fonte pendente não inventa dados', async () => {

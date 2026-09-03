@@ -882,3 +882,25 @@ body.is-compact .demo-banner span { display: none; }
 .uf-tag { font-size: 10px; color: var(--text-muted); font-weight: 600; letter-spacing: .04em; }
 
 .comparison-end { justify-content: flex-end; }
+
+/* diagnóstico da conexão */
+.field-hint { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+.diagnostico { margin-top: 16px; padding: 14px; border-radius: var(--radius-sm); background: var(--surface-2); border: 1px solid var(--border); }
+.diag-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.diag-item { display: flex; gap: 9px; align-items: flex-start; font-size: 13px; }
+.diag-mark { font-weight: 700; flex: none; width: 16px; text-align: center; }
+.diag-ok .diag-mark { color: var(--good); }
+.diag-fail .diag-mark { color: var(--critical); }
+.diag-detail { color: var(--text-secondary); font-size: 12.5px; line-height: 1.45; }
+.diag-pre {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  background: var(--surface-3);
+  border-radius: var(--radius-sm);
+  font-family: var(--mono);
+  font-size: 11px;
+  max-height: 190px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

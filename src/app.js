@@ -9,6 +9,9 @@ import {
   teamFromLines, emptyTeam,
 } from './core/team.js';
 import { createSource } from './data/sources/registry.js';
+import {
+  loadConnection, saveConnection, toSourceOptions, emptyConnection,
+} from './core/connection.js';
 import { buildDayState, emptyDayState, mergeTeam } from './data/store.js';
 import { slugifyName as slug } from './data/types.js';
 import { buildSellerView, buildManagerView, markHighPerformance } from './core/access.js';
@@ -36,6 +39,9 @@ class App {
     this.config = {};
     this.roster = emptyRoster();
     this.rosterOrigin = 'nenhum';
+    this.connection = emptyConnection();
+    this.competitive = null;
+    this.teamFromSource = null;
     this.team = emptyTeam();
     this.teamOrigin = 'nenhum';
     this.teamIndex = { byId: new Map(), byShort: new Map(), size: 0 };
@@ -77,6 +83,7 @@ class App {
       return;
     }
 
+    this.connection = loadConnection();
     this.state.compact = this.readPref('compact', this.config.ui?.compactByDefault ?? false);
     this.state.metric = this.readPref('metric', 'revenue');
     this.applyTheme();
@@ -126,9 +133,15 @@ class App {
   }
 
   async loadData() {
-    const adapter = this.config.dataSource?.adapter ?? 'pending';
+    const adapter = this.connection?.adapter && this.connection.adapter !== 'pending'
+      ? this.connection.adapter
+      : (this.config.dataSource?.adapter ?? 'pending');
+
     this.source = createSource(adapter, {
       ...(this.config.dataSource?.options ?? {}),
+      ...toSourceOptions(this.connection),
+      token: this.readPref('token', null),
+      endpoint: this.connection?.endpoint ?? '/api/producao',
       businessHours: this.config.businessHours,
       timezone: this.config.app?.timezone,
       team: this.team?.vendedores ?? [],
@@ -150,6 +163,18 @@ class App {
 
       const withTeam = (payload) => mergeTeam(buildDayState(payload), this.teamIndex, resolveSeller);
 
+      // Quando a origem calcula o ranking, ela devolve a posição e o agregado
+      // já prontos: o navegador do vendedor nunca viu os dados dos colegas.
+      this.competitive = todayPayload?.meta?.competitive ?? null;
+      const teamSrc = todayPayload?.meta?.team ?? null;
+      this.teamFromSource = teamSrc
+        ? {
+          ...teamSrc,
+          avgOrders: teamSrc.sellerCount ? teamSrc.orders / teamSrc.sellerCount : 0,
+          avgRevenue: teamSrc.sellerCount ? teamSrc.revenue / teamSrc.sellerCount : 0,
+        }
+        : null;
+
       this.data.today = withTeam(todayPayload);
       this.data.yesterday = previousPayload ? withTeam(previousPayload) : null;
       this.data.historyDays = historyDates
@@ -160,6 +185,8 @@ class App {
       this.data.today = emptyDayState(now.date, { status: 'error', message: err.message });
       this.data.yesterday = null;
       this.data.historyDays = [];
+      this.competitive = null;
+      this.teamFromSource = null;
     }
 
     this.sealSellerData();
@@ -192,6 +219,8 @@ class App {
         atMinutes: this.now?.minutes ?? 0,
         config: getConfig(),
         historyDays: this.data.historyDays,
+        competitive: this.competitive,
+        teamFromSource: this.teamFromSource,
       });
     } finally {
       this.data = { today: null, yesterday: null, historyDays: [] };
@@ -335,7 +364,7 @@ class App {
     this.render();
   }
 
-  updateConfigPath(path, value) {
+  updateConfigPath(path, value, { rerender = false } = {}) {
     const patch = {};
     let cursor = patch;
     const parts = path.split('.');
@@ -345,7 +374,7 @@ class App {
     });
     this.config = updateConfig(patch);
     this.startAutoRefresh();
-    this.render();
+    if (rerender) this.render();
   }
 
   resetConfig() {
@@ -354,8 +383,81 @@ class App {
   }
 
   async setDemoMode(enabled) {
+    this.connection = { ...this.connection, adapter: enabled ? 'demo' : 'pending' };
+    saveConnection(this.connection);
     this.config = updateConfig({ dataSource: { adapter: enabled ? 'demo' : 'pending' } });
     await this.loadData();
+  }
+
+  /**
+   * Altera um campo da conexão. Nunca sai do navegador do gestor.
+   *
+   * `rerender` é falso por padrão de propósito: redesenhar o painel a cada
+   * tecla trocaria os campos por elementos novos, apagando o que o gestor
+   * estava digitando e jogando o cursor fora. Só quem muda o layout do
+   * formulário — o modo de autenticação, por exemplo — pede o redesenho.
+   */
+  updateConnection(patch, { rerender = false } = {}) {
+    const auth = patch.auth ? { ...this.connection.auth, ...patch.auth } : this.connection.auth;
+    this.connection = { ...this.connection, ...patch, auth };
+    saveConnection(this.connection);
+    if (rerender) this.render();
+  }
+
+  async connectHttpSource() {
+    this.connection = { ...this.connection, adapter: 'http-json' };
+    saveConnection(this.connection);
+    this.config = updateConfig({ dataSource: { adapter: 'http-json' } });
+    await this.loadData();
+  }
+
+  async disconnectSource() {
+    this.connection = { ...this.connection, adapter: 'pending' };
+    saveConnection(this.connection);
+    this.config = updateConfig({ dataSource: { adapter: 'pending' } });
+    await this.loadData();
+  }
+
+  /** Roda o diagnóstico da conexão no navegador do gestor. */
+  async testConnection() {
+    const source = createSource('http-json', {
+      ...toSourceOptions(this.connection),
+      token: this.readPref('token', null),
+      endpoint: this.connection?.endpoint ?? '/api/producao',
+      timezone: this.config.app?.timezone,
+    });
+    this.state.diagnostico = { rodando: true };
+    this.render();
+    const now = nowInTimezone(this.config.app?.timezone);
+    try {
+      this.state.diagnostico = await source.diagnose(now.date);
+    } catch (err) {
+      this.state.diagnostico = { ok: false, etapas: [{ nome: 'Diagnóstico', ok: false, detalhe: err.message }] };
+    }
+    this.render();
+  }
+
+  /** Analisa uma resposta colada, sem tocar na rede. */
+  analyzePasted(texto) {
+    const source = createSource('http-json', {
+      ...toSourceOptions(this.connection),
+      token: this.readPref('token', null),
+      endpoint: this.connection?.endpoint ?? '/api/producao',
+      timezone: this.config.app?.timezone,
+    });
+    const now = nowInTimezone(this.config.app?.timezone);
+    try {
+      const json = JSON.parse(texto);
+      this.state.diagnostico = source.diagnoseJson(json, now.date, [
+        { nome: 'Origem', ok: true, detalhe: 'Resposta colada — nenhuma chamada de rede.' },
+      ]);
+    } catch (err) {
+      this.state.diagnostico = {
+        ok: false,
+        etapas: [{ nome: 'Formato', ok: false, detalhe: `O texto colado não é JSON válido. ${err.message}` }],
+      };
+    }
+    this.render();
   }
 
   // --------------------------------------------------------------- render
@@ -376,6 +478,8 @@ class App {
         rosterOrigin: this.rosterOrigin,
         team: this.team,
         teamOrigin: this.teamOrigin,
+        connection: this.connection,
+        diagnostico: this.state.diagnostico,
         sourceHealth: this.sourceHealth,
       }));
       return;
