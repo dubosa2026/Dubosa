@@ -3,8 +3,9 @@ import { sectionTitle } from '../components/widgets.js';
 import { buildLink, generateToken } from '../../core/identity.js';
 import { exportRoster } from '../../core/roster.js';
 import { exportTeam } from '../../core/team.js';
+import { money, number as fmtNumber } from '../../core/format.js';
+import { normalizeMoney } from '../../data/types.js';
 import { exportConfig } from '../../core/settings.js';
-import { money, number } from '../../core/format.js';
 
 /**
  * ÁREA ADMINISTRATIVA — exclusiva do gestor.
@@ -12,7 +13,7 @@ import { money, number } from '../../core/format.js';
  */
 
 export function adminView({ config, app, roster, rosterOrigin, team, teamOrigin, connection, diagnostico, sourceHealth }) {
-  const tab = app.state.adminTab ?? 'equipe';
+  const tab = app.state.adminTab ?? 'lancar';
   return h('div', { class: 'view view-admin' },
     h('header', { class: 'app-header' },
       h('div', { class: 'app-header-main' },
@@ -20,11 +21,13 @@ export function adminView({ config, app, roster, rosterOrigin, team, teamOrigin,
         h('div', { class: 'app-subtitle', text: 'Acessos, regras e base de dados' })),
       h('button', { class: 'btn btn-ghost btn-sm', onclick: () => app.goDashboard(), text: '← Voltar ao painel' })),
     h('nav', { class: 'tabs' },
+      tabBtn('lancar', 'Lançar', tab, app),
       tabBtn('equipe', 'Equipe', tab, app),
       tabBtn('acessos', 'Acessos', tab, app),
       tabBtn('base', 'Base de dados', tab, app),
       tabBtn('regras', 'Regras', tab, app),
       tabBtn('instalar', 'Instalar', tab, app)),
+    tab === 'lancar' ? launchPanel({ app, team }) : null,
     tab === 'equipe' ? teamPanel({ app, team, teamOrigin, roster }) : null,
     tab === 'acessos' ? accessPanel({ app, roster, rosterOrigin, team }) : null,
     tab === 'base' ? dataPanel({ app, config, connection, diagnostico, sourceHealth }) : null,
@@ -38,6 +41,139 @@ function tabBtn(id, label, current, app) {
     onclick: () => app.setAdminTab(id),
     text: label,
   });
+}
+
+// ------------------------------------------------------------------ lançar
+/**
+ * LANÇAR A PRODUÇÃO DO DIA
+ *
+ * Enquanto o sistema de pedidos não oferece um endereço de dados, este é o
+ * caminho que faz a Liga funcionar de verdade: o gestor cola a lista da tela —
+ * ou digita — e a produção real entra.
+ *
+ * A tabela mostra a EQUIPE INTEIRA, não só quem foi reconhecido na colagem.
+ * Quem ficou zerado aparece com zero, que é exatamente o que o ranking precisa
+ * saber para não deixar ninguém sumir da disputa.
+ */
+function launchPanel({ app, team }) {
+  const vendedores = team?.vendedores ?? [];
+  const lido = app.state.lancamento ?? null;
+  const porId = new Map((lido?.registros ?? []).map((r) => [r.sellerId, r]));
+  const campos = new Map();
+
+  const colar = h('textarea', {
+    class: 'input textarea',
+    rows: '6',
+    placeholder: 'Cole aqui a lista do sistema de pedidos.\n\nExemplo:\n› Erica Oliveira    R$ 370 mil    22\n› Murilo Bedani Rogerio    R$ 128.400    9',
+    'aria-label': 'Produção colada',
+  });
+
+  const linhaDe = (v) => {
+    const encontrado = porId.get(v.sellerId);
+    const pedidos = h('input', {
+      class: 'input input-mini', type: 'number', min: '0', step: '1',
+      value: encontrado ? String(encontrado.orders) : '',
+      placeholder: '0', 'aria-label': `Pedidos de ${v.name}`,
+    });
+    const faturamento = h('input', {
+      class: 'input input-mini', type: 'text',
+      value: encontrado ? String(encontrado.revenue) : '',
+      placeholder: '0', 'aria-label': `Faturamento de ${v.name}`,
+    });
+    campos.set(v.sellerId, { pedidos, faturamento, name: v.name });
+
+    return h('tr', { class: encontrado ? 'row-lido' : null },
+      h('td', {}, h('span', { text: v.name }), v.uf ? h('span', { class: 'uf-tag', text: v.uf }) : null),
+      h('td', { class: 'num' }, pedidos),
+      h('td', { class: 'num' }, faturamento),
+      h('td', {}, encontrado
+        ? h('span', {
+          class: ['badge', encontrado.confianca === 'alta' ? 'badge-ok' : 'badge-warn'],
+          title: encontrado.confianca === 'alta'
+            ? 'Faturamento identificado pelo R$ na colagem.'
+            : 'Leitura por dedução — confira antes de registrar.',
+          text: encontrado.confianca === 'alta' ? 'LIDO' : 'CONFIRA',
+        })
+        : h('span', { class: 'muted', text: '—' })));
+  };
+
+  const registrar = () => {
+    const linhas = [...campos.entries()].map(([sellerId, campo]) => ({
+      sellerId,
+      sellerName: campo.name,
+      orders: Number(campo.pedidos.value) || 0,
+      revenue: parseMoneyInput(campo.faturamento.value),
+    }));
+    app.registrarLancamento(linhas);
+  };
+
+  return h('section', { class: 'card' },
+    sectionTitle('Lançar a produção do dia',
+      h('span', { class: 'section-hint', text: `${fmtNumber(vendedores.length)} vendedores` })),
+
+    h('div', { class: 'alert alert-info' },
+      h('strong', { text: 'Enquanto o sistema de pedidos não tiver um endereço de dados, é por aqui. ' }),
+      'Cole a lista da tela ou digite os números. Cada lançamento vira um ponto da curva do dia — '
+      + 'é o que faz ritmo, projeção e comparação com ontem existirem. Lançar duas ou três vezes ao dia já dá uma curva boa.'),
+
+    vendedores.length === 0
+      ? h('p', { class: 'muted', text: 'Cadastre a equipe primeiro, na aba Equipe.' })
+      : h('div', {},
+        colar,
+        h('div', { class: 'button-row' },
+          h('button', {
+            class: 'btn',
+            onclick: () => app.lerColagem(colar.value),
+            text: 'Ler o texto colado',
+          }),
+          h('button', {
+            class: 'btn btn-ghost btn-sm',
+            onclick: () => app.limparLancamento(),
+            text: 'Limpar',
+          })),
+
+        lido?.naoCadastrados?.length
+          ? h('div', { class: 'alert alert-warn' },
+            h('strong', { text: 'Fora do cadastro da equipe: ' }),
+            'estes nomes vieram na colagem mas não estão na sua equipe, então não entram no ranking. '
+            + 'Se forem seus, adicione na aba Equipe e cole de novo.',
+            h('ul', { class: 'steps' }, lido.naoCadastrados.map((n) => h('li', {
+              text: `${n.sellerName} — ${fmtNumber(n.orders)} pedido(s), ${money(n.revenue)}`,
+            }))))
+          : null,
+        lido?.avisos?.length
+          ? h('div', { class: 'alert alert-warn' }, h('ul', { class: 'steps' }, lido.avisos.map((a) => h('li', { text: a }))))
+          : null,
+
+        h('div', { class: 'table-scroll' },
+          h('table', { class: 'data-table' },
+            h('thead', {}, h('tr', {},
+              h('th', { text: 'Vendedor' }),
+              h('th', { class: 'num', text: 'Pedidos' }),
+              h('th', { class: 'num', text: 'Faturamento' }),
+              h('th', { text: 'Leitura' }))),
+            h('tbody', {}, vendedores.map(linhaDe)))),
+
+        h('div', { class: 'button-row' },
+          h('button', { class: 'btn btn-primary', onclick: registrar, text: '✓ Registrar produção de agora' })),
+
+        h('p', { class: 'privacy-note' },
+          h('span', { 'aria-hidden': 'true', text: '🔒' }),
+          'O que você lança fica neste navegador. Para a equipe inteira enxergar, a produção precisa vir de uma '
+          + 'origem compartilhada — a função de servidor descrita em docs/INTEGRACAO-DADOS.md.'),
+
+        app.state.ultimoLancamento
+          ? h('div', { class: 'alert alert-info', text: app.state.ultimoLancamento })
+          : null));
+}
+
+/** Aceita '370332', 'R$ 370.332' e '370 mil' no campo digitado. */
+function parseMoneyInput(texto) {
+  const limpo = String(texto ?? '').trim();
+  if (!limpo) return 0;
+  const numero = Number(limpo);
+  if (Number.isFinite(numero)) return numero;
+  return normalizeMoney(limpo) ?? 0;
 }
 
 // ------------------------------------------------------------------- equipe
@@ -69,7 +205,7 @@ function teamPanel({ app, team, teamOrigin, roster }) {
   };
 
   return h('section', { class: 'card' },
-    sectionTitle('Equipe', h('span', { class: 'section-hint', text: `${number(vendedores.length)} vendedores` })),
+    sectionTitle('Equipe', h('span', { class: 'section-hint', text: `${fmtNumber(vendedores.length)} vendedores` })),
     h('div', { class: ['alert', teamOrigin === 'publicado' ? 'alert-info' : 'alert-warn'], text: origemTexto[teamOrigin] }),
     h('div', { class: 'alert alert-info' },
       h('strong', { text: 'Por que este cadastro existe: ' }),
@@ -378,7 +514,7 @@ function diagnosticoBlock(d, app) {
               h('td', { text: r.sellerName }),
               h('td', { text: r.date }),
               h('td', { text: r.time }),
-              h('td', { class: 'num', text: number(r.orders) }),
+              h('td', { class: 'num', text: fmtNumber(r.orders) }),
               h('td', { class: 'num', text: money(r.revenue) })))))),
         h('p', { class: 'muted', text: 'Se estes números batem com o que o sistema de pedidos mostra, a leitura está correta.' }))
       : null);
@@ -512,6 +648,6 @@ function installPanel({ app, roster }) {
     h('div', { class: 'divider' }),
     h('h3', { class: 'sub-title', text: 'Endereço deste aplicativo' }),
     h('code', { class: 'link-code', text: base }),
-    h('p', { class: 'muted', text: `${number((roster.sellers ?? []).length)} vendedor(es) com acesso cadastrado.` }),
+    h('p', { class: 'muted', text: `${fmtNumber((roster.sellers ?? []).length)} vendedor(es) com acesso cadastrado.` }),
     h('p', { class: 'muted', text: 'Passo a passo completo em docs/INSTALACAO.md.' }));
 }

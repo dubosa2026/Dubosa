@@ -5,6 +5,31 @@ para conectar o sistema de pedidos da direção — sem programar.
 
 ---
 
+## Caminho zero: colar a lista (funciona hoje)
+
+Não precisa de endereço de dados, senha, CORS nem servidor.
+
+1. no sistema de pedidos, selecione a lista de vendedores e copie (Ctrl+C);
+2. no seu painel: **Configuração → Lançar**;
+3. cole no campo e clique em **Ler o texto colado**;
+4. confira a tabela — ela mostra a equipe inteira, com quem foi reconhecido
+   destacado e os demais zerados — e clique em **Registrar produção de agora**.
+
+A leitura se ancora no cadastro da equipe, então funciona com o texto bagunçado
+que sai de uma cópia de tela: nome e números na mesma linha ou em linhas
+separadas, com marcadores, em caixa alta, com `R$ 370 mil` ou `R$ 370.332`.
+Nome que não está no cadastro aparece avisado, nunca entra escondido.
+
+Cada lançamento é carimbado com o horário. Lançar duas ou três vezes ao dia já
+dá curva suficiente para ritmo, projeção e comparação com o mesmo horário de
+ontem.
+
+**Limite:** o que é lançado fica no navegador de quem lançou. Para a equipe
+inteira enxergar, a produção precisa vir de origem compartilhada — os caminhos A
+e B abaixo.
+
+---
+
 ## Caminho rápido: descobrir o formato (5 minutos)
 
 O sistema de pedidos responde alguma coisa quando você clica no seu nome. O

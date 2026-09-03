@@ -2,6 +2,7 @@ import { PendingSource } from './PendingSource.js';
 import { DemoSource } from './DemoSource.js';
 import { HttpJsonSource } from './HttpJsonSource.js';
 import { LigaApiSource } from './LigaApiSource.js';
+import { ManualSource } from './ManualSource.js';
 
 /**
  * REGISTRO DE ADAPTADORES
@@ -38,3 +39,4 @@ registerSource(PendingSource);
 registerSource(DemoSource);
 registerSource(HttpJsonSource);
 registerSource(LigaApiSource);
+registerSource(ManualSource);

@@ -225,6 +225,22 @@ export function mergeTeam(dayState, index, resolveSeller) {
   });
 }
 
+/**
+ * Horários em que existe medição no dia, em ordem.
+ *
+ * É a régua honesta para falar de movimento no ranking. Com uma única medição
+ * não houve movimento nenhum: comparar contra um instante em que todo mundo
+ * estava zerado produziria "subiu 15 posições" para quem apenas apareceu
+ * primeiro na ordem alfabética.
+ */
+export function measurementMinutes(dayState) {
+  const marcas = new Set();
+  for (const seller of dayState?.sellers ?? []) {
+    for (const ponto of seller.timeline ?? []) marcas.add(ponto.m);
+  }
+  return [...marcas].sort((a, b) => a - b);
+}
+
 /** Total do dia (última medição disponível). */
 export function dayTotal(sellerDay) {
   return { orders: sellerDay?.orders ?? 0, revenue: sellerDay?.revenue ?? 0 };

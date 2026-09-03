@@ -37,8 +37,11 @@ export function deltaBadge(direction, text, { size = 'md' } = {}) {
 /** Comparação completa: absoluto + percentual, no formato da especificação. */
 export function comparison(cmp, kind = 'revenue') {
   if (!cmp) return h('span', { class: 'muted', text: '—' });
-  // Sem produção hoje nem ontem não há variação: um selo "0" sugeriria
-  // estabilidade onde não houve nada para comparar.
+  // Sem dia anterior medido não existe variação a mostrar: exibir a produção
+  // inteira como "+R$ 370.000 em relação a ontem" seria inventar crescimento.
+  if (cmp.semBase) {
+    return h('span', { class: 'muted', title: 'Não há registro do dia anterior para comparar', text: 'sem base para comparar' });
+  }
   if (!cmp.current && !cmp.baseline) {
     return h('span', { class: 'muted', text: 'sem base para comparar' });
   }

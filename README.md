@@ -17,11 +17,16 @@ O aplicativo funciona por inteiro — navegação, permissões, ranking, cálcul
 projeções, gamificação — e as telas que dependem de produção real mostram estado
 de espera em vez de números inventados.
 
-Para conectar o sistema de pedidos há dois caminhos, ambos sem programar:
+Para colocar produção real na Liga há três caminhos, todos sem programar:
 
-- **Configuração → Base de dados** tem o formulário de conexão e um diagnóstico
-  que roda no navegador do gestor, dizendo passo a passo o que entendeu da
-  resposta;
+- **Configuração → Lançar** é o que funciona hoje: cole a lista que aparece na
+  tela do sistema de pedidos (ou digite) e a Liga passa a usar produção real.
+  Cada lançamento vira um ponto da curva do dia, e com a curva vêm ritmo,
+  projeção e comparação com ontem;
+
+- **Configuração → Base de dados** conecta direto num endereço de dados, com um
+  diagnóstico que roda no navegador do gestor e diz passo a passo o que entendeu
+  da resposta;
 - **`netlify/functions/producao.mjs`** faz a busca no servidor, guarda a senha
   fora do repositório e calcula o ranking lá — o único desenho em que os números
   dos colegas nunca chegam ao navegador do vendedor.
@@ -82,7 +87,7 @@ Sem framework, sem build, sem dependências. Basta servir a pasta:
 
 ```bash
 python3 -m http.server 8080
-node tests/run.js               # 84 verificações do núcleo, incluindo as de privacidade
+node tests/run.js               # 100 verificações do núcleo, incluindo as de privacidade
 node tests/funcao-producao.js   # 11 verificações da função de servidor
 ```
 

@@ -100,26 +100,54 @@ export function normalizeTime(value) {
   return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
 }
 
-/** Aceita 126500, '126500', 'R$ 126.500,00', '126,500.00'. */
+/**
+ * Aceita 126500, '126500', 'R$ 126.500,00', '126,500.00'.
+ *
+ * Aceita tambem a forma abreviada que o sistema de pedidos usa na tela:
+ * 'R$ 370 mil' e 'R$ 1,2 mi'. Sem isto, "370 mil" viraria trezentos e setenta
+ * reais -- um erro de mil vezes que passaria despercebido no ranking.
+ */
 export function normalizeMoney(value) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
   let s = String(value ?? '').trim();
   if (!s) return null;
+
+  const abreviacao = s.match(/(mil|milhoes|milhao|mi|mm|k)\s*$/i);
+  let multiplicador = 1;
+  if (abreviacao) {
+    const sufixo = abreviacao[1].toLowerCase();
+    multiplicador = (sufixo === 'mil' || sufixo === 'k') ? 1000 : 1000000;
+    s = s.slice(0, abreviacao.index);
+  }
   s = s.replace(/[R$\s ]/gi, '');
   const negative = /^\(.*\)$/.test(s) || s.startsWith('-');
   s = s.replace(/[()-]/g, '');
   const lastComma = s.lastIndexOf(',');
   const lastDot = s.lastIndexOf('.');
-  if (lastComma > lastDot) {
-    s = s.replace(/\./g, '').replace(',', '.');       // 126.500,00
-  } else if (lastDot > lastComma) {
-    s = s.replace(/,/g, '');                           // 126,500.00
-  } else {
-    s = s.replace(/[.,]/g, '');
+
+  if (lastComma > -1 && lastDot > -1) {
+    // Os dois separadores presentes: o ÚLTIMO é o decimal.
+    s = lastComma > lastDot
+      ? s.replace(/\./g, '').replace(',', '.')   // 126.500,00  (pt-BR)
+      : s.replace(/,/g, '');                     // 126,500.00  (en-US)
+  } else if (lastComma > -1 || lastDot > -1) {
+    // Só um tipo de separador. Aqui mora a armadilha: "370.332" é trezentos e
+    // setenta mil, não trezentos e setenta reais e trinta e três centavos — e
+    // é exatamente assim que o sistema de pedidos escreve na tela.
+    //
+    // Regra: grupo final com 3 dígitos, ou mais de um separador, é separador de
+    // milhar. Qualquer outro tamanho é casa decimal.
+    const separador = lastComma > -1 ? ',' : '.';
+    const partes = s.split(separador);
+    const ultimo = partes.at(-1);
+    const ehMilhar = partes.length > 2 || (partes.length === 2 && ultimo.length === 3);
+    s = ehMilhar
+      ? partes.join('')
+      : partes.join('.');
   }
   const n = Number(s);
   if (!Number.isFinite(n)) return null;
-  return negative ? -n : n;
+  return (negative ? -n : n) * multiplicador;
 }
 
 /** Aceita 14, '14', '14 pedidos'. */

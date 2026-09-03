@@ -9,6 +9,8 @@ import {
   teamFromLines, emptyTeam,
 } from './core/team.js';
 import { createSource } from './data/sources/registry.js';
+import { parsePastedProduction } from './data/parsePasted.js';
+import { registrarProducao } from './data/sources/ManualSource.js';
 import {
   loadConnection, saveConnection, toSourceOptions, emptyConnection,
 } from './core/connection.js';
@@ -60,7 +62,7 @@ class App {
       metric: 'revenue',
       chartAsTable: false,
       managerTab: 'ranking',
-      adminTab: 'equipe',
+      adminTab: 'lancar',
       selectedSeller: null,
       compareA: null,
       compareB: null,
@@ -402,6 +404,51 @@ class App {
     this.connection = { ...this.connection, ...patch, auth };
     saveConnection(this.connection);
     if (rerender) this.render();
+  }
+
+  // ------------------------------------------------- lançamento manual
+  /** Lê o texto colado do sistema de pedidos e monta a tabela de conferência. */
+  lerColagem(texto) {
+    const resultado = parsePastedProduction(texto, this.teamIndex);
+    this.state.lancamento = resultado;
+    this.state.ultimoLancamento = resultado.registros.length
+      ? null
+      : 'Não reconheci nenhum vendedor no texto colado. Confira se os nomes batem com o cadastro da equipe.';
+    this.render();
+  }
+
+  limparLancamento() {
+    this.state.lancamento = null;
+    this.state.ultimoLancamento = null;
+    this.render();
+  }
+
+  /**
+   * Grava o lançamento e passa a servir a produção real.
+   *
+   * Trocar a origem para `manual` aqui é deliberado: o gestor acabou de dizer
+   * quanto a equipe produziu, e faria pouco sentido a tela seguir em Modo de
+   * Espera depois disso.
+   */
+  async registrarLancamento(linhas) {
+    const now = nowInTimezone(this.config.app?.timezone);
+    const { registros, hora } = registrarProducao(now.date, linhas, {
+      timezone: this.config.app?.timezone,
+    });
+
+    if (!registros) {
+      this.state.ultimoLancamento = 'Nada foi registrado: todas as linhas estavam zeradas.';
+      this.render();
+      return;
+    }
+
+    this.connection = { ...this.connection, adapter: 'manual' };
+    saveConnection(this.connection);
+    this.config = updateConfig({ dataSource: { adapter: 'manual' } });
+    this.state.lancamento = null;
+    this.state.ultimoLancamento = `Produção das ${hora} registrada para ${registros} vendedor(es). `
+      + 'O painel já está usando estes números.';
+    await this.loadData();
   }
 
   async connectHttpSource() {

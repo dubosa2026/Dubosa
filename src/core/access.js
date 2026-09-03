@@ -2,9 +2,11 @@ import { rankAt, gapsFor, positionHistory } from './ranking.js';
 import { buildPerformance } from './metrics.js';
 import { tierFor, evaluateAchievements } from './gamification.js';
 import { buildMessages } from './messages.js';
-import { valueAt, teamAggregate, teamAggregateAt } from '../data/store.js';
 import {
-  elapsedBusinessMinutes, dayPhase, hourTicks, toMinutes,
+  valueAt, teamAggregate, teamAggregateAt, measurementMinutes,
+} from '../data/store.js';
+import {
+  elapsedBusinessMinutes, dayPhase, toMinutes,
 } from './clock.js';
 import { identifyingTokens, textIdentifiesOther, normalizeForScan } from './nameScan.js';
 
@@ -138,6 +140,13 @@ export function assertSellerViewModelIsClean(viewModel, ownSellerId, allSellers 
   return viewModel;
 }
 
+/** Estado de "nenhum movimento": a posição atual, sem histórico inventado. */
+function semMovimento(position) {
+  return {
+    minutes: [], positions: [], best: position, worst: position, opening: position, current: position,
+  };
+}
+
 function historyContextFor(sellerId, historyDays) {
   let bestOrders = 0;
   let bestRevenue = 0;
@@ -194,6 +203,7 @@ export function buildSellerView({
     businessHours,
     projectionConfig: config.projection,
     goals: config.goals,
+    baselineAvailable: Boolean(meYesterday?.timeline?.length),
   });
 
   // Quando a ORIGEM já calculou a posição (adaptador com `scopedRanking`), o
@@ -204,10 +214,14 @@ export function buildSellerView({
   // dela saem apenas a posição do próprio vendedor e magnitudes anônimas.
   const ranked = competitive ? [] : rankAt(today, atMinutes, config.ranking);
   const rawGaps = competitive ?? gapsFor(ranked, sellerId);
-  const marks = hourTicks(businessHours).filter((m) => m <= atMinutes);
+  // Só falamos em movimento quando existe mais de uma medição no dia.
+  const medicoes = measurementMinutes(today).filter((m) => m <= atMinutes);
+  const marks = medicoes.length >= 2 ? medicoes : [];
   const positions = competitive
     ? { minutes: [], positions: [], best: competitive.position, worst: competitive.position, opening: competitive.position, current: competitive.position }
-    : positionHistory(today, sellerId, marks.length ? marks : [atMinutes], config.ranking);
+    : marks.length
+      ? positionHistory(today, sellerId, marks, config.ranking)
+      : semMovimento(rawGaps?.position ?? null);
 
   const gaps = rawGaps
     ? {
@@ -334,8 +348,9 @@ export function buildManagerView({
 }) {
   const businessHours = config.businessHours;
   const ranked = rankAt(today, atMinutes, config.ranking);
-  const marks = hourTicks(businessHours).filter((m) => m <= atMinutes);
-  const openingMark = marks[0] ?? atMinutes;
+  // Mesma régua do painel do vendedor: sem duas medições não houve movimento.
+  const medicoes = measurementMinutes(today).filter((m) => m <= atMinutes);
+  const openingMark = medicoes.length >= 2 ? medicoes[0] : null;
 
   const rows = ranked.map((entry) => {
     const seller = today.sellers.find((s) => s.sellerId === entry.sellerId);
@@ -353,9 +368,12 @@ export function buildManagerView({
       businessHours,
       projectionConfig: config.projection,
       goals: config.goals,
+      baselineAvailable: Boolean(sellerYesterday?.timeline?.length),
     });
 
-    const openingEntry = rankAt(today, openingMark, config.ranking).find((e) => e.sellerId === entry.sellerId);
+    const openingEntry = openingMark === null
+      ? null
+      : rankAt(today, openingMark, config.ranking).find((e) => e.sellerId === entry.sellerId);
     const gaps = gapsFor(ranked, entry.sellerId);
     const tier = tierFor(entry.orders, entry.revenue, config.tiers);
 
@@ -394,6 +412,7 @@ export function buildManagerView({
       dailyOrders: (config.goals?.dailyOrders ?? 0) * aggregate.sellerCount,
       dailyRevenue: (config.goals?.dailyRevenue ?? 0) * aggregate.sellerCount,
     },
+    baselineAvailable: Boolean(yesterday?.hasData),
   });
 
   return {

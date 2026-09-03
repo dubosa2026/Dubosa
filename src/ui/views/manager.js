@@ -168,8 +168,10 @@ function rankingRow(row, app) {
     row.foraDoCadastro ? h('span', { class: 'flag-outsider', title: 'Veio na base mas não está no cadastro da equipe', text: 'FORA DO CADASTRO' }) : null)),
   h('td', { class: 'num strong', text: number(p.orders) }),
   h('td', { class: 'num strong', text: money(p.revenue) }),
-  h('td', { class: 'num' }, deltaBadge(r.direction, moneyDelta(r.abs), { size: 'sm' })),
-  h('td', { class: 'num', text: r.pct === null ? '—' : percentDelta(r.pct) }),
+  h('td', { class: 'num' }, r.semBase
+    ? h('span', { class: 'muted', title: 'Não há registro do dia anterior para comparar', text: 'sem base' })
+    : deltaBadge(r.direction, moneyDelta(r.abs), { size: 'sm' })),
+  h('td', { class: 'num', text: r.semBase || r.pct === null ? '—' : percentDelta(r.pct) }),
   h('td', { class: 'num', text: moneyRate(p.pace.revenue) }),
   h('td', { class: 'num', text: p.projection.revenue === null ? '—' : money(p.projection.revenue) }),
   h('td', { class: 'num', text: row.gaps?.toNext ? money(row.gaps.toNext.revenue) : '—' }),

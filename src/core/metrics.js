@@ -27,7 +27,7 @@ export function pace(value, elapsedMinutes) {
  * Quando a base é zero, a variação percentual não existe (não é "infinito"
  * nem "100%") — devolvemos `null` e a interface mostra "—".
  */
-export function compare(current, baseline) {
+export function compare(current, baseline, baselineAvailable = true) {
   const abs = (current ?? 0) - (baseline ?? 0);
   const pct = baseline > 0 ? abs / baseline : null;
   return {
@@ -35,6 +35,10 @@ export function compare(current, baseline) {
     baseline: baseline ?? 0,
     abs,
     pct,
+    // Zero porque ontem não foi medido é diferente de zero porque ontem não
+    // vendeu. Sem esta distinção, o primeiro dia de uso mostraria "+R$ 370.000
+    // em relação a ontem" para todo mundo — crescimento que não aconteceu.
+    semBase: !baselineAvailable,
     direction: abs > 0 ? 'up' : abs < 0 ? 'down' : 'flat',
   };
 }
@@ -149,6 +153,7 @@ export function buildPerformance({
   businessHours,
   projectionConfig,
   goals,
+  baselineAvailable = true,
 }) {
   const elapsed = elapsedBusinessMinutes(businessHours, atMinutes);
   const remaining = remainingBusinessMinutes(businessHours, atMinutes);
@@ -201,12 +206,12 @@ export function buildPerformance({
       revenueModel: revenueProjection.model,
     },
     vsYesterdaySameTime: {
-      orders: compare(orders, ordersYesterdaySameTime),
-      revenue: compare(revenue, revenueYesterdaySameTime),
+      orders: compare(orders, ordersYesterdaySameTime, baselineAvailable),
+      revenue: compare(revenue, revenueYesterdaySameTime, baselineAvailable),
     },
     vsYesterdayTotal: {
-      orders: compare(orders, ordersYesterdayTotal),
-      revenue: compare(revenue, revenueYesterdayTotal),
+      orders: compare(orders, ordersYesterdayTotal, baselineAvailable),
+      revenue: compare(revenue, revenueYesterdayTotal, baselineAvailable),
     },
     goals: {
       orders: goals?.dailyOrders ?? null,

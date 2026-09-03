@@ -154,14 +154,16 @@ function disputeSection({ vm, awaiting }) {
 function comparisonSection({ vm, awaiting }) {
   const o = vm.performance.vsYesterdaySameTime.orders;
   const r = vm.performance.vsYesterdaySameTime.revenue;
-  const hasBaseline = r.baseline > 0 || o.baseline > 0;
+  const hasBaseline = !r.semBase && (r.baseline > 0 || o.baseline > 0);
 
   return h('section', { class: 'card' },
     sectionTitle(`Comparação com ontem às ${timeFromMinutes(vm.atMinutes)}`),
     awaiting
       ? waitingBlock({ compact: true, title: 'Sem comparação disponível', detail: 'A comparação com o dia anterior depende da base de dados.' })
       : !hasBaseline
-        ? h('p', { class: 'muted', text: 'Ainda não há produção registrada no dia anterior neste horário para comparar.' })
+        ? h('p', { class: 'muted', text: r.semBase
+          ? 'Ainda não há registro do dia anterior para comparar. A partir do segundo dia de uso, esta comparação aparece aqui.'
+          : 'Ainda não há produção registrada no dia anterior neste horário para comparar.' })
         : h('div', { class: 'table-scroll' },
           h('table', { class: 'data-table compare-table' },
             h('thead', {}, h('tr', {},

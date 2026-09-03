@@ -9,12 +9,13 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import * as clock from '../src/core/clock.js';
+const { toMinutes } = clock;
 import * as metrics from '../src/core/metrics.js';
 import * as ranking from '../src/core/ranking.js';
 import * as access from '../src/core/access.js';
 import * as gamification from '../src/core/gamification.js';
 import { buildDayState, emptyDayState, valueAt } from '../src/data/store.js';
-import { toRecords } from '../src/data/types.js';
+import { toRecords, normalizeMoney } from '../src/data/types.js';
 import { indexTeam, resolveSeller, teamFromLines } from '../src/core/team.js';
 import { mergeTeam } from '../src/data/store.js';
 import { PendingSource } from '../src/data/sources/PendingSource.js';
@@ -485,6 +486,191 @@ await check('gestor vê a evolução de posição no dia', () => {
 await check('agregado da equipe soma todos', () => {
   assertEqual(managerView.team.revenue, 271500);
   assertEqual(managerView.team.sellerCount, 5);
+});
+
+// ----------------------------------------------- LEITURA DE TEXTO COLADO
+console.log('\nLEITURA DE TEXTO COLADO');
+const { parsePastedProduction } = await import('../src/data/parsePasted.js');
+const EQUIPE_COLA = teamFromLines([
+  'ERICA OLIVEIRA;TO',
+  'MURILO BEDANI ROGERIO;TO',
+  'RAFAEL VANDERLEI LOPES;RO',
+].join('\n'));
+const IDX_COLA = indexTeam(EQUIPE_COLA);
+
+await check('"R$ 370.332" é trezentos e setenta mil, não trezentos e setenta reais', () => {
+  assertEqual(normalizeMoney('R$ 370.332'), 370332);
+  assertEqual(normalizeMoney('R$ 98.000'), 98000);
+  assertEqual(normalizeMoney('1.234.567'), 1234567);
+  assertEqual(normalizeMoney('R$ 126.500,00'), 126500);
+  assertEqual(normalizeMoney('126500,00'), 126500);
+  assertEqual(normalizeMoney('0,3'), 0.3);
+});
+
+await check('forma abreviada da tela é entendida', () => {
+  assertEqual(normalizeMoney('R$ 370 mil'), 370000);
+  assertEqual(normalizeMoney('R$ 1,2 mi'), 1200000);
+});
+
+await check('lê a lista no formato da tela, em uma linha', () => {
+  const r = parsePastedProduction('› Erica Oliveira    R$ 370 mil    22', IDX_COLA);
+  assertEqual(r.registros.length, 1);
+  assertEqual(r.registros[0].sellerName, 'Erica Oliveira');
+  assertEqual(r.registros[0].revenue, 370000);
+  assertEqual(r.registros[0].orders, 22);
+  assertEqual(r.registros[0].confianca, 'alta');
+});
+
+await check('lê a lista quando cada valor cai em uma linha', () => {
+  const r = parsePastedProduction(
+    'Erica Oliveira\nR$ 370 mil\n22\nMurilo Bedani Rogerio\nR$ 128.400\n9', IDX_COLA,
+  );
+  assertEqual(r.registros.length, 2);
+  assertEqual(r.registros[1].revenue, 128400);
+  assertEqual(r.registros[1].orders, 9);
+});
+
+await check('caixa alta e acento casam com o cadastro', () => {
+  const r = parsePastedProduction('RAFAEL VANDERLEI LOPES  R$ 88.900  6', IDX_COLA);
+  assertEqual(r.registros[0].sellerId, 'rafael-vanderlei-lopes');
+  assertEqual(r.registros[0].matched, true);
+});
+
+await check('nome fora do cadastro fica de fora do ranking, mas é mostrado', () => {
+  const r = parsePastedProduction('Eduardo Luiz dos Santos  R$ 12.000  1', IDX_COLA);
+  assertEqual(r.registros.length, 0, 'quem não está no cadastro não pode entrar no ranking:');
+  assertEqual(r.foraDoCadastro.length, 1);
+  assertEqual(r.naoCadastrados[0].revenue, 12000);
+  assertEqual(r.naoCadastrados[0].sellerName, 'Eduardo Luiz dos Santos');
+});
+
+await check('cabeçalho da tela não vira vendedor fantasma', () => {
+  const tela = [
+    'Pedidos do dia',
+    'CRIADOS HOJE',
+    '22 de 165',
+    'R$ 370.332',
+    'MINHA EQUIPE',
+    'Pedidos criados hoje na sua carteira.',
+    '› Erica Oliveira    R$ 370 mil    22',
+  ].join('\n');
+  const r = parsePastedProduction(tela, IDX_COLA);
+  assertEqual(r.registros.length, 1);
+  assertEqual(r.registros[0].sellerName, 'Erica Oliveira');
+  assertEqual(r.foraDoCadastro.length, 0, 'cabeçalho tratado como pessoa:');
+});
+
+await check('leitura sem R$ é marcada como duvidosa', () => {
+  const r = parsePastedProduction('Erica Oliveira  370332  22', IDX_COLA);
+  assertEqual(r.registros[0].revenue, 370332);
+  assertEqual(r.registros[0].orders, 22);
+  assertEqual(r.registros[0].confianca, 'baixa');
+});
+
+await check('mesma pessoa duas vezes fica com a maior leitura', () => {
+  const r = parsePastedProduction(
+    'Erica Oliveira R$ 100.000 5\nErica Oliveira R$ 370.332 22', IDX_COLA,
+  );
+  assertEqual(r.registros.length, 1);
+  assertEqual(r.registros[0].revenue, 370332);
+  assert(r.avisos.length > 0);
+});
+
+await check('texto sem nenhum vendedor não inventa registro', () => {
+  const r = parsePastedProduction('Pedidos do dia\n22 de 165\nR$ 370.332', IDX_COLA);
+  assertEqual(r.registros.length, 0);
+});
+
+await check('sem dia anterior medido, a variação é "sem base" e não crescimento', () => {
+  const equipeB = teamFromLines(['Erica Oliveira', 'Murilo Bedani Rogerio', 'Rafael Vanderlei Lopes'].join('\n'));
+  const soHoje = mergeTeam(
+    buildDayState({
+      status: 'ready', semantics: 'cumulative', date: DATE, meta: {},
+      records: [{ sellerId: 'e', sellerName: 'Erica Oliveira', date: DATE, time: '15:30', orders: 22, revenue: 370332 }],
+    }),
+    indexTeam(equipeB), resolveSeller,
+  );
+
+  const gestor = access.buildManagerView({ today: soHoje, yesterday: null, atMinutes: toMinutes('15:30'), config });
+  const erica = gestor.rows.find((r) => r.sellerId === 'erica-oliveira');
+  assertEqual(erica.performance.vsYesterdaySameTime.revenue.semBase, true,
+    'primeiro dia de uso mostraria crescimento inventado:');
+
+  const vendedor = access.buildSellerView({
+    today: soHoje, yesterday: null, sellerId: 'erica-oliveira', sellerName: 'Erica Oliveira',
+    atMinutes: toMinutes('15:30'), config,
+  });
+  assertEqual(vendedor.performance.vsYesterdaySameTime.revenue.semBase, true);
+  assert(!vendedor.messages.some((m) => m.id === 'acima-de-ontem'),
+    'mensagem comparando com ontem sem ontem existir');
+});
+
+await check('com dia anterior medido, a variação volta a ser real', () => {
+  const equipeB = teamFromLines(['Erica Oliveira', 'Murilo Bedani Rogerio'].join('\n'));
+  const ontem = mergeTeam(buildDayState({
+    status: 'ready', semantics: 'cumulative', date: YESTERDAY, meta: {},
+    records: [{ sellerId: 'e', sellerName: 'Erica Oliveira', date: YESTERDAY, time: '15:00', orders: 18, revenue: 300000 }],
+  }), indexTeam(equipeB), resolveSeller);
+  const hoje = mergeTeam(buildDayState({
+    status: 'ready', semantics: 'cumulative', date: DATE, meta: {},
+    records: [{ sellerId: 'e', sellerName: 'Erica Oliveira', date: DATE, time: '15:30', orders: 22, revenue: 370332 }],
+  }), indexTeam(equipeB), resolveSeller);
+
+  const v = access.buildSellerView({
+    today: hoje, yesterday: ontem, sellerId: 'erica-oliveira', sellerName: 'Erica Oliveira',
+    atMinutes: toMinutes('15:30'), config,
+  });
+  assertEqual(v.performance.vsYesterdaySameTime.revenue.semBase, false);
+  assertEqual(v.performance.vsYesterdaySameTime.revenue.abs, 70332);
+});
+
+// --------------------------------------------------- MOVIMENTO NO RANKING
+console.log('\nMOVIMENTO NO RANKING');
+await check('uma única medição não gera movimento de posição', () => {
+  // Com um lançamento só, comparar contra um instante em que todos estavam
+  // zerados diria "subiu 15 posições" para quem apenas vem antes no alfabeto.
+  const equipeM = teamFromLines(['Ana Ferreira', 'Bruno Machado', 'Carla Tavares', 'Zilda Rocha'].join('\n'));
+  const umaMedicao = mergeTeam(
+    buildDayState({
+      status: 'ready', semantics: 'cumulative', date: DATE, meta: {},
+      records: [{ sellerId: 'z', sellerName: 'Zilda Rocha', date: DATE, time: '15:30', orders: 9, revenue: 90000 }],
+    }),
+    indexTeam(equipeM), resolveSeller,
+  );
+
+  const gestor = access.buildManagerView({ today: umaMedicao, yesterday: null, atMinutes: toMinutes('15:30'), config });
+  assertEqual(gestor.rows[0].sellerName, 'Zilda Rocha');
+  for (const row of gestor.rows) {
+    assertEqual(row.positionDelta, 0, `${row.sellerName} apareceu com movimento inventado:`);
+  }
+
+  const vendedor = access.buildSellerView({
+    today: umaMedicao, yesterday: null, sellerId: 'zilda-rocha', sellerName: 'Zilda Rocha',
+    atMinutes: toMinutes('15:30'), config,
+  });
+  assertEqual(vendedor.positions.opening, vendedor.positions.current);
+  assert(!vendedor.messages.some((m) => m.id === 'subiu' || m.id === 'caiu'),
+    'mensagem de movimento com uma medição só');
+});
+
+await check('duas medições revelam o movimento real', () => {
+  const equipeM = teamFromLines(['Ana Ferreira', 'Zilda Rocha'].join('\n'));
+  const duas = mergeTeam(
+    buildDayState({
+      status: 'ready', semantics: 'cumulative', date: DATE, meta: {},
+      records: [
+        { sellerId: 'a', sellerName: 'Ana Ferreira', date: DATE, time: '10:00', orders: 5, revenue: 50000 },
+        { sellerId: 'z', sellerName: 'Zilda Rocha', date: DATE, time: '10:00', orders: 1, revenue: 9000 },
+        { sellerId: 'a', sellerName: 'Ana Ferreira', date: DATE, time: '15:30', orders: 6, revenue: 60000 },
+        { sellerId: 'z', sellerName: 'Zilda Rocha', date: DATE, time: '15:30', orders: 9, revenue: 90000 },
+      ],
+    }),
+    indexTeam(equipeM), resolveSeller,
+  );
+  const gestor = access.buildManagerView({ today: duas, yesterday: null, atMinutes: toMinutes('15:30'), config });
+  const zilda = gestor.rows.find((r) => r.sellerId === 'zilda-rocha');
+  assertEqual(zilda.position, 1);
+  assertEqual(zilda.positionDelta, 1, 'Zilda saiu de 2º para 1º:');
 });
 
 // ------------------------------------------- ESCOPO CALCULADO NA ORIGEM 🔒
