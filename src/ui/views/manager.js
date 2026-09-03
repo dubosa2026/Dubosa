@@ -115,7 +115,17 @@ function rankingTab({ vm, awaiting, app }) {
   const zerados = vm.rows.filter((r) => r.semProducaoNaBase || r.semProducao).length;
 
   return h('section', { class: 'card' },
-    sectionTitle('Ranking da equipe', h('span', { class: 'section-hint', text: 'critério: faturamento do dia' })),
+    sectionTitle('Ranking da equipe', h('span', {
+      class: 'section-hint',
+      text: vm.revenueAvailable ? 'critério: faturamento do dia' : 'critério: pedidos do dia',
+    })),
+    vm.revenueAvailable
+      ? null
+      : h('div', { class: 'alert alert-info' },
+        h('strong', { text: 'Ranking por pedidos. ' }),
+        'A origem dos dados informa faturamento por carteira, não por vendedor. '
+        + 'Repartir o valor da carteira entre a equipe daria um número plausível e falso, '
+        + 'então a coluna de faturamento fica vazia e a disputa corre por pedidos.'),
     vm.foraDoCadastro?.length
       ? h('div', { class: 'alert alert-warn' },
         h('strong', { text: 'Fora do cadastro: ' }),

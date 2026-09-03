@@ -5,6 +5,65 @@ para conectar o sistema de pedidos da direção — sem programar.
 
 ---
 
+## Ligar no sistema de pedidos — automático
+
+Descoberto no código-fonte da própria página em 03/09/2026, e já implementado
+em `netlify/functions/producao.mjs`:
+
+```
+POST https://pedidos-belenergy-tega.netlify.app/api/entrar   {"pin": "..."}
+  -> devolve um cookie de sessão
+
+GET  https://pedidos-belenergy-tega.netlify.app/api/dados
+  -> os números, já recortados pelo PIN de quem entrou
+```
+
+O PIN de um gestor faz o próprio servidor deles recortar a resposta na carteira
+dele. A Liga recebe exatamente a equipe certa, sem filtro nosso.
+
+### O que a resposta traz — e o que não traz
+
+| campo | conteúdo |
+|-------|----------|
+| `vendedores` | `[gerente, vendedor, QUANTIDADE]` |
+| `carteiras` | `[gerente, quantidade, VALOR]` |
+| `vendedoresOntemFechado` | o mesmo, do dia anterior fechado |
+| `ontemData`, `geradoEm`, `ultimaNota` | datas e horários |
+
+**Faturamento existe por carteira, não por vendedor.** Conferido nos três
+pontos em que a página lê `vendedores`: ela nunca toca num quarto campo.
+
+Consequência assumida, e visível na tela: **o ranking individual corre por
+pedidos.** Repartir o faturamento da carteira entre a equipe daria um número
+plausível e falso — e um ranking construído sobre número inventado é pior que um
+ranking por pedidos, que é verdade inteira. A coluna de faturamento mostra
+"não informado pela origem", nunca R$ 0.
+
+Se um dia quiserem faturamento por vendedor, é uma coluna a mais no `vendedores`
+do lado deles; a Liga volta sozinha a ranquear por faturamento assim que ela
+aparecer.
+
+### Publicar
+
+1. no Netlify, *Add new site → Import an existing project*, apontando para este
+   repositório e esta branch;
+2. em **Site settings → Environment variables**:
+
+   | variável | conteúdo |
+   |----------|----------|
+   | `PEDIDOS_BASE` | `https://pedidos-belenergy-tega.netlify.app` |
+   | `PEDIDOS_PIN` | o PIN de acesso |
+   | `ORIGEM_PERMITIDA` | endereço da Liga, se ela estiver hospedada fora do Netlify |
+
+3. em **Configuração → Base de dados**, escolha a origem `liga-api`.
+
+A partir daí a Liga lê sozinha, e ninguém cola nada em dia nenhum.
+
+`node tests/funcao-producao.js` cobre a entrada com PIN, o recorte por perfil, o
+dia anterior fechado, o PIN recusado e a falha da origem.
+
+---
+
 ## Caminho zero: colar a lista (funciona hoje)
 
 Não precisa de endereço de dados, senha, CORS nem servidor.

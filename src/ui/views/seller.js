@@ -99,13 +99,22 @@ function heroSection({ vm, awaiting }) {
         icon: '📦',
         sub: awaiting ? waitingValue() : comparison(vm.performance.vsYesterdaySameTime.orders, 'orders'),
       }),
-      statTile({
-        label: 'Faturamento hoje',
-        value: awaiting ? '—' : money(vm.performance.revenue),
-        hero: true,
-        icon: '💰',
-        sub: awaiting ? waitingValue() : comparison(vm.performance.vsYesterdaySameTime.revenue, 'revenue'),
-      })));
+      vm.revenueAvailable
+        ? statTile({
+          label: 'Faturamento hoje',
+          value: awaiting ? '—' : money(vm.performance.revenue),
+          hero: true,
+          icon: '💰',
+          sub: awaiting ? waitingValue() : comparison(vm.performance.vsYesterdaySameTime.revenue, 'revenue'),
+        })
+        : statTile({
+          label: 'Faturamento hoje',
+          value: '—',
+          hero: true,
+          icon: '💰',
+          title: 'A origem dos dados informa faturamento por carteira, não por vendedor.',
+          sub: h('span', { class: 'muted', text: 'não informado pela origem' }),
+        })));
 }
 
 // ------------------------------------------------------------------ disputa
@@ -123,7 +132,11 @@ function disputeSection({ vm, awaiting }) {
     h('div', { class: 'dispute-grid' },
       h('div', { class: 'dispute-box dispute-up' },
         h('div', { class: 'dispute-label' }, h('span', { 'aria-hidden': 'true', text: '⬆' }), 'Para avançar uma posição'),
-        next
+        next && !vm.revenueAvailable
+          ? h('div', { class: 'dispute-values' },
+            h('span', { class: 'dispute-main', text: next.orders > 0 ? `${number(next.orders)} ${next.orders === 1 ? 'pedido' : 'pedidos'}` : 'Empate' }),
+            h('span', { class: 'dispute-sub', text: next.orders > 0 ? 'é o que falta para passar' : 'o próximo pedido decide' }))
+          : next
           ? h('div', { class: 'dispute-values' },
             h('span', { class: 'dispute-main', text: next.revenue > 0 ? money(next.revenue) : 'Empate' }),
             next.revenue > 0
@@ -136,7 +149,11 @@ function disputeSection({ vm, awaiting }) {
             h('span', { class: 'dispute-sub', text: 'Você está em 1º. Não há posição acima.' }))),
       h('div', { class: 'dispute-box dispute-down' },
         h('div', { class: 'dispute-label' }, h('span', { 'aria-hidden': 'true', text: '⬇' }), 'Vantagem sobre quem vem atrás'),
-        prev
+        prev && !vm.revenueAvailable
+          ? h('div', { class: 'dispute-values' },
+            h('span', { class: 'dispute-main', text: prev.orders > 0 ? `${number(prev.orders)} ${prev.orders === 1 ? 'pedido' : 'pedidos'}` : 'Empate' }),
+            h('span', { class: 'dispute-sub', text: prev.orders > 0 ? 'de vantagem' : 'estão colados em você' }))
+          : prev
           ? h('div', { class: 'dispute-values' },
             h('span', { class: 'dispute-main', text: prev.revenue > 0 ? money(prev.revenue) : 'Empate' }),
             h('span', { class: 'dispute-sub', text: prev.revenue > 0

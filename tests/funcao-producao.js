@@ -1,10 +1,18 @@
 /**
  * Testes da função de servidor `netlify/functions/producao.mjs`.
  *
- * A rede é simulada: substituímos `fetch` para devolver o cadastro publicado e
- * uma resposta plausível do sistema de pedidos. O que está sendo verificado é o
- * que realmente importa nesta função — quem ela deixa entrar e o que ela deixa
- * sair para cada perfil.
+ * A rede é simulada, no formato REAL do sistema de pedidos — lido do
+ * código-fonte da própria página em 03/09/2026:
+ *
+ *   POST /api/entrar {pin}  -> cookie de sessão
+ *   GET  /api/dados          -> os números, recortados pelo PIN
+ *
+ * O detalhe que manda no produto está em `vendedores`: três colunas —
+ * gerente, vendedor, QUANTIDADE. Faturamento existe por carteira, não por
+ * vendedor. Por isso o ranking individual sai por pedidos.
+ *
+ * O que está sendo verificado é o que importa nesta função: quem ela deixa
+ * entrar e o que ela deixa sair para cada perfil.
  *
  * Executar com: node tests/funcao-producao.js
  */
@@ -34,14 +42,36 @@ async function sha256Hex(text) {
 const TOKEN_GESTOR = 'GEST-AAAA-BBBB-CCCC';
 const TOKEN_ANA = 'ANAA-1111-2222';
 const DATE = '2026-09-03';
+const ONTEM = '2026-09-02';
+const PIN = '522979';
 
-// A base traz só quem produziu — Diego, que está zerado, não aparece nela.
-const RESPOSTA_PEDIDOS = [
-  { nome: 'ANA FERREIRA', pedidos: 6, faturamento: 'R$ 60.000,00' },
-  { nome: 'BRUNO MACHADO', pedidos: 9, faturamento: 'R$ 91.000,00' },
-  { nome: 'CARLA TAVARES', pedidos: 2, faturamento: 'R$ 12.000,00' },
-];
+/** Resposta no formato real de /api/dados, no escopo de um gestor. */
+const RESPOSTA_PEDIDOS = {
+  data: '03/09/2026',
+  ontemData: '02/09/2026',
+  geradoEm: '2026-09-03T17:00:00.000Z',
+  gestor: 'EDUARDO LUIZ DOS SANTOS',
+  nome: 'EDUARDO LUIZ DOS SANTOS',
+  hoje: 17,
+  valorDia: 370332,
+  ultimaNota: '03/09/2026 10:43',
+  diaUtil: 3,
+  diasUteis: 21,
+  carteiras: [['EDUARDO LUIZ DOS SANTOS', 17, 370332]],
+  vendedores: [
+    ['EDUARDO LUIZ DOS SANTOS', 'ANA FERREIRA', 6],
+    ['EDUARDO LUIZ DOS SANTOS', 'BRUNO MACHADO', 9],
+    ['EDUARDO LUIZ DOS SANTOS', 'CARLA TAVARES', 2],
+  ],
+  carteirasOntemFechado: [['EDUARDO LUIZ DOS SANTOS', 24, 410000]],
+  vendedoresOntemFechado: [
+    ['EDUARDO LUIZ DOS SANTOS', 'ANA FERREIRA', 11],
+    ['EDUARDO LUIZ DOS SANTOS', 'BRUNO MACHADO', 13],
+  ],
+  estados: [['TO', 9], ['RO', 8]],
+};
 
+/** Diego está no cadastro e não veio na resposta: precisa aparecer zerado. */
 const EQUIPE = {
   version: 1,
   vendedores: [
@@ -53,13 +83,12 @@ const EQUIPE = {
 };
 
 const chamadas = [];
+let corpoEntrar = null;
 
 async function prepararAmbiente() {
   process.env.URL = 'https://liga.exemplo';
-  process.env.PEDIDOS_URL = 'https://pedidos.exemplo/api?data={data}';
-  process.env.PEDIDOS_SENHA = 'senha-secreta';
-  process.env.PEDIDOS_AUTH = 'query';
-  process.env.PEDIDOS_CAMPO = 'senha';
+  process.env.PEDIDOS_BASE = 'https://pedidos.exemplo';
+  process.env.PEDIDOS_PIN = PIN;
 
   const roster = {
     version: 1,
@@ -67,15 +96,25 @@ async function prepararAmbiente() {
     sellers: [{ sellerId: 'ana-ferreira', name: 'Ana Ferreira', tokenHash: await sha256Hex(TOKEN_ANA) }],
   };
 
-  globalThis.fetch = async (input) => {
+  globalThis.fetch = async (input, init) => {
     const url = String(input);
     chamadas.push(url);
     const responder = (body) => new Response(JSON.stringify(body), {
       status: 200, headers: { 'Content-Type': 'application/json' },
     });
+
     if (url.includes('config/equipe.json')) return responder(roster);
     if (url.includes('config/vendedores.json')) return responder(EQUIPE);
-    if (url.includes('pedidos.exemplo')) return responder(RESPOSTA_PEDIDOS);
+
+    if (url.includes('/api/entrar')) {
+      corpoEntrar = init?.body ? JSON.parse(init.body) : null;
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Set-Cookie': 'sessao=abc123; Path=/; HttpOnly' },
+      });
+    }
+    if (url.includes('/api/dados')) return responder(RESPOSTA_PEDIDOS);
+
     return new Response('não encontrado', { status: 404 });
   };
 }
@@ -103,15 +142,34 @@ await check('chamada sem data é recusada', async () => {
   assertEqual(res.status, 400);
 });
 
-console.log('\nFUNÇÃO DE PRODUÇÃO — ESCOPO DO VENDEDOR');
+console.log('\nFUNÇÃO DE PRODUÇÃO — LEITURA DA ORIGEM');
 
 const vendedor = await chamar({ data: DATE, token: TOKEN_ANA, hora: '14:00' });
+
+await check('entra com o PIN antes de pedir os dados', () => {
+  assert(chamadas.some((u) => u.includes('/api/entrar')), 'não houve entrada com PIN');
+  assert(chamadas.some((u) => u.includes('/api/dados')), 'não buscou os dados');
+  assertEqual(corpoEntrar?.pin, PIN);
+});
+
+await check('o horário avaliado é o do chamador, não o do servidor', () => {
+  const horas = new Set(vendedor.body.records.map((r) => r.time));
+  assertEqual(horas.size, 1);
+  assertEqual([...horas][0], '14:00');
+});
+
+await check('a origem declara que não tem faturamento por vendedor', () => {
+  assertEqual(vendedor.body.meta.origem.faturamentoPorVendedor, false);
+});
+
+console.log('\nFUNÇÃO DE PRODUÇÃO — ESCOPO DO VENDEDOR');
 
 await check('o vendedor recebe apenas os próprios registros', () => {
   assertEqual(vendedor.res.status, 200);
   const nomes = new Set(vendedor.body.records.map((r) => r.sellerName));
   assertEqual(nomes.size, 1);
   assertEqual([...nomes][0], 'ANA FERREIRA');
+  assertEqual(vendedor.body.records[0].orders, 6);
 });
 
 await check('nenhum nome de colega atravessa a função', () => {
@@ -121,39 +179,41 @@ await check('nenhum nome de colega atravessa a função', () => {
   }
 });
 
-await check('nenhum faturamento de colega atravessa a função', () => {
-  const blob = JSON.stringify(vendedor.body);
-  for (const valor of ['91000', '12000']) {
-    assert(!blob.includes(valor), `vazou o valor ${valor}`);
-  }
-});
-
-await check('o horário avaliado é o do chamador, não o do servidor', () => {
-  // Este teste existe porque a versão anterior carimbava o registro com o
-  // relógio do servidor: rodar depois das 14h fazia a leitura cair fora da
-  // janela avaliada e o ranking saía zerado, sem explicação aparente.
-  const horas = new Set(vendedor.body.records.map((r) => r.time));
-  assertEqual(horas.size, 1);
-  assertEqual([...horas][0], '14:00');
-});
-
-await check('a posição vem calculada no servidor', () => {
-  assertEqual(vendedor.body.competitive.position, 2, 'Ana deveria ser a 2ª (Bruno 91k, Ana 60k):');
+await check('a posição vem calculada no servidor, por pedidos', () => {
+  // Bruno 9, Ana 6, Carla 2, Diego 0 (do cadastro) -> Ana é a 2ª de 4.
+  assertEqual(vendedor.body.competitive.position, 2);
   assertEqual(vendedor.body.competitive.total, 4, 'o zerado precisa contar no total:');
   assertEqual(vendedor.body.competitive.isLeader, false);
 });
 
 await check('a distância vem como magnitude, sem identidade', () => {
-  assertEqual(vendedor.body.competitive.toNext.revenue, 31000);
-  assertEqual(vendedor.body.competitive.toPrevious.revenue, 48000);
+  assertEqual(vendedor.body.competitive.toNext.orders, 3, 'faltam 3 pedidos para alcançar o 1º:');
+  assertEqual(vendedor.body.competitive.toPrevious.orders, 4);
   assertEqual(Object.keys(vendedor.body.competitive.toNext).sort().join(','), 'orders,revenue');
 });
 
 await check('o agregado da equipe vem só como soma', () => {
   assertEqual(vendedor.body.team.sellerCount, 4);
   assertEqual(vendedor.body.team.activeCount, 3);
-  assertEqual(vendedor.body.team.revenue, 163000);
+  assertEqual(vendedor.body.team.orders, 17);
   assert(!('sellers' in vendedor.body.team) && !('rows' in vendedor.body.team));
+});
+
+console.log('\nFUNÇÃO DE PRODUÇÃO — DIA ANTERIOR');
+
+await check('o dia anterior vem fechado, do campo certo', async () => {
+  const ontem = await chamar({ data: ONTEM, token: TOKEN_GESTOR });
+  assertEqual(ontem.res.status, 200);
+  assertEqual(ontem.body.records.length, 2);
+  const ana = ontem.body.records.find((r) => r.sellerName === 'ANA FERREIRA');
+  assertEqual(ana.orders, 11, 'deveria vir o fechamento de ontem, não o número de hoje:');
+  assertEqual(ana.time, '23:59');
+});
+
+await check('dia sem correspondência na origem devolve vazio, não erro', async () => {
+  const antigo = await chamar({ data: '2026-08-20', token: TOKEN_GESTOR });
+  assertEqual(antigo.res.status, 200);
+  assertEqual(antigo.body.records.length, 0);
 });
 
 console.log('\nFUNÇÃO DE PRODUÇÃO — ESCOPO DO GESTOR');
@@ -165,23 +225,33 @@ await check('o gestor recebe a equipe inteira', async () => {
   assertEqual(body.meta.escopo, 'manager');
 });
 
-console.log('\nFUNÇÃO DE PRODUÇÃO — SEGREDO');
+console.log('\nFUNÇÃO DE PRODUÇÃO — SEGREDO E FALHA');
 
-await check('a senha vai para o sistema de pedidos e não volta na resposta', () => {
-  assert(chamadas.some((u) => u.includes('senha=senha-secreta')), 'a senha não foi enviada à origem');
+await check('o PIN não volta na resposta', () => {
   const blob = JSON.stringify(vendedor.body);
-  assert(!blob.includes('senha-secreta'), 'a senha vazou na resposta ao vendedor');
+  assert(!blob.includes(PIN), 'o PIN vazou na resposta ao vendedor');
+});
+
+await check('PIN recusado vira mensagem clara, não erro cru', async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = async (input, init) => (String(input).includes('/api/entrar')
+    ? new Response('não autorizado', { status: 401 })
+    : original(input, init));
+  const { res, body } = await chamar({ data: DATE, token: TOKEN_ANA });
+  globalThis.fetch = original;
+  assertEqual(res.status, 502);
+  assert(body.message.includes('PIN recusado'), `mensagem pouco clara: ${body.message}`);
 });
 
 await check('falha da origem não derruba a função nem vaza detalhe interno', async () => {
   const original = globalThis.fetch;
-  globalThis.fetch = async (input) => (String(input).includes('pedidos.exemplo')
+  globalThis.fetch = async (input, init) => (String(input).includes('/api/dados')
     ? new Response('erro', { status: 500 })
-    : original(input));
+    : original(input, init));
   const { res, body } = await chamar({ data: DATE, token: TOKEN_ANA });
+  globalThis.fetch = original;
   assertEqual(res.status, 502);
   assertEqual(body.records.length, 0);
-  globalThis.fetch = original;
 });
 
 console.log(`\n${passed} verificações ok, ${failures.length} falha(s).`);

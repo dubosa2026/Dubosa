@@ -40,6 +40,7 @@ export function emptyDayState(date, { status = 'awaiting_source', message = null
     message,
     sellers: [],
     hasData: false,
+    revenueAvailable: true,
     fetchedAt: null,
   });
 }
@@ -99,6 +100,13 @@ export function buildDayState(payload) {
     message: payload.message ?? null,
     sellers,
     hasData: sellers.some((s) => s.timeline.length > 0),
+    // A origem pode dar pedidos por vendedor e faturamento só por carteira —
+    // é o caso do sistema de pedidos da empresa. Quando há produção mas nenhum
+    // faturamento, ele não é zero: ele não foi informado. A diferença muda o
+    // critério do ranking e o que a tela pode afirmar.
+    revenueAvailable: payload.meta?.faturamentoPorVendedor === false
+      ? false
+      : sellers.some((s) => s.revenue > 0) || !sellers.some((s) => s.orders > 0),
     fetchedAt: payload.fetchedAt ?? null,
   });
 }

@@ -760,6 +760,58 @@ await check('nenhum código válido continua sendo recusa', async () => {
   assertEqual(r, null);
 });
 
+// ------------------------------------- ORIGEM SEM FATURAMENTO POR VENDEDOR
+console.log('\nORIGEM SEM FATURAMENTO POR VENDEDOR');
+
+// O sistema de pedidos da empresa da pedidos por vendedor e faturamento apenas
+// por carteira. Zero ali nao e "nao vendeu": e "nao informado".
+const SO_PEDIDOS = mergeTeam(
+  buildDayState({
+    status: 'ready', semantics: 'cumulative', date: DATE,
+    meta: { faturamentoPorVendedor: false },
+    records: [
+      { sellerId: 'ana-ferreira', sellerName: 'ANA FERREIRA', date: DATE, time: '14:00', orders: 6, revenue: 0 },
+      { sellerId: 'bruno-machado', sellerName: 'BRUNO MACHADO', date: DATE, time: '14:00', orders: 9, revenue: 0 },
+      { sellerId: 'carla-tavares', sellerName: 'CARLA TAVARES', date: DATE, time: '14:00', orders: 2, revenue: 0 },
+    ],
+  }),
+  indexTeam(teamFromLines(['Ana Ferreira', 'Bruno Machado', 'Carla Tavares', 'Diego Peixoto'].join('\n'))),
+  resolveSeller,
+);
+
+await check('a origem que não informa faturamento é reconhecida', () => {
+  assertEqual(SO_PEDIDOS.revenueAvailable, false);
+});
+
+await check('sem faturamento, o ranking passa a ser por pedidos', () => {
+  const regras = access.regrasDeRanking(SO_PEDIDOS, config);
+  assertEqual(regras.primary, 'orders');
+  const r = ranking.rankAt(SO_PEDIDOS, AT, regras);
+  assertEqual(r[0].sellerName, 'Bruno Machado', 'quem mais pediu deveria liderar:');
+  assertEqual(r[1].sellerName, 'Ana Ferreira');
+  assertEqual(r.at(-1).sellerName, 'Diego Peixoto', 'o zerado continua por último:');
+});
+
+await check('o painel do vendedor sabe que o faturamento não veio', () => {
+  const v = access.buildSellerView({
+    today: SO_PEDIDOS, yesterday: null, sellerId: 'ana-ferreira', sellerName: 'Ana Ferreira',
+    atMinutes: AT, config,
+  });
+  assertEqual(v.revenueAvailable, false);
+  assertEqual(v.gaps.position, 2);
+  assertEqual(v.gaps.toNext.orders, 3, 'a distância precisa existir em pedidos:');
+  assertEqual(v.performance.orders, 6);
+});
+
+await check('faturamento zerado de verdade não é confundido com ausente', () => {
+  // Aqui a origem informa faturamento; todo mundo simplesmente ainda não vendeu.
+  const zerado = buildDayState({
+    status: 'ready', semantics: 'cumulative', date: DATE, meta: {},
+    records: [{ sellerId: 'a', sellerName: 'Ana', date: DATE, time: '08:30', orders: 0, revenue: 0 }],
+  });
+  assertEqual(zerado.revenueAvailable, true, 'dia sem produção não significa origem incompleta:');
+});
+
 // --------------------------------------------------- PLANILHA DO GOOGLE
 console.log('\nPLANILHA DO GOOGLE');
 const { SheetSource, parseCsv } = await import('../src/data/sources/SheetSource.js');

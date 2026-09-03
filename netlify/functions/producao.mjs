@@ -30,7 +30,7 @@
 
 import { rankAt, gapsFor } from '../../src/core/ranking.js';
 import { buildDayState, mergeTeam } from '../../src/data/store.js';
-import { toRecords } from '../../src/data/types.js';
+import { slugifyName } from '../../src/data/types.js';
 import { indexTeam, resolveSeller } from '../../src/core/team.js';
 import { toMinutes } from '../../src/core/clock.js';
 import { extractCollection } from '../../src/data/sources/HttpJsonSource.js';
@@ -59,54 +59,147 @@ async function identificar(token, roster) {
 }
 
 /**
- * ÚNICO PONTO QUE DEPENDE DO SISTEMA DE PEDIDOS.
+ * LEITURA DO SISTEMA DE PEDIDOS
+ * =============================
  *
- * Busca a produção bruta do dia. Ajuste apenas esta função quando souber o
- * formato exato da resposta — todo o resto já está pronto e testado.
+ * Descoberto a partir do código-fonte da própria página (03/09/2026):
+ *
+ *   POST /api/entrar  {pin}   -> devolve um cookie de sessão
+ *   GET  /api/dados            -> os números, no escopo daquele PIN
+ *
+ * O PIN de um gestor faz o servidor recortar a resposta na carteira dele —
+ * então a Liga recebe exatamente a equipe do Eduardo, sem filtro nosso.
+ *
+ * FORMA DA RESPOSTA, e o limite que ela impõe:
+ *
+ *   D.vendedores  [ [gerente, vendedor, QUANTIDADE], ... ]
+ *   D.carteiras   [ [gerente, quantidade, VALOR], ... ]
+ *
+ * O faturamento existe por CARTEIRA, não por vendedor. Conferido nos três
+ * pontos em que a página lê `D.vendedores`: ela nunca toca num quarto campo.
+ *
+ * Consequência assumida: o ranking individual da Liga é por PEDIDOS. Repartir
+ * o faturamento da carteira entre os vendedores daria um número plausível e
+ * falso — e um ranking construído sobre número inventado é pior que um ranking
+ * por pedidos, que é verdade inteira.
+ *
+ * VARIÁVEIS DE AMBIENTE
+ *   PEDIDOS_BASE  https://pedidos-belenergy-tega.netlify.app
+ *   PEDIDOS_PIN   o PIN de acesso
  */
-async function buscarProducao(date, horaDaLeitura) {
-  const base = process.env.PEDIDOS_URL;
-  if (!base) throw new Error('PEDIDOS_URL não configurada nas variáveis de ambiente.');
 
-  const [y, m, d] = date.split('-');
-  const url = new URL(base.replaceAll('{data}', date).replaceAll('{dataBR}', `${d}/${m}/${y}`));
+const BASE = (process.env.PEDIDOS_BASE ?? 'https://pedidos-belenergy-tega.netlify.app').replace(/\/$/, '');
 
-  const modo = process.env.PEDIDOS_AUTH ?? 'query';
-  const campo = process.env.PEDIDOS_CAMPO ?? 'senha';
-  const senha = process.env.PEDIDOS_SENHA ?? '';
-  const headers = { Accept: 'application/json' };
-  let body;
+/** Entra com o PIN e devolve o cookie de sessão. */
+async function entrar() {
+  const pin = process.env.PEDIDOS_PIN;
+  if (!pin) throw new Error('PEDIDOS_PIN não configurada nas variáveis de ambiente.');
 
-  if (modo === 'query' && senha) url.searchParams.set(campo, senha);
-  if (modo === 'header' && senha) headers[campo] = senha;
-  if (modo === 'body' && senha) body = JSON.stringify({ [campo]: senha, data: date });
+  const res = await fetch(`${BASE}/api/entrar`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ pin }),
+  });
+  if (!res.ok) {
+    throw new Error(res.status === 401 ? 'PIN recusado pelo sistema de pedidos.' : `Entrada recusada (${res.status}).`);
+  }
 
-  const res = await fetch(url, { method: body ? 'POST' : 'GET', headers, body });
+  const cookies = res.headers.getSetCookie?.() ?? [res.headers.get('set-cookie')].filter(Boolean);
+  if (!cookies.length) throw new Error('O sistema de pedidos não devolveu cookie de sessão.');
+  return cookies.map((c) => String(c).split(';')[0]).join('; ');
+}
+
+async function lerDados(cookie) {
+  const res = await fetch(`${BASE}/api/dados`, {
+    headers: { cookie, accept: 'application/json' },
+    cache: 'no-store',
+  });
+  if (res.status === 401) throw new Error('A sessão do sistema de pedidos expirou.');
+  if (res.status === 404) throw new Error('Nenhuma leitura chegou ainda hoje no sistema de pedidos.');
   if (!res.ok) throw new Error(`O sistema de pedidos respondeu ${res.status}.`);
+  return res.json();
+}
 
-  const json = await res.json();
-  const linhas = extractCollection(json, process.env.PEDIDOS_LISTA ?? '');
-  if (!linhas?.length) throw new Error('Não encontrei a lista de vendedores na resposta.');
+/** '02/09/2026' -> '2026-09-02' */
+function dataISO(texto) {
+  const m = String(texto ?? '').match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
+}
 
-  // O horário do registro é o instante que o chamador está avaliando, e só
-  // cai para o relógio do servidor quando o chamador não informa. Carimbar
-  // sempre com o relógio do servidor faria a leitura cair fora da janela
-  // avaliada — e o ranking sairia zerado sem ninguém entender por quê.
-  const agora = horaDaLeitura ?? new Date().toLocaleTimeString('pt-BR', {
+/** 'ISO' -> 'HH:mm' no fuso de São Paulo. */
+function horaDe(iso) {
+  const d = iso ? new Date(iso) : new Date();
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleTimeString('pt-BR', {
     timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false,
   });
+}
 
-  const { records } = toRecords(linhas.map((linha) => ({ ...linha, __data: date, __hora: agora })), {
-    fieldMap: {
-      sellerId: ['sellerId', 'id', 'codigo'],
-      sellerName: ['sellerName', 'nome', 'vendedor', 'vendedora', 'name', 'representante'],
-      date: ['__data'],
-      time: ['__hora'],
-      orders: ['orders', 'pedidos', 'qtdPedidos', 'quantidade_pedidos', 'num_pedidos'],
-      revenue: ['revenue', 'faturamento', 'valor', 'venda', 'vendas', 'total'],
+/**
+ * Converte a resposta do sistema de pedidos nos registros canônicos da Liga.
+ *
+ * `revenue` fica em 0 de propósito, e a Liga sabe disso: quando nenhum vendedor
+ * tem faturamento, ela ranqueia por pedidos e mostra "não informado" em vez de
+ * "R$ 0" — que seria afirmar que ninguém vendeu nada.
+ */
+function registrosDoDia(D, date, horaPedida) {
+  const hoje = dataISO(D?.data) ?? date;
+  const ontem = dataISO(D?.ontemData);
+
+  if (date === hoje) {
+    const hora = horaPedida ?? horaDe(D?.geradoEm) ?? '23:59';
+    return (D?.vendedores ?? []).map((v) => {
+      const nome = String(v[1] ?? '').trim();
+      return {
+        // Sem id próprio, `buildDayState` agrupa por `sellerId` e a equipe
+        // inteira cai num balde só — foi o que os testes pegaram.
+        sellerId: slugifyName(nome),
+        sellerName: nome,
+        date,
+        time: hora,
+        orders: Number(v[2]) || 0,
+        revenue: 0,
+      };
+    }).filter((r) => r.sellerName);
+  }
+
+  // O dia anterior vem fechado, até a meia-noite: é o número certo para a
+  // comparação "como ontem terminou".
+  if (ontem && date === ontem) {
+    return (D?.vendedoresOntemFechado ?? []).map((v) => {
+      const nome = String(v[1] ?? '').trim();
+      return {
+        sellerId: slugifyName(nome),
+        sellerName: nome,
+        date,
+        time: '23:59',
+        orders: Number(v[2]) || 0,
+        revenue: 0,
+      };
+    }).filter((r) => r.sellerName);
+  }
+
+  return [];
+}
+
+/** Busca a produção de um dia. */
+async function buscarProducao(date, horaDaLeitura) {
+  const cookie = await entrar();
+  const D = await lerDados(cookie);
+  return {
+    registros: registrosDoDia(D, date, horaDaLeitura),
+    origem: {
+      data: D?.data ?? null,
+      geradoEm: D?.geradoEm ?? null,
+      ultimaNota: D?.ultimaNota ?? null,
+      gestor: D?.gestor ?? null,
+      totalCarteira: D?.hoje ?? null,
+      valorCarteira: D?.valorDia ?? null,
+      // A Liga informa, em toda resposta, que o faturamento individual não
+      // existe na origem — para nenhuma tela precisar adivinhar isso.
+      faturamentoPorVendedor: false,
     },
-  });
-  return records;
+  };
 }
 
 export default async (request) => {
@@ -146,8 +239,11 @@ export default async (request) => {
   const horaValida = hora && /^\d{1,2}:\d{2}$/.test(hora) ? hora.padStart(5, '0') : null;
 
   let registros;
+  let origem = {};
   try {
-    registros = await buscarProducao(date, horaValida);
+    const lido = await buscarProducao(date, horaValida);
+    registros = lido.registros;
+    origem = lido.origem;
   } catch (err) {
     return json({ status: 'error', message: err.message, records: [] }, 502);
   }
@@ -169,14 +265,18 @@ export default async (request) => {
       semantics: 'cumulative',
       date,
       fetchedAt: new Date().toISOString(),
-      meta: { escopo: 'manager', total: registros.length },
+      meta: { escopo: 'manager', total: registros.length, origem },
     });
   }
 
   // --- vendedor: o ranking é calculado AQUI e nada de terceiro sai daqui ----
+  // Critério: pedidos. A origem não tem faturamento por vendedor, e ranquear
+  // por um faturamento que não existe daria empate zerado para a equipe toda.
   const ranking = rankAt(dia, minutos, {
-    primary: 'revenue',
-    tiebreakers: ['orders', 'firstToReach', 'name'],
+    primary: origem.faturamentoPorVendedor ? 'revenue' : 'orders',
+    tiebreakers: origem.faturamentoPorVendedor
+      ? ['orders', 'firstToReach', 'name']
+      : ['revenue', 'firstToReach', 'name'],
     includeZeroProduction: true,
   });
   const gaps = gapsFor(ranking, quem.sellerId);
@@ -204,7 +304,7 @@ export default async (request) => {
       orders: dia.sellers.reduce((sum, s) => sum + s.orders, 0),
       revenue: dia.sellers.reduce((sum, s) => sum + s.revenue, 0),
     },
-    meta: { escopo: 'seller' },
+    meta: { escopo: 'seller', origem },
   });
 };
 

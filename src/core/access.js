@@ -98,6 +98,26 @@ export function assertCan(role, capability, config = {}, ctx = {}) {
   }
 }
 
+/**
+ * Critério do ranking, ajustado ao que a origem realmente entrega.
+ *
+ * Quando o faturamento por vendedor não existe — o sistema de pedidos dá
+ * faturamento por carteira, não por pessoa — ranquear por faturamento daria
+ * empate zerado para a equipe inteira. Nesse caso o critério passa a ser
+ * pedidos, que é o dado que existe de verdade.
+ */
+export function regrasDeRanking(dayState, config) {
+  const base = config?.ranking ?? {};
+  if (dayState?.revenueAvailable === false) {
+    return {
+      ...base,
+      primary: 'orders',
+      tiebreakers: ['revenue', 'firstToReach', 'name'],
+    };
+  }
+  return base;
+}
+
 /** Congelamento profundo — o view model do vendedor é imutável. */
 function deepFreeze(obj) {
   if (obj && typeof obj === 'object' && !Object.isFrozen(obj)) {
@@ -212,7 +232,7 @@ export function buildSellerView({
   //
   // Sem isso, o ranking nominal é calculado aqui, mas NUNCA sai desta função:
   // dela saem apenas a posição do próprio vendedor e magnitudes anônimas.
-  const ranked = competitive ? [] : rankAt(today, atMinutes, config.ranking);
+  const ranked = competitive ? [] : rankAt(today, atMinutes, regrasDeRanking(today, config));
   const rawGaps = competitive ?? gapsFor(ranked, sellerId);
   // Só falamos em movimento quando existe mais de uma medição no dia.
   const medicoes = measurementMinutes(today).filter((m) => m <= atMinutes);
@@ -220,7 +240,7 @@ export function buildSellerView({
   const positions = competitive
     ? { minutes: [], positions: [], best: competitive.position, worst: competitive.position, opening: competitive.position, current: competitive.position }
     : marks.length
-      ? positionHistory(today, sellerId, marks, config.ranking)
+      ? positionHistory(today, sellerId, marks, regrasDeRanking(today, config))
       : semMovimento(rawGaps?.position ?? null);
 
   const gaps = rawGaps
@@ -320,6 +340,7 @@ export function buildSellerView({
     status: today?.status ?? 'awaiting_source',
     isDemo: Boolean(today?.isDemo),
     hasData: Boolean(me && me.timeline.length),
+    revenueAvailable: today?.revenueAvailable !== false,
     awaitingData,
     semProducao: !awaitingData && !(me && me.timeline.length),
     performance,
@@ -347,7 +368,7 @@ export function buildManagerView({
   today, yesterday, atMinutes, config, historyDays = [],
 }) {
   const businessHours = config.businessHours;
-  const ranked = rankAt(today, atMinutes, config.ranking);
+  const ranked = rankAt(today, atMinutes, regrasDeRanking(today, config));
   // Mesma régua do painel do vendedor: sem duas medições não houve movimento.
   const medicoes = measurementMinutes(today).filter((m) => m <= atMinutes);
   const openingMark = medicoes.length >= 2 ? medicoes[0] : null;
@@ -373,7 +394,7 @@ export function buildManagerView({
 
     const openingEntry = openingMark === null
       ? null
-      : rankAt(today, openingMark, config.ranking).find((e) => e.sellerId === entry.sellerId);
+      : rankAt(today, openingMark, regrasDeRanking(today, config)).find((e) => e.sellerId === entry.sellerId);
     const gaps = gapsFor(ranked, entry.sellerId);
     const tier = tierFor(entry.orders, entry.revenue, config.tiers);
 
@@ -423,6 +444,7 @@ export function buildManagerView({
     status: today?.status ?? 'awaiting_source',
     isDemo: Boolean(today?.isDemo),
     hasData: Boolean(today?.hasData),
+    revenueAvailable: today?.revenueAvailable !== false,
     elapsedMinutes: elapsedBusinessMinutes(businessHours, atMinutes),
     rows,
     foraDoCadastro: today?.foraDoCadastro ?? [],
