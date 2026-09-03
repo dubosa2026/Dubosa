@@ -151,9 +151,16 @@ class App {
   }
 
   async loadData() {
-    const adapter = this.connection?.adapter && this.connection.adapter !== 'pending'
-      ? this.connection.adapter
-      : (this.config.dataSource?.adapter ?? 'pending');
+    // Build que declara a própria origem (arquivo único de demonstração) manda
+    // sobre a conexão guardada e sobre as preferências do navegador: ele existe
+    // justamente para abrir funcionando, e uma escolha feita numa versão
+    // anterior não pode deixá-lo vazio para sempre.
+    const embutido = globalThis.__LIGA_DADOS__;
+    const adapter = embutido?.forcarOrigem
+      ? (embutido.config?.dataSource?.adapter ?? 'pending')
+      : this.connection?.adapter && this.connection.adapter !== 'pending'
+        ? this.connection.adapter
+        : (this.config.dataSource?.adapter ?? 'pending');
 
     this.source = createSource(adapter, {
       ...(this.config.dataSource?.options ?? {}),
@@ -589,7 +596,11 @@ class App {
     }
 
     const isDemo = this.data.today?.isDemo || this.sellerVM?.isDemo;
-    const banner = isDemo ? demoBanner(() => this.setDemoMode(false)) : null;
+    // No arquivo único de demonstração não há o que desligar: a origem é o
+    // próprio build. Oferecer o botão só criaria um clique sem efeito.
+    const banner = isDemo
+      ? demoBanner(globalThis.__LIGA_DADOS__?.forcarOrigem ? null : () => this.setDemoMode(false))
+      : null;
 
     if (this.identity.role === 'manager' && this.state.screen === 'admin') {
       mount(this.root, banner, adminView({

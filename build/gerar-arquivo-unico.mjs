@@ -104,6 +104,10 @@ if (demonstracao) {
   dados.tokenGestor = tokenGestor;
   dados.rotaInicial = `#/gestor/${tokenGestor}`;
   dados.config.dataSource = { adapter: 'demo', options: {} };
+  // A origem do build manda sobre o que estiver guardado no navegador. Sem
+  // isto, quem clicou uma vez em "Desligar" numa versão anterior reabria o
+  // aplicativo em Modo de Espera para sempre, sem pista do porquê.
+  dados.forcarOrigem = true;
 
   console.log(`link do gestor:  #/gestor/${tokenGestor}`);
   const primeiro = Object.entries(tokensDeTeste)[0];
