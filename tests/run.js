@@ -728,6 +728,72 @@ await check('contexto vindo da origem carrega só magnitude, nunca identidade', 
   assertEqual(chaves.sort().join(','), 'orders,revenue', 'a distância trouxe campo além da magnitude:');
 });
 
+// --------------------------------------------------- PLANILHA DO GOOGLE
+console.log('\nPLANILHA DO GOOGLE');
+const { SheetSource, parseCsv } = await import('../src/data/sources/SheetSource.js');
+
+await check('converte qualquer link de planilha para o endereço de dados', () => {
+  assertEqual(
+    SheetSource.normalizarUrl('https://docs.google.com/spreadsheets/d/e/2PACX-1vABC/pubhtml'),
+    'https://docs.google.com/spreadsheets/d/e/2PACX-1vABC/pub?output=csv',
+  );
+  assertEqual(
+    SheetSource.normalizarUrl('https://docs.google.com/spreadsheets/d/1AbC/edit#gid=7'),
+    'https://docs.google.com/spreadsheets/d/1AbC/export?format=csv&gid=7',
+  );
+});
+
+await check('lê CSV com aspas, vírgula no valor e ponto e vírgula', () => {
+  const virgula = parseCsv('a,b\n"x, y",2');
+  assertEqual(virgula[1][0], 'x, y');
+  assertEqual(virgula[1][1], '2');
+  const pv = parseCsv('a;b\n1;2');
+  assertEqual(pv[1][1], '2');
+});
+
+await check('monta a curva do dia a partir da planilha', () => {
+  const src = new SheetSource({ url: 'x' });
+  const csv = [
+    'Nome,Data,Horário,Pedidos,Faturamento',
+    'ERICA OLIVEIRA,03/09/2026,10:00,12,"R$ 180.000,00"',
+    'ERICA OLIVEIRA,03/09/2026,15:30,22,"R$ 370.332"',
+    'MURILO BEDANI ROGERIO,03/09/2026,15:30,9,128400',
+    'ERICA OLIVEIRA,02/09/2026,15:30,18,300000',
+  ].join('\n');
+  const payload = src.parse(csv, DATE);
+  assertEqual(payload.status, 'ready');
+  assertEqual(payload.records.length, 3, 'linha de outro dia entrou no dia de hoje:');
+  const dia = buildDayState(payload);
+  const erica = dia.sellers.find((x) => x.sellerId === 'erica-oliveira');
+  assertEqual(erica.timeline.length, 2, 'a curva do dia não se formou:');
+  assertEqual(erica.revenue, 370332);
+});
+
+await check('planilha sem o dia pedido não vira placar vazio silencioso', () => {
+  const src = new SheetSource({ url: 'x' });
+  const payload = src.parse('Nome,Data,Horário,Pedidos,Faturamento\nERICA OLIVEIRA,01/09/2026,10:00,1,100', DATE);
+  assertEqual(payload.status, 'awaiting_source');
+  assert(payload.message.includes('nenhum para este dia'));
+});
+
+await check('planilha sem coluna de horário ainda funciona, valendo para agora', () => {
+  const src = new SheetSource({ url: 'x' });
+  const payload = src.parse('Nome,Pedidos,Faturamento\nERICA OLIVEIRA,22,370332', DATE);
+  assertEqual(payload.status, 'ready');
+  assertEqual(payload.records[0].revenue, 370332);
+  assertEqual(payload.records[0].date, DATE);
+});
+
+await check('página HTML no lugar dos dados é diagnosticada', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('<html><body>Planilha</body></html>', { status: 200 });
+  const src = new SheetSource({ url: 'https://docs.google.com/spreadsheets/d/e/X/pubhtml' });
+  const payload = await src.fetchDay(DATE);
+  globalThis.fetch = originalFetch;
+  assertEqual(payload.status, 'error');
+  assert(payload.message.includes('Publicar na web'));
+});
+
 // ------------------------------------------------- PRODUÇÃO PUBLICADA
 console.log('\nPRODUÇÃO PUBLICADA NO REPOSITÓRIO');
 const { PublishedFileSource, exportarDia } = await import('../src/data/sources/PublishedFileSource.js');

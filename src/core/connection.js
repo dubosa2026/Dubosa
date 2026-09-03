@@ -27,6 +27,7 @@ export function emptyConnection() {
     timeMode: 'fetchTime',
     fieldMap: {},
     endpoint: '/api/producao',
+    planilhaUrl: '',
   };
 }
 
@@ -80,5 +81,9 @@ export function toSourceOptions(connection) {
     timeMode: connection?.timeMode ?? 'fetchTime',
     fieldMap: connection?.fieldMap ?? {},
     endpoint: connection?.endpoint ?? '/api/producao',
+    // A planilha tem campo próprio: trocar de origem não pode apagar o link
+    // que o gestor já colou.
+    ...(connection?.adapter === 'planilha' ? { url: connection?.planilhaUrl ?? '' } : {}),
+    planilhaUrl: connection?.planilhaUrl ?? '',
   };
 }

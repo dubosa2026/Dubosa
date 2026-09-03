@@ -442,6 +442,21 @@ class App {
   }
 
   /**
+   * Monta as linhas para colar na planilha do Google.
+   *
+   * Separadas por tabulação: colar numa célula do Google Sheets distribui cada
+   * valor na sua coluna, sem nenhuma conversão. Vai a equipe INTEIRA, com zero
+   * para quem não produziu — é assim que o ranking não perde ninguém.
+   */
+  linhasParaPlanilha(linhas) {
+    const now = nowInTimezone(this.config.app?.timezone);
+    const [ano, mes, dia] = now.date.split('-');
+    return (linhas ?? [])
+      .map((l) => [l.sellerName, `${dia}/${mes}/${ano}`, now.time, l.orders || 0, l.revenue || 0].join('\t'))
+      .join('\n');
+  }
+
+  /**
    * Gera o arquivo do dia para o gestor publicar no repositório.
    *
    * É este passo que faz a equipe inteira ver o mesmo placar: sem ele, o que
@@ -487,6 +502,17 @@ class App {
     this.state.lancamento = null;
     this.state.ultimoLancamento = `Produção das ${hora} registrada para ${registros} vendedor(es). `
       + 'O painel já está usando estes números.';
+    await this.loadData();
+  }
+
+  /** Liga a planilha do Google como origem da produção. */
+  async conectarPlanilha(url) {
+    const limpo = String(url ?? '').trim();
+    if (!limpo) return;
+    this.connection = { ...this.connection, planilhaUrl: limpo, adapter: 'planilha' };
+    saveConnection(this.connection);
+    this.config = updateConfig({ dataSource: { adapter: 'planilha' } });
+    this.state.ultimoLancamento = null;
     await this.loadData();
   }
 

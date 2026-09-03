@@ -97,14 +97,23 @@ function launchPanel({ app, team }) {
         : h('span', { class: 'muted', text: '—' })));
   };
 
-  const registrar = () => {
-    const linhas = [...campos.entries()].map(([sellerId, campo]) => ({
-      sellerId,
-      sellerName: campo.name,
-      orders: Number(campo.pedidos.value) || 0,
-      revenue: parseMoneyInput(campo.faturamento.value),
-    }));
-    app.registrarLancamento(linhas);
+  const lerCampos = () => [...campos.entries()].map(([sellerId, campo]) => ({
+    sellerId,
+    sellerName: campo.name,
+    orders: Number(campo.pedidos.value) || 0,
+    revenue: parseMoneyInput(campo.faturamento.value),
+  }));
+
+  const registrar = () => app.registrarLancamento(lerCampos());
+
+  const copiarParaPlanilha = async (evento) => {
+    // O alvo precisa ser guardado ANTES do await: depois do primeiro tick do
+    // laço de eventos, `currentTarget` já foi zerado pelo navegador.
+    const botao = evento.currentTarget;
+    const antes = botao.textContent;
+    const ok = await copyText(app.linhasParaPlanilha(lerCampos()));
+    botao.textContent = ok ? 'Copiado! Agora cole na planilha' : 'Copie manualmente';
+    setTimeout(() => { botao.textContent = antes; }, 2600);
   };
 
   return h('section', { class: 'card' },
@@ -155,19 +164,24 @@ function launchPanel({ app, team }) {
             h('tbody', {}, vendedores.map(linhaDe)))),
 
         h('div', { class: 'button-row' },
-          h('button', { class: 'btn btn-primary', onclick: registrar, text: '✓ Registrar produção de agora' }),
           h('button', {
-            class: 'btn',
+            class: 'btn btn-primary',
+            onclick: copiarParaPlanilha,
+            title: 'Copia as linhas prontas para colar na planilha do Google',
+            text: '📋 Copiar para a planilha',
+          }),
+          h('button', { class: 'btn', onclick: registrar, text: 'Registrar só no meu painel' }),
+          h('button', {
+            class: 'btn btn-ghost btn-sm',
             onclick: () => app.publicarDia(),
-            title: 'Gera o arquivo do dia para enviar ao repositório',
-            text: '⬆ Publicar o dia para a equipe',
+            title: 'Gera um arquivo para enviar ao repositório — alternativa à planilha',
+            text: '⬆ Baixar arquivo do dia',
           })),
 
-        h('div', { class: 'alert alert-warn' },
-          h('strong', { text: 'Registrar não é publicar. ' }),
-          'Registrar guarda no seu navegador e atualiza o seu painel. Para os vendedores verem, '
-          + 'clique em Publicar o dia e envie o arquivo para a pasta config/producao/ do repositório — '
-          + 'o mesmo caminho do cadastro da equipe.'),
+        h('div', { class: 'alert alert-info' },
+          h('strong', { text: 'Copiar para a planilha é o que faz a equipe ver. ' }),
+          'Clique no botão azul, abra sua planilha do Google, clique na primeira célula vazia e cole (Ctrl+V). '
+          + 'Pronto: o aplicativo de cada vendedor lê a planilha sozinho, sem você enviar mais nada.'),
 
         h('p', { class: 'privacy-note' },
           h('span', { 'aria-hidden': 'true', text: '🔒' }),
@@ -361,9 +375,10 @@ function linksCsv(app, roster) {
 }
 
 async function copyLink(event, link) {
-  const ok = await copyText(link);
+  // Mesmo cuidado: guardar o botão antes de esperar a área de transferência.
   const btn = event.currentTarget;
   const original = btn.textContent;
+  const ok = await copyText(link);
   btn.textContent = ok ? 'Copiado!' : 'Copie manualmente';
   setTimeout(() => { btn.textContent = original; }, 1600);
 }
@@ -404,7 +419,37 @@ function dataPanel({ app, config, connection, diagnostico, sourceHealth }) {
       h('p', { class: 'muted', text: sourceHealth?.detail ?? '' })),
 
     h('div', { class: 'divider' }),
-    h('h3', { class: 'sub-title', text: 'Conectar o sistema de pedidos' }),
+    h('h3', { class: 'sub-title', text: 'Planilha do Google — o caminho mais simples' }),
+    h('p', { class: 'muted', text: 'Você cola a produção numa planilha; o aplicativo de cada vendedor lê essa mesma '
+      + 'planilha sozinho. Não precisa enviar arquivo, criar senha nem mexer no repositório.' }),
+    h('ol', { class: 'steps' },
+      h('li', { text: 'Crie uma planilha no Google com as colunas: Nome, Data, Horário, Pedidos, Faturamento.' }),
+      h('li', { text: 'Menu Arquivo → Compartilhar → Publicar na web → formato Valores separados por vírgula (.csv) → Publicar.' }),
+      h('li', { text: 'Copie o link que aparece e cole abaixo.' })),
+    (() => {
+      const campoPlanilha = h('input', {
+        class: 'input', type: 'text', value: c.planilhaUrl ?? '',
+        placeholder: 'https://docs.google.com/spreadsheets/d/e/.../pub?output=csv',
+        'aria-label': 'Link da planilha publicada', spellcheck: 'false',
+      });
+      return h('div', {},
+        h('label', { class: 'field' },
+          h('span', { class: 'field-label', text: 'Link da planilha publicada' }),
+          campoPlanilha,
+          h('small', { class: 'field-hint', text: 'Serve tanto o link publicado quanto o link normal da planilha — o aplicativo converte.' })),
+        h('div', { class: 'button-row' },
+          h('button', {
+            class: 'btn btn-primary',
+            onclick: () => app.conectarPlanilha(campoPlanilha.value),
+            text: c.adapter === 'planilha' ? '↻ Reconectar planilha' : '✓ Usar esta planilha',
+          }),
+          c.adapter === 'planilha'
+            ? h('button', { class: 'btn btn-sm', onclick: () => app.refresh(), text: 'Atualizar agora' })
+            : null));
+    })(),
+
+    h('div', { class: 'divider' }),
+    h('h3', { class: 'sub-title', text: 'Ligar direto no sistema de pedidos (avançado)' }),
     h('div', { class: 'alert alert-warn' },
       h('strong', { text: 'A senha fica só neste navegador. ' }),
       'O aplicativo é publicado como arquivo público: uma senha guardada na configuração '

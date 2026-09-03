@@ -4,6 +4,7 @@ import { HttpJsonSource } from './HttpJsonSource.js';
 import { LigaApiSource } from './LigaApiSource.js';
 import { ManualSource } from './ManualSource.js';
 import { PublishedFileSource } from './PublishedFileSource.js';
+import { SheetSource } from './SheetSource.js';
 
 /**
  * REGISTRO DE ADAPTADORES
@@ -42,3 +43,4 @@ registerSource(HttpJsonSource);
 registerSource(LigaApiSource);
 registerSource(ManualSource);
 registerSource(PublishedFileSource);
+registerSource(SheetSource);
