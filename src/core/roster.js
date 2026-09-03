@@ -48,14 +48,22 @@ export function clearLocalRoster() {
  * @returns {Promise<{roster: Object, origin: 'publicado'|'local'|'nenhum'}>}
  */
 export async function loadRoster(url = 'config/equipe.json') {
-  let published = null;
-  try {
-    const res = await fetch(url, { cache: 'no-cache' });
-    if (res.ok) {
-      const json = await res.json();
-      if (json?.sellers || json?.manager) published = json;
-    }
-  } catch { /* arquivo ainda não publicado — fluxo normal na primeira execução */ }
+  // Build de arquivo único: não há arquivo para buscar, o cadastro vem embutido.
+  let published = globalThis.__LIGA_DADOS__?.acessos ?? null;
+
+  // No arquivo único não existe pasta para buscar: tentar a rede só produziria
+  // um erro de CORS no console, sem nenhum ganho.
+  const arquivoUnico = Boolean(globalThis.__LIGA_DADOS__);
+
+  if (!published && !arquivoUnico) {
+    try {
+      const res = await fetch(url, { cache: 'no-cache' });
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.sellers || json?.manager) published = json;
+      }
+    } catch { /* arquivo ainda não publicado — fluxo normal na primeira execução */ }
+  }
 
   const local = readLocal();
   if (published && local) {

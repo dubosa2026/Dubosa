@@ -46,6 +46,10 @@ export function deepMerge(base, patch) {
 }
 
 export async function loadConfig(url = 'config/app.config.json') {
+  // Build de arquivo único: não há arquivo para buscar, os dados vêm embutidos.
+  const embutido = globalThis.__LIGA_DADOS__?.config;
+  if (embutido) return setBaseConfig(embutido);
+
   const res = await fetch(url, { cache: 'no-cache' });
   if (!res.ok) throw new Error(`Não foi possível carregar ${url} (${res.status}).`);
   baseConfig = await res.json();

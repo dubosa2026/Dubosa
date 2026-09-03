@@ -67,8 +67,10 @@ class App {
       selectedSeller: null,
       compareA: null,
       compareB: null,
-      issuedTokens: {},
-      managerToken: null,
+      // No build de demonstração os links de teste já vêm prontos, para que a
+      // aba Acessos possa mostrá-los sem o gestor precisar gerar um a um.
+      issuedTokens: { ...(globalThis.__LIGA_DADOS__?.tokensDeTeste ?? {}) },
+      managerToken: globalThis.__LIGA_DADOS__?.tokenGestor ?? null,
     };
   }
 
@@ -103,7 +105,10 @@ class App {
   async handleRoute() {
     const route = parseRoute();
     const stored = this.readPref('token', null);
-    const token = route.token ?? stored;
+    // Build de demonstração: abre já no painel, em vez de numa tela de entrada
+    // vazia que não mostra nada do que o aplicativo faz.
+    const inicial = parseRoute(globalThis.__LIGA_DADOS__?.rotaInicial ?? '').token;
+    const token = route.token ?? stored ?? inicial;
 
     if (!token) {
       this.identity = null;

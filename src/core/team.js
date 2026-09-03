@@ -51,6 +51,10 @@ export function saveLocalTeam(team) {
 export async function loadTeam(url = 'config/vendedores.json') {
   const local = readLocal();
   if (local?.vendedores?.length) return { team: local, origin: 'local' };
+
+  const embutido = globalThis.__LIGA_DADOS__?.equipe;
+  if (embutido?.vendedores?.length) return { team: embutido, origin: 'publicado' };
+  if (globalThis.__LIGA_DADOS__) return { team: emptyTeam(), origin: 'nenhum' };
   try {
     const res = await fetch(url, { cache: 'no-cache' });
     if (res.ok) {

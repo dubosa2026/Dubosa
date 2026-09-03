@@ -1,0 +1,16 @@
+{
+  "name": "liga-comercial",
+  "version": "1.0.0",
+  "description": "Competição comercial diária por pedidos e faturamento, com resultado individual privado.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/run.js && node tests/funcao-producao.js",
+    "servir": "python3 -m http.server 8080",
+    "arquivo-unico": "node build/gerar-arquivo-unico.mjs",
+    "demonstracao": "node build/gerar-arquivo-unico.mjs --demonstracao"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}
