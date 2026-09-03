@@ -20,9 +20,10 @@ de espera em vez de números inventados.
 Para colocar produção real na Liga há três caminhos, todos sem programar:
 
 - **Configuração → Lançar** é o que funciona hoje: cole a lista que aparece na
-  tela do sistema de pedidos (ou digite) e a Liga passa a usar produção real.
-  Cada lançamento vira um ponto da curva do dia, e com a curva vêm ritmo,
-  projeção e comparação com ontem;
+  tela do sistema de pedidos (ou digite), registre, e clique em **Publicar o
+  dia** para enviar o arquivo ao repositório — a partir daí a equipe inteira vê
+  o mesmo placar. Cada lançamento vira um ponto da curva do dia, e com a curva
+  vêm ritmo, projeção e comparação com ontem;
 
 - **Configuração → Base de dados** conecta direto num endereço de dados, com um
   diagnóstico que roda no navegador do gestor e diz passo a passo o que entendeu
@@ -87,7 +88,7 @@ Sem framework, sem build, sem dependências. Basta servir a pasta:
 
 ```bash
 python3 -m http.server 8080
-node tests/run.js               # 100 verificações do núcleo, incluindo as de privacidade
+node tests/run.js               # 104 verificações do núcleo, incluindo as de privacidade
 node tests/funcao-producao.js   # 11 verificações da função de servidor
 ```
 
@@ -95,7 +96,7 @@ node tests/funcao-producao.js   # 11 verificações da função de servidor
 
 ```
 index.html              casca do aplicativo
-config/                 regras, cadastro da equipe, acessos
+config/                 regras, cadastro da equipe, acessos, produção publicada
 src/core/               relógio comercial, métricas, ranking, gamificação,
                         mensagens e o núcleo de privacidade
 src/data/               contrato de dados, Modo de Espera, adaptadores

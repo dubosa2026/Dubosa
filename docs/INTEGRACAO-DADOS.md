@@ -24,9 +24,24 @@ Cada lançamento é carimbado com o horário. Lançar duas ou três vezes ao dia
 dá curva suficiente para ritmo, projeção e comparação com o mesmo horário de
 ontem.
 
-**Limite:** o que é lançado fica no navegador de quem lançou. Para a equipe
-inteira enxergar, a produção precisa vir de origem compartilhada — os caminhos A
-e B abaixo.
+### Publicar o dia para a equipe
+
+Registrar guarda no seu navegador e atualiza o **seu** painel. Para os vendedores
+verem, falta um passo:
+
+5. clique em **Publicar o dia para a equipe** — baixa `AAAA-MM-DD.json`;
+6. envie o arquivo para a pasta `config/producao/` do repositório (no GitHub:
+   `config/producao` → *Add file* → *Upload files*).
+
+A partir daí toda a equipe vê o mesmo placar, cada um no seu link. É o mesmo
+caminho do cadastro da equipe, e o arquivo guarda só o que o ranking precisa:
+nome, data, horário, pedidos e faturamento.
+
+Enquanto o dia não é publicado, quem abre o aplicativo vê o Modo de Espera — que
+é a resposta correta: não há produção publicada, e nenhum número é inventado.
+
+**Limite:** o placar avança quando você publica. Para acompanhamento contínuo sem
+intervenção, a origem precisa de servidor — os caminhos A e B abaixo.
 
 ---
 

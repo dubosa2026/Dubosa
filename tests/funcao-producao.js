@@ -128,6 +128,15 @@ await check('nenhum faturamento de colega atravessa a função', () => {
   }
 });
 
+await check('o horário avaliado é o do chamador, não o do servidor', () => {
+  // Este teste existe porque a versão anterior carimbava o registro com o
+  // relógio do servidor: rodar depois das 14h fazia a leitura cair fora da
+  // janela avaliada e o ranking saía zerado, sem explicação aparente.
+  const horas = new Set(vendedor.body.records.map((r) => r.time));
+  assertEqual(horas.size, 1);
+  assertEqual([...horas][0], '14:00');
+});
+
 await check('a posição vem calculada no servidor', () => {
   assertEqual(vendedor.body.competitive.position, 2, 'Ana deveria ser a 2ª (Bruno 91k, Ana 60k):');
   assertEqual(vendedor.body.competitive.total, 4, 'o zerado precisa contar no total:');

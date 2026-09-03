@@ -910,3 +910,7 @@ body.is-compact .demo-banner span { display: none; }
 .row-lido { background: color-mix(in srgb, var(--accent) 7%, transparent); }
 .badge-ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 50%, transparent); }
 .badge-warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
+
+.viz-ponto { stroke: var(--surface-1); stroke-width: 2; }
+.viz-ponto-today { fill: var(--series-1); }
+.viz-ponto-yesterday { fill: var(--series-2); }

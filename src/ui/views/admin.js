@@ -155,7 +155,19 @@ function launchPanel({ app, team }) {
             h('tbody', {}, vendedores.map(linhaDe)))),
 
         h('div', { class: 'button-row' },
-          h('button', { class: 'btn btn-primary', onclick: registrar, text: '✓ Registrar produção de agora' })),
+          h('button', { class: 'btn btn-primary', onclick: registrar, text: '✓ Registrar produção de agora' }),
+          h('button', {
+            class: 'btn',
+            onclick: () => app.publicarDia(),
+            title: 'Gera o arquivo do dia para enviar ao repositório',
+            text: '⬆ Publicar o dia para a equipe',
+          })),
+
+        h('div', { class: 'alert alert-warn' },
+          h('strong', { text: 'Registrar não é publicar. ' }),
+          'Registrar guarda no seu navegador e atualiza o seu painel. Para os vendedores verem, '
+          + 'clique em Publicar o dia e envie o arquivo para a pasta config/producao/ do repositório — '
+          + 'o mesmo caminho do cadastro da equipe.'),
 
         h('p', { class: 'privacy-note' },
           h('span', { 'aria-hidden': 'true', text: '🔒' }),

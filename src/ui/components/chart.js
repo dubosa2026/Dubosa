@@ -133,6 +133,14 @@ export function dayChart({
   seriesToday.length
     ? h('path', { class: 'viz-line viz-line-today', d: stepPath(seriesToday, x, y) })
     : null,
+  // Uma medição só não desenha linha nenhuma. Sem um ponto visível, o gráfico
+  // pareceria vazio justamente no primeiro lançamento do dia.
+  seriesYesterday.length === 1
+    ? h('circle', { class: 'viz-ponto viz-ponto-yesterday', cx: x(seriesYesterday[0].m), cy: y(seriesYesterday[0].v), r: 4 })
+    : null,
+  seriesToday.length === 1
+    ? h('circle', { class: 'viz-ponto viz-ponto-today', cx: x(seriesToday[0].m), cy: y(seriesToday[0].v), r: 4 })
+    : null,
   nowLine,
   lastYesterday
     ? h('text', {

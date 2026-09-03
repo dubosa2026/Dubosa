@@ -1,6 +1,7 @@
 import { DataSource, emptyDay } from '../DataSource.js';
 import { acumular, historicoDe, pontosDe } from '../snapshotBuffer.js';
 import { nowInTimezone } from '../../core/clock.js';
+import { PublishedFileSource } from './PublishedFileSource.js';
 
 /**
  * PRODUÇÃO LANÇADA PELO GESTOR
@@ -26,6 +27,7 @@ export class ManualSource extends DataSource {
   constructor(options = {}) {
     super(options);
     this.timezone = options.timezone ?? 'America/Sao_Paulo';
+    this.publicado = new PublishedFileSource(options);
   }
 
   get semantics() {
@@ -40,14 +42,14 @@ export class ManualSource extends DataSource {
     return { scopedRanking: false };
   }
 
-  async fetchDay(date) {
+  async fetchDay(date, scope) {
     const registros = historicoDe(date);
     if (!registros.length) {
-      return emptyDay(date, {
-        status: 'ready',
-        message: 'Nenhuma produção lançada para este dia.',
-        meta: { semLancamento: true },
-      });
+      // Nada lançado neste navegador para o dia. Antes de dizer que não há
+      // produção, olhamos o que já foi publicado no repositório — é assim que a
+      // comparação com ontem continua funcionando no dia seguinte, sem o gestor
+      // precisar relançar nada.
+      return this.publicado.fetchDay(date, scope);
     }
     return {
       status: 'ready',

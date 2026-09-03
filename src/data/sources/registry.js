@@ -3,6 +3,7 @@ import { DemoSource } from './DemoSource.js';
 import { HttpJsonSource } from './HttpJsonSource.js';
 import { LigaApiSource } from './LigaApiSource.js';
 import { ManualSource } from './ManualSource.js';
+import { PublishedFileSource } from './PublishedFileSource.js';
 
 /**
  * REGISTRO DE ADAPTADORES
@@ -40,3 +41,4 @@ registerSource(DemoSource);
 registerSource(HttpJsonSource);
 registerSource(LigaApiSource);
 registerSource(ManualSource);
+registerSource(PublishedFileSource);

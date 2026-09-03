@@ -45,6 +45,23 @@ não funcionam nas outras máquinas.
 Para guardar os links com calma, use **Baixar links gerados (CSV)** — a planilha
 sai com uma linha por vendedor.
 
+## 2b. Colocar produção na tela
+
+Enquanto o sistema de pedidos não tiver um endereço de dados, o caminho é:
+
+1. **Configuração → Lançar**;
+2. cole a lista de vendedores que aparece na tela do sistema de pedidos;
+3. **Ler o texto colado**, confira a tabela e **Registrar produção de agora**;
+4. **Publicar o dia para a equipe** e envie o arquivo para `config/producao/`
+   no repositório.
+
+Registrar atualiza o seu painel. Publicar é o que faz os vendedores verem.
+Lançar duas ou três vezes ao dia já dá curva suficiente para ritmo, projeção e
+comparação com o mesmo horário de ontem.
+
+Detalhes e as alternativas automáticas em
+[INTEGRACAO-DADOS.md](INTEGRACAO-DADOS.md).
+
 ## 3. Instalar no computador do vendedor
 
 ### Windows — atalho e abertura automática

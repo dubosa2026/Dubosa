@@ -64,7 +64,7 @@ async function identificar(token, roster) {
  * Busca a produção bruta do dia. Ajuste apenas esta função quando souber o
  * formato exato da resposta — todo o resto já está pronto e testado.
  */
-async function buscarProducao(date) {
+async function buscarProducao(date, horaDaLeitura) {
   const base = process.env.PEDIDOS_URL;
   if (!base) throw new Error('PEDIDOS_URL não configurada nas variáveis de ambiente.');
 
@@ -88,7 +88,11 @@ async function buscarProducao(date) {
   const linhas = extractCollection(json, process.env.PEDIDOS_LISTA ?? '');
   if (!linhas?.length) throw new Error('Não encontrei a lista de vendedores na resposta.');
 
-  const agora = new Date().toLocaleTimeString('pt-BR', {
+  // O horário do registro é o instante que o chamador está avaliando, e só
+  // cai para o relógio do servidor quando o chamador não informa. Carimbar
+  // sempre com o relógio do servidor faria a leitura cair fora da janela
+  // avaliada — e o ranking sairia zerado sem ninguém entender por quê.
+  const agora = horaDaLeitura ?? new Date().toLocaleTimeString('pt-BR', {
     timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false,
   });
 
@@ -139,9 +143,11 @@ export default async (request) => {
     return json({ status: 'error', message: 'Código de acesso não reconhecido.' }, 403);
   }
 
+  const horaValida = hora && /^\d{1,2}:\d{2}$/.test(hora) ? hora.padStart(5, '0') : null;
+
   let registros;
   try {
-    registros = await buscarProducao(date);
+    registros = await buscarProducao(date, horaValida);
   } catch (err) {
     return json({ status: 'error', message: err.message, records: [] }, 502);
   }
@@ -154,7 +160,7 @@ export default async (request) => {
     resolveSeller,
   );
 
-  const minutos = hora && /^\d{1,2}:\d{2}$/.test(hora) ? toMinutes(hora) : 24 * 60;
+  const minutos = horaValida ? toMinutes(horaValida) : 24 * 60;
 
   if (quem.role === 'manager') {
     return json({

@@ -1,4 +1,4 @@
-import { mount, h } from './ui/dom.js';
+import { mount, h, downloadFile } from './ui/dom.js';
 import { loadConfig, getConfig, updateConfig, resetConfig } from './core/settings.js';
 import {
   loadRoster, saveLocalRoster, createSellerAccess, setManagerAccess, removeSellerAccess, emptyRoster,
@@ -11,6 +11,7 @@ import {
 import { createSource } from './data/sources/registry.js';
 import { parsePastedProduction } from './data/parsePasted.js';
 import { registrarProducao } from './data/sources/ManualSource.js';
+import { exportarDia } from './data/sources/PublishedFileSource.js';
 import {
   loadConnection, saveConnection, toSourceOptions, emptyConnection,
 } from './core/connection.js';
@@ -414,6 +415,21 @@ class App {
     this.state.ultimoLancamento = resultado.registros.length
       ? null
       : 'Não reconheci nenhum vendedor no texto colado. Confira se os nomes batem com o cadastro da equipe.';
+    this.render();
+  }
+
+  /**
+   * Gera o arquivo do dia para o gestor publicar no repositório.
+   *
+   * É este passo que faz a equipe inteira ver o mesmo placar: sem ele, o que
+   * foi lançado existe apenas no navegador de quem lançou.
+   */
+  publicarDia() {
+    const date = this.data.today?.date ?? nowInTimezone(this.config.app?.timezone).date;
+    const conteudo = exportarDia(date, this.data.today);
+    downloadFile(`${date}.json`, conteudo, 'application/json');
+    this.state.ultimoLancamento = `Arquivo ${date}.json baixado. Envie para a pasta `
+      + 'config/producao/ do repositório e a equipe inteira passa a ver este placar.';
     this.render();
   }
 

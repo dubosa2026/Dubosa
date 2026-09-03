@@ -258,9 +258,13 @@ function chartSection({ vm, config, app, awaiting }) {
         labelYesterday: 'Ontem',
       });
 
-  const aviso = !awaiting && semCurvaPropria && vm.charts.yesterday.length
-    ? h('p', { class: 'muted', text: 'Sua linha de hoje ainda não começou. A curva pontilhada é a de ontem — é ela que você precisa passar.' })
-    : null;
+  const aviso = awaiting
+    ? null
+    : semCurvaPropria && vm.charts.yesterday.length
+      ? h('p', { class: 'muted', text: 'Sua linha de hoje ainda não começou. A curva pontilhada é a de ontem — é ela que você precisa passar.' })
+      : vm.charts.mine.length === 1
+        ? h('p', { class: 'muted', text: 'Só há uma medição hoje — por isso o ponto solto. A curva aparece conforme o dia é atualizado.' })
+        : null;
 
   return h('section', { class: 'card' },
     sectionTitle('Evolução no dia', toggle),

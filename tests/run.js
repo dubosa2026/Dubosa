@@ -728,6 +728,57 @@ await check('contexto vindo da origem carrega só magnitude, nunca identidade', 
   assertEqual(chaves.sort().join(','), 'orders,revenue', 'a distância trouxe campo além da magnitude:');
 });
 
+// ------------------------------------------------- PRODUÇÃO PUBLICADA
+console.log('\nPRODUÇÃO PUBLICADA NO REPOSITÓRIO');
+const { PublishedFileSource, exportarDia } = await import('../src/data/sources/PublishedFileSource.js');
+
+await check('o arquivo do dia preserva a curva inteira', () => {
+  const dia = buildDayState({
+    status: 'ready', semantics: 'cumulative', date: DATE, meta: {},
+    records: [
+      { sellerId: 'e', sellerName: 'Erica Oliveira', date: DATE, time: '10:00', orders: 12, revenue: 180000 },
+      { sellerId: 'e', sellerName: 'Erica Oliveira', date: DATE, time: '15:30', orders: 22, revenue: 370332 },
+      { sellerId: 'm', sellerName: 'Murilo Bedani', date: DATE, time: '15:30', orders: 9, revenue: 128400 },
+    ],
+  });
+  const json = JSON.parse(exportarDia(DATE, dia));
+  assertEqual(json.records.length, 3, 'a curva foi achatada na exportação:');
+  assertEqual(json.semantics, 'cumulative');
+  // e volta a virar a mesma curva ao ser lido
+  const devolta = buildDayState({ ...json, status: 'ready', meta: {} });
+  const erica = devolta.sellers.find((x) => x.sellerId === 'e');
+  assertEqual(erica.timeline.length, 2);
+  assertEqual(erica.revenue, 370332);
+});
+
+await check('dia não publicado devolve Modo de Espera, não erro', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('', { status: 404 });
+  const src = new PublishedFileSource();
+  const payload = await src.fetchDay(DATE);
+  globalThis.fetch = originalFetch;
+  assertEqual(payload.status, 'awaiting_source');
+  assertEqual(payload.records.length, 0);
+  assertEqual(buildDayState(payload).hasData, false);
+});
+
+await check('dia publicado é lido e vira placar', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    data: DATE,
+    publicadoEm: '2026-09-03T18:30:00.000Z',
+    semantics: 'cumulative',
+    records: [
+      { sellerId: 'e', sellerName: 'Erica Oliveira', date: DATE, time: '15:30', orders: 22, revenue: 370332 },
+    ],
+  }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  const src = new PublishedFileSource();
+  const payload = await src.fetchDay(DATE);
+  globalThis.fetch = originalFetch;
+  assertEqual(payload.status, 'ready');
+  assertEqual(buildDayState(payload).sellers[0].revenue, 370332);
+});
+
 // ------------------------------------------------------------ modo de espera
 console.log('\nMODO DE ESPERA DE DADOS');
 await check('fonte pendente não inventa dados', async () => {
