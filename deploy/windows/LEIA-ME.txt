@@ -1,0 +1,22 @@
+LIGA COMERCIAL — instalacao no Windows
+======================================
+
+1. Copie esta pasta inteira para o computador do vendedor.
+2. (Opcional) Crie um arquivo LINK.txt nesta pasta com o link pessoal dele
+   dentro. Assim o instalador nao pergunta nada.
+3. De dois cliques em  Instalar-Dubosa.bat
+4. Cole o link pessoal quando for pedido.
+
+O que acontece:
+  - um icone "Liga Comercial" aparece na area de trabalho;
+  - o aplicativo passa a abrir sozinho quando o computador liga, ja minimizado;
+  - a janela e pequena e independente, sem abas nem barra de endereco.
+
+Dentro do aplicativo, o botao "Compacto" reduz a janela ao minimo — posicao,
+pedidos, faturamento e a distancia para a proxima posicao. Da para deixar num
+canto da tela o dia inteiro.
+
+Para remover: Desinstalar-Dubosa.bat
+
+Nada e instalado no computador. O aplicativo usa o Chrome ou o Edge que ja
+existe na maquina.

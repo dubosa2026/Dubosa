@@ -1,0 +1,20 @@
+{
+  "_leia_me": [
+    "Exemplo do arquivo de ACESSOS. Copie para config/equipe.json.",
+    "Gere este arquivo pelo próprio aplicativo: Configuração -> Acessos -> Baixar equipe.json.",
+    "Ele guarda apenas o HASH do código pessoal. Quem ler o arquivo não consegue",
+    "montar o link de ninguém. Nenhum dado de produção passa por aqui."
+  ],
+  "version": 1,
+  "manager": {
+    "name": "Gestor",
+    "tokenHash": "hash sha-256 do código do gestor"
+  },
+  "sellers": [
+    {
+      "sellerId": "nome-do-vendedor",
+      "name": "Nome do Vendedor",
+      "tokenHash": "hash sha-256 do código pessoal"
+    }
+  ]
+}

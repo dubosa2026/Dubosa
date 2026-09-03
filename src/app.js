@@ -1,0 +1,451 @@
+import { mount, h } from './ui/dom.js';
+import { loadConfig, getConfig, updateConfig, resetConfig } from './core/settings.js';
+import {
+  loadRoster, saveLocalRoster, createSellerAccess, setManagerAccess, removeSellerAccess, emptyRoster,
+} from './core/roster.js';
+import { resolveIdentity, parseRoute, buildLink } from './core/identity.js';
+import {
+  loadTeam, saveLocalTeam, indexTeam, resolveSeller, addToTeam, removeFromTeam,
+  teamFromLines, emptyTeam,
+} from './core/team.js';
+import { createSource } from './data/sources/registry.js';
+import { buildDayState, emptyDayState, mergeTeam } from './data/store.js';
+import { slugifyName as slug } from './data/types.js';
+import { buildSellerView, buildManagerView, markHighPerformance } from './core/access.js';
+import { nowInTimezone, previousBusinessDay, previousBusinessDays } from './core/clock.js';
+import { sellerView } from './ui/views/seller.js';
+import { managerView } from './ui/views/manager.js';
+import { loginView } from './ui/views/login.js';
+import { adminView } from './ui/views/admin.js';
+import { demoBanner } from './ui/components/waiting.js';
+
+/**
+ * ORQUESTRADOR
+ * ============
+ *
+ * Junta identidade, configuração, fonte de dados e telas. Nenhuma regra de
+ * negócio mora aqui: quem calcula é `core/`, quem decide o que cada perfil vê
+ * é `core/access.js`.
+ */
+
+const HISTORY_DAYS = 5;
+
+class App {
+  constructor(root) {
+    this.root = root;
+    this.config = {};
+    this.roster = emptyRoster();
+    this.rosterOrigin = 'nenhum';
+    this.team = emptyTeam();
+    this.teamOrigin = 'nenhum';
+    this.teamIndex = { byId: new Map(), byShort: new Map(), size: 0 };
+    this.identity = null;
+    this.source = null;
+    this.sourceHealth = null;
+    this.data = { today: null, yesterday: null, historyDays: [] };
+    // No perfil de vendedor guardamos SÓ o painel pronto. Ver `sealSellerData`.
+    this.sellerVM = null;
+    this.error = null;
+    this.timer = null;
+
+    this.state = {
+      screen: 'dashboard',
+      compact: false,
+      metric: 'revenue',
+      chartAsTable: false,
+      managerTab: 'ranking',
+      adminTab: 'equipe',
+      selectedSeller: null,
+      compareA: null,
+      compareB: null,
+      issuedTokens: {},
+      managerToken: null,
+    };
+  }
+
+  get baseUrl() {
+    const { origin, pathname } = globalThis.location;
+    return `${origin}${pathname}`.replace(/index\.html$/, '');
+  }
+
+  // ------------------------------------------------------------------ boot
+  async boot() {
+    try {
+      this.config = await loadConfig();
+    } catch (err) {
+      this.fatal(`Não foi possível carregar a configuração. ${err.message}`);
+      return;
+    }
+
+    this.state.compact = this.readPref('compact', this.config.ui?.compactByDefault ?? false);
+    this.state.metric = this.readPref('metric', 'revenue');
+    this.applyTheme();
+
+    const [loaded, loadedTeam] = await Promise.all([loadRoster(), loadTeam()]);
+    this.roster = loaded.roster;
+    this.rosterOrigin = loaded.origin;
+    this.setTeam(loadedTeam.team, loadedTeam.origin);
+
+    globalThis.addEventListener('hashchange', () => this.handleRoute());
+    await this.handleRoute();
+  }
+
+  async handleRoute() {
+    const route = parseRoute();
+    const stored = this.readPref('token', null);
+    const token = route.token ?? stored;
+
+    if (!token) {
+      this.identity = null;
+      this.render();
+      return;
+    }
+
+    this.identity = await resolveIdentity(token, this.roster);
+    if (!this.identity) {
+      this.error = 'Código de acesso não reconhecido. Peça o link ao gestor.';
+      this.writePref('token', null);
+      this.render();
+      return;
+    }
+
+    this.error = null;
+    this.writePref('token', token);
+    await this.loadData();
+    this.startAutoRefresh();
+  }
+
+  // ------------------------------------------------------------------ dados
+  buildScope() {
+    const role = this.identity?.role ?? 'seller';
+    if (role === 'manager') return { role: 'manager', sellerId: null, include: 'team' };
+    const scopedRanking = Boolean(this.source?.capabilities?.scopedRanking);
+    // Sem ranking calculado na origem, a posição só pode ser obtida com o dia
+    // inteiro em mãos — e aí a barreira que vale é `core/access.js`.
+    return { role: 'seller', sellerId: this.identity.sellerId, include: scopedRanking ? 'own' : 'team' };
+  }
+
+  async loadData() {
+    const adapter = this.config.dataSource?.adapter ?? 'pending';
+    this.source = createSource(adapter, {
+      ...(this.config.dataSource?.options ?? {}),
+      businessHours: this.config.businessHours,
+      timezone: this.config.app?.timezone,
+      team: this.team?.vendedores ?? [],
+    });
+    this.sourceHealth = await this.source.health();
+
+    const now = nowInTimezone(this.config.app?.timezone);
+    this.now = now;
+    const scope = this.buildScope();
+    const previous = previousBusinessDay(now.date, this.config.businessHours);
+    const historyDates = previousBusinessDays(now.date, this.config.businessHours, HISTORY_DAYS);
+
+    try {
+      const [todayPayload, previousPayload, historyPayloads] = await Promise.all([
+        this.source.fetchDay(now.date, scope),
+        previous ? this.source.fetchDay(previous, scope) : Promise.resolve(null),
+        this.source.fetchDays(historyDates, scope),
+      ]);
+
+      const withTeam = (payload) => mergeTeam(buildDayState(payload), this.teamIndex, resolveSeller);
+
+      this.data.today = withTeam(todayPayload);
+      this.data.yesterday = previousPayload ? withTeam(previousPayload) : null;
+      this.data.historyDays = historyDates
+        .map((d) => historyPayloads?.[d])
+        .filter(Boolean)
+        .map((payload) => markHighPerformance(withTeam(payload), this.config));
+    } catch (err) {
+      this.data.today = emptyDayState(now.date, { status: 'error', message: err.message });
+      this.data.yesterday = null;
+      this.data.historyDays = [];
+    }
+
+    this.sealSellerData();
+    this.render();
+  }
+
+  /**
+   * SELAGEM DA MEMÓRIA DO VENDEDOR
+   * ------------------------------
+   * Quando a fonte não sabe calcular o ranking (`capabilities.scopedRanking`
+   * falso), o dia inteiro precisa chegar ao navegador para que a posição exista.
+   * Nada disso vai para a tela — mas ficaria parado na memória da aba, ao
+   * alcance de quem abrisse o console.
+   *
+   * Então, assim que o painel é montado, os dados brutos da equipe são
+   * descartados e só o view model — que já passou pelas três barreiras —
+   * permanece. A cada atualização o ciclo se repete.
+   *
+   * Isto reduz a exposição; não a elimina: a resposta da rede ainda trafegou
+   * completa. A eliminação de fato depende de a FONTE filtrar na origem.
+   */
+  sealSellerData() {
+    if (this.identity?.role !== 'seller') return;
+    try {
+      this.sellerVM = buildSellerView({
+        today: this.data.today ?? emptyDayState(this.now?.date ?? null),
+        yesterday: this.data.yesterday,
+        sellerId: this.identity.sellerId,
+        sellerName: this.identity.sellerName,
+        atMinutes: this.now?.minutes ?? 0,
+        config: getConfig(),
+        historyDays: this.data.historyDays,
+      });
+    } finally {
+      this.data = { today: null, yesterday: null, historyDays: [] };
+    }
+  }
+
+  setTeam(team, origin = this.teamOrigin) {
+    this.team = team;
+    this.teamOrigin = origin;
+    this.teamIndex = indexTeam(team);
+  }
+
+  async refresh() {
+    await this.loadData();
+  }
+
+  startAutoRefresh() {
+    clearInterval(this.timer);
+    const seconds = Math.max(15, this.config.ui?.refreshSeconds ?? 60);
+    this.timer = setInterval(() => this.refresh(), seconds * 1000);
+  }
+
+  // ------------------------------------------------------------------ ações
+  async login(token) {
+    const identity = await resolveIdentity(token, this.roster);
+    if (!identity) {
+      this.error = 'Código de acesso não reconhecido.';
+      this.render();
+      return;
+    }
+    globalThis.location.hash = `#/${identity.role === 'manager' ? 'gestor' : 'v'}/${String(token).trim().toUpperCase()}`;
+  }
+
+  logout() {
+    this.writePref('token', null);
+    this.identity = null;
+    clearInterval(this.timer);
+    globalThis.location.hash = '#/entrar';
+    this.render();
+  }
+
+  toggleCompact() {
+    this.state.compact = !this.state.compact;
+    this.writePref('compact', this.state.compact);
+    this.render();
+  }
+
+  setMetric(metric) {
+    this.state.metric = metric;
+    this.writePref('metric', metric);
+    this.render();
+  }
+
+  toggleChartTable() {
+    this.state.chartAsTable = !this.state.chartAsTable;
+    this.render();
+  }
+
+  setManagerTab(tab) { this.state.managerTab = tab; this.render(); }
+
+  setAdminTab(tab) { this.state.adminTab = tab; this.render(); }
+
+  openSeller(sellerId) {
+    this.state.selectedSeller = sellerId;
+    this.state.managerTab = 'vendedor';
+    this.render();
+  }
+
+  setCompare(key, value) { this.state[key] = value; this.render(); }
+
+  goAdmin() { this.state.screen = 'admin'; this.render(); }
+
+  goDashboard() { this.state.screen = 'dashboard'; this.render(); }
+
+  async startFirstRun() {
+    const { roster, token } = await setManagerAccess(emptyRoster(), { name: 'Gestor' });
+    this.roster = roster;
+    this.rosterOrigin = 'local';
+    saveLocalRoster(roster);
+    this.state.managerToken = token;
+    this.identity = { role: 'manager', sellerId: null, sellerName: 'Gestor' };
+    this.state.screen = 'admin';
+    this.writePref('token', token);
+    globalThis.location.hash = `#/gestor/${token}`;
+    await this.loadData();
+  }
+
+  async addSeller(name, knownId = null) {
+    const sellerId = knownId ?? slug(name);
+    const { roster, token } = await createSellerAccess(this.roster, { sellerId, name });
+    this.roster = roster;
+    saveLocalRoster(roster);
+    this.state.issuedTokens = { ...this.state.issuedTokens, [sellerId]: token };
+    this.render();
+  }
+
+  async regenerateSeller(sellerId, name) {
+    const { roster, token } = await createSellerAccess(this.roster, { sellerId, name });
+    this.roster = roster;
+    saveLocalRoster(roster);
+    this.state.issuedTokens = { ...this.state.issuedTokens, [sellerId]: token };
+    this.render();
+  }
+
+  removeSeller(sellerId) {
+    this.roster = removeSellerAccess(this.roster, sellerId);
+    saveLocalRoster(this.roster);
+    const issued = { ...this.state.issuedTokens };
+    delete issued[sellerId];
+    this.state.issuedTokens = issued;
+    this.render();
+  }
+
+  addTeamMember(name, uf = null) {
+    if (!String(name ?? '').trim()) return;
+    this.setTeam(addToTeam(this.team, name, uf));
+    saveLocalTeam(this.team);
+    this.render();
+  }
+
+  removeTeamMember(sellerId) {
+    this.setTeam(removeFromTeam(this.team, sellerId));
+    saveLocalTeam(this.team);
+    this.render();
+  }
+
+  importTeam(text) {
+    const parsed = teamFromLines(text);
+    if (!parsed.vendedores.length) return;
+    this.setTeam(parsed, 'local');
+    saveLocalTeam(this.team);
+    this.loadData();
+  }
+
+  async regenerateManager() {
+    const { roster, token } = await setManagerAccess(this.roster, { name: this.roster.manager?.name ?? 'Gestor' });
+    this.roster = roster;
+    saveLocalRoster(roster);
+    this.state.managerToken = token;
+    this.writePref('token', token);
+    this.render();
+  }
+
+  updateConfigPath(path, value) {
+    const patch = {};
+    let cursor = patch;
+    const parts = path.split('.');
+    parts.forEach((part, i) => {
+      if (i === parts.length - 1) cursor[part] = value;
+      else { cursor[part] = {}; cursor = cursor[part]; }
+    });
+    this.config = updateConfig(patch);
+    this.startAutoRefresh();
+    this.render();
+  }
+
+  resetConfig() {
+    this.config = resetConfig();
+    this.render();
+  }
+
+  async setDemoMode(enabled) {
+    this.config = updateConfig({ dataSource: { adapter: enabled ? 'demo' : 'pending' } });
+    await this.loadData();
+  }
+
+  // --------------------------------------------------------------- render
+  render() {
+    if (!this.identity) {
+      mount(this.root, loginView({ app: this, error: this.error, roster: this.roster }));
+      return;
+    }
+
+    const isDemo = this.data.today?.isDemo || this.sellerVM?.isDemo;
+    const banner = isDemo ? demoBanner(() => this.setDemoMode(false)) : null;
+
+    if (this.identity.role === 'manager' && this.state.screen === 'admin') {
+      mount(this.root, banner, adminView({
+        config: getConfig(),
+        app: this,
+        roster: this.roster,
+        rosterOrigin: this.rosterOrigin,
+        team: this.team,
+        teamOrigin: this.teamOrigin,
+        sourceHealth: this.sourceHealth,
+      }));
+      return;
+    }
+
+    const config = getConfig();
+    const today = this.data.today ?? emptyDayState(this.now?.date ?? null);
+    const atMinutes = this.now?.minutes ?? 0;
+
+    try {
+      if (this.identity.role === 'manager') {
+        const vm = buildManagerView({
+          today,
+          yesterday: this.data.yesterday,
+          atMinutes,
+          config,
+          historyDays: this.data.historyDays,
+        });
+        mount(this.root, banner, managerView({ vm, config, app: this }));
+      } else {
+        const vm = this.sellerVM ?? buildSellerView({
+          today,
+          yesterday: null,
+          sellerId: this.identity.sellerId,
+          sellerName: this.identity.sellerName,
+          atMinutes,
+          config,
+          historyDays: [],
+        });
+        mount(this.root, banner, sellerView({ vm, config, app: this }));
+        document.body.classList.toggle('is-compact', this.state.compact);
+      }
+    } catch (err) {
+      // Uma falha na barreira de privacidade NUNCA vira uma tela degradada com
+      // dados expostos: a tela não é renderizada.
+      this.fatal(err.message);
+    }
+  }
+
+  fatal(message) {
+    mount(this.root, h('div', { class: 'view view-fatal' },
+      h('div', { class: 'fatal-card' },
+        h('div', { class: 'fatal-icon', 'aria-hidden': 'true', text: '⛔' }),
+        h('h1', { text: 'Painel bloqueado' }),
+        h('p', { text: message }),
+        h('button', { class: 'btn', onclick: () => globalThis.location.reload(), text: 'Recarregar' }))));
+  }
+
+  applyTheme() {
+    const theme = this.config.ui?.theme ?? 'dark';
+    document.documentElement.dataset.theme = theme;
+  }
+
+  // ---------------------------------------------------------- preferências
+  readPref(key, fallback) {
+    try {
+      const raw = globalThis.localStorage?.getItem(`dubosa.liga.${key}`);
+      return raw === null || raw === undefined ? fallback : JSON.parse(raw);
+    } catch { return fallback; }
+  }
+
+  writePref(key, value) {
+    try {
+      if (value === null) globalThis.localStorage?.removeItem(`dubosa.liga.${key}`);
+      else globalThis.localStorage?.setItem(`dubosa.liga.${key}`, JSON.stringify(value));
+    } catch { /* navegador sem armazenamento — o aplicativo segue funcionando */ }
+  }
+}
+export function startApp(root) {
+  const app = new App(root);
+  app.boot();
+  return app;
+}

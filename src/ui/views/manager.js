@@ -1,0 +1,382 @@
+import { h, downloadFile } from '../dom.js';
+import {
+  statTile, deltaBadge, comparison, tierBadge, sectionTitle, businessClock,
+  pacePanel, progressBar, avatar,
+} from '../components/widgets.js';
+import { waitingBlock } from '../components/waiting.js';
+import { dayChart, dayChartTable, sparkline } from '../components/chart.js';
+import {
+  money, number, moneyDelta, numberDelta, percentDelta, ordinal, decimal,
+  dateLongBR, timeFromMinutes, moneyRate,
+} from '../../core/format.js';
+
+/**
+ * PAINEL DO GESTOR
+ * ================
+ *
+ * Visão completa da operação: ranking nominal, cada vendedor individualmente,
+ * evolução no dia, comparação com o dia anterior, projeções e exportação.
+ * É o único perfil que enxerga nomes ao lado de números.
+ */
+
+export function managerView({ vm, config, app }) {
+  // Espera é só quando a base não está conectada. Equipe inteira zerada às 8h
+  // é um placar legítimo — e uma informação que o gestor precisa ver.
+  const awaiting = vm.status !== 'ready';
+  const tab = app.state.managerTab ?? 'ranking';
+
+  return h('div', { class: 'view view-manager' },
+    header({ vm, app }),
+    teamKpis({ vm, awaiting, config }),
+    h('nav', { class: 'tabs', role: 'tablist' },
+      tabButton('ranking', 'Ranking', tab, app),
+      tabButton('vendedor', 'Vendedor', tab, app),
+      tabButton('comparar', 'Comparar', tab, app),
+      tabButton('relatorio', 'Relatório', tab, app)),
+    tab === 'ranking' ? rankingTab({ vm, awaiting, app }) : null,
+    tab === 'vendedor' ? sellerTab({ vm, config, app, awaiting }) : null,
+    tab === 'comparar' ? compareTab({ vm, app, awaiting }) : null,
+    tab === 'relatorio' ? reportTab({ vm, app, awaiting, config }) : null,
+    footer({ vm, app }));
+}
+
+function tabButton(id, label, current, app) {
+  return h('button', {
+    class: ['tab', current === id && 'tab-on'],
+    role: 'tab',
+    'aria-selected': current === id ? 'true' : 'false',
+    onclick: () => app.setManagerTab(id),
+    text: label,
+  });
+}
+
+function header({ vm, app }) {
+  return h('header', { class: 'app-header' },
+    h('div', { class: 'app-header-main' },
+      h('div', { class: 'app-title' },
+        h('span', { class: 'app-name', text: 'Painel do Gestor' }),
+        h('span', { class: 'badge badge-manager', text: 'ACESSO TOTAL' })),
+      h('div', { class: 'app-subtitle', text: dateLongBR(vm.date) })),
+    h('div', { class: 'app-header-side' },
+      businessClock({
+        phase: vm.phase,
+        elapsedMinutes: vm.elapsedMinutes,
+        remainingMinutes: vm.team.performance.remainingMinutes,
+        atMinutes: vm.atMinutes,
+      }),
+      h('button', { class: 'btn btn-ghost btn-sm', onclick: () => app.goAdmin(), text: '⚙ Configuração' })));
+}
+
+function teamKpis({ vm, awaiting, config }) {
+  const p = vm.team.performance;
+  return h('section', { class: 'card' },
+    sectionTitle('Resultado da equipe hoje',
+      h('span', { class: 'section-hint', text: `${number(vm.team.activeCount)} de ${number(vm.team.sellerCount)} produzindo` })),
+    awaiting
+      ? waitingBlock({})
+      : h('div', {},
+        h('div', { class: 'kpi-grid' },
+          statTile({
+            label: 'Pedidos da equipe', icon: '📦', hero: true,
+            value: number(vm.team.orders),
+            sub: comparison(p.vsYesterdaySameTime.orders, 'orders'),
+          }),
+          statTile({
+            label: 'Faturamento da equipe', icon: '💰', hero: true,
+            value: money(vm.team.revenue),
+            sub: comparison(p.vsYesterdaySameTime.revenue, 'revenue'),
+          }),
+          statTile({
+            label: 'Projeção de fechamento', icon: '📈',
+            value: p.projection.revenue === null ? '—' : money(p.projection.revenue),
+            sub: h('span', { class: 'muted', text: p.projection.orders === null ? '' : `${number(p.projection.orders)} pedidos projetados` }),
+          }),
+          statTile({
+            label: 'Ritmo da equipe', icon: '⚡',
+            value: moneyRate(p.pace.revenue),
+            sub: h('span', { class: 'muted', text: `${decimal(p.pace.orders)} pedidos/hora` }),
+          })),
+        h('div', { class: 'kpi-sub-grid' },
+          statTile({ label: 'Média por vendedor', value: money(vm.team.avgRevenue), icon: '👤' }),
+          statTile({ label: 'Média de pedidos', value: decimal(vm.team.avgOrders), icon: '📊' }),
+          statTile({
+            label: 'Meta da equipe',
+            value: p.goals.revenueProgress === null ? '—' : `${Math.round(p.goals.revenueProgress * 100)}%`,
+            icon: '🎯',
+            sub: h('span', { class: 'muted', text: `alvo ${money((config.goals?.dailyRevenue ?? 0) * vm.team.sellerCount)}` }),
+          }))));
+}
+
+// ------------------------------------------------------------------ ranking
+function rankingTab({ vm, awaiting, app }) {
+  if (awaiting) {
+    return h('section', { class: 'card' }, sectionTitle('Ranking da equipe'), waitingBlock({}));
+  }
+  const zerados = vm.rows.filter((r) => r.semProducaoNaBase || r.semProducao).length;
+
+  return h('section', { class: 'card' },
+    sectionTitle('Ranking da equipe', h('span', { class: 'section-hint', text: 'critério: faturamento do dia' })),
+    vm.foraDoCadastro?.length
+      ? h('div', { class: 'alert alert-warn' },
+        h('strong', { text: 'Fora do cadastro: ' }),
+        `a base trouxe ${vm.foraDoCadastro.length === 1 ? 'um nome' : `${vm.foraDoCadastro.length} nomes`} que não está na sua equipe (${vm.foraDoCadastro.join(', ')}). `,
+        'Ninguém foi descartado — eles aparecem assinalados na tabela. Ajuste o cadastro na aba Equipe.')
+      : null,
+    zerados
+      ? h('p', { class: 'muted', text: `${number(zerados)} ${zerados === 1 ? 'vendedor está' : 'vendedores estão'} sem produção até agora e ${zerados === 1 ? 'aparece' : 'aparecem'} nas últimas posições — o cadastro da equipe garante que ninguém suma do ranking.` })
+      : null,
+    h('div', { class: 'table-scroll' },
+      h('table', { class: 'data-table ranking-table' },
+        h('thead', {}, h('tr', {},
+          h('th', { text: '#' }),
+          h('th', { text: 'Vendedor' }),
+          h('th', { class: 'num', text: 'Pedidos' }),
+          h('th', { class: 'num', text: 'Faturamento' }),
+          h('th', { class: 'num', text: 'vs ontem (mesmo horário)' }),
+          h('th', { class: 'num', text: '%' }),
+          h('th', { class: 'num', text: 'Ritmo' }),
+          h('th', { class: 'num', text: 'Projeção' }),
+          h('th', { class: 'num', text: 'Para a próxima' }),
+          h('th', { text: 'Nível' }),
+          h('th', { text: 'Curva' }))),
+        h('tbody', {}, vm.rows.map((row) => rankingRow(row, app))))),
+    h('p', { class: 'privacy-note' },
+      h('span', { 'aria-hidden': 'true', text: '🔒' }),
+      'Esta tabela existe somente no seu perfil. O aplicativo do vendedor não tem tela, rota nem dado capaz de montá-la.'));
+}
+
+function rankingRow(row, app) {
+  const p = row.performance;
+  const r = p.vsYesterdaySameTime.revenue;
+  return h('tr', {
+    class: [row.position === 1 && 'row-leader', row.semProducao && 'row-idle', row.foraDoCadastro && 'row-outsider'],
+    onclick: () => app.openSeller(row.sellerId),
+    title: 'Abrir o painel individual',
+  },
+  h('td', {}, h('span', { class: 'pos-cell' },
+    h('span', { class: 'pos-number', text: ordinal(row.position) }),
+    row.positionDelta !== 0
+      ? h('span', {
+        class: ['pos-move', row.positionDelta > 0 ? 'delta-up' : 'delta-down'],
+        title: `${Math.abs(row.positionDelta)} ${Math.abs(row.positionDelta) === 1 ? 'posição' : 'posições'} ${row.positionDelta > 0 ? 'ganhas' : 'perdidas'} hoje`,
+      }, `${row.positionDelta > 0 ? '▲' : '▼'}${Math.abs(row.positionDelta)}`)
+      : null)),
+  h('td', {}, h('span', { class: 'name-cell' },
+    avatar(row.sellerName),
+    h('span', { text: row.sellerName }),
+    row.uf ? h('span', { class: 'uf-tag', text: row.uf }) : null,
+    row.foraDoCadastro ? h('span', { class: 'flag-outsider', title: 'Veio na base mas não está no cadastro da equipe', text: 'FORA DO CADASTRO' }) : null)),
+  h('td', { class: 'num strong', text: number(p.orders) }),
+  h('td', { class: 'num strong', text: money(p.revenue) }),
+  h('td', { class: 'num' }, deltaBadge(r.direction, moneyDelta(r.abs), { size: 'sm' })),
+  h('td', { class: 'num', text: r.pct === null ? '—' : percentDelta(r.pct) }),
+  h('td', { class: 'num', text: moneyRate(p.pace.revenue) }),
+  h('td', { class: 'num', text: p.projection.revenue === null ? '—' : money(p.projection.revenue) }),
+  h('td', { class: 'num', text: row.gaps?.toNext ? money(row.gaps.toNext.revenue) : '—' }),
+  h('td', {}, tierBadge(row.tier, { size: 'sm' })),
+  h('td', {}, sparkline(row.timeline, 'revenue')));
+}
+
+// --------------------------------------------------------- vendedor (drill)
+function sellerTab({ vm, config, app, awaiting }) {
+  if (awaiting) {
+    return h('section', { class: 'card' }, sectionTitle('Vendedor'), waitingBlock({}));
+  }
+  const selectedId = app.state.selectedSeller ?? vm.rows[0]?.sellerId;
+  const row = vm.rows.find((r) => r.sellerId === selectedId) ?? vm.rows[0];
+  if (!row) return h('section', { class: 'card' }, h('p', { class: 'muted', text: 'Nenhum vendedor na base do dia.' }));
+
+  const p = row.performance;
+  const metric = app.state.metric;
+
+  return h('section', { class: 'card' },
+    sectionTitle('Painel individual',
+      h('select', {
+        class: 'select',
+        'aria-label': 'Escolher vendedor',
+        onchange: (e) => app.openSeller(e.target.value),
+      }, vm.rows.map((r) => h('option', { value: r.sellerId, selected: r.sellerId === row.sellerId }, `${ordinal(r.position)} — ${r.sellerName}`)))),
+
+    h('div', { class: 'drill-head' },
+      avatar(row.sellerName),
+      h('div', {},
+        h('div', { class: 'drill-name', text: row.sellerName }),
+        h('div', { class: 'drill-sub' },
+          h('span', { text: `${ordinal(row.position)} lugar` }),
+          tierBadge(row.tier),
+          row.positionDelta !== 0
+            ? deltaBadge(row.positionDelta > 0 ? 'up' : 'down', `${Math.abs(row.positionDelta)} no dia`, { size: 'sm' })
+            : null))),
+
+    h('div', { class: 'kpi-grid' },
+      statTile({ label: 'Pedidos hoje', icon: '📦', hero: true, value: number(p.orders), sub: comparison(p.vsYesterdaySameTime.orders, 'orders') }),
+      statTile({ label: 'Faturamento hoje', icon: '💰', hero: true, value: money(p.revenue), sub: comparison(p.vsYesterdaySameTime.revenue, 'revenue') }),
+      statTile({ label: 'Projeção de pedidos', icon: '📈', value: p.projection.orders === null ? '—' : number(p.projection.orders) }),
+      statTile({ label: 'Projeção de faturamento', icon: '📈', value: p.projection.revenue === null ? '—' : money(p.projection.revenue) })),
+
+    h('div', { class: 'two-col' },
+      h('div', {}, sectionTitle('Ritmo'), pacePanel(p)),
+      h('div', {}, sectionTitle('Meta do dia'),
+        progressBar({
+          value: p.goals.revenueProgress ?? 0,
+          label: 'Faturamento',
+          caption: `${money(p.revenue)} de ${money(p.goals.revenue ?? 0)}`,
+        }),
+        progressBar({
+          value: p.goals.ordersProgress ?? 0,
+          label: 'Pedidos',
+          caption: `${number(p.orders)} de ${number(p.goals.orders ?? 0)}`,
+          tone: 'alt',
+        }))),
+
+    h('div', { class: 'chart-head' },
+      sectionTitle('Evolução no dia'),
+      h('div', { class: 'seg' },
+        h('button', { class: ['seg-btn', metric === 'revenue' && 'seg-on'], onclick: () => app.setMetric('revenue'), text: 'Faturamento' }),
+        h('button', { class: ['seg-btn', metric === 'orders' && 'seg-on'], onclick: () => app.setMetric('orders'), text: 'Pedidos' }),
+        h('button', { class: 'seg-btn', onclick: () => app.toggleChartTable(), text: app.state.chartAsTable ? 'Gráfico' : 'Tabela' }))),
+    h('div', { class: 'legend' },
+      h('span', { class: 'legend-item' }, h('span', { class: 'legend-swatch legend-today' }), 'Hoje'),
+      h('span', { class: 'legend-item' }, h('span', { class: 'legend-swatch legend-yesterday' }), 'Ontem')),
+    app.state.chartAsTable
+      ? dayChartTable({ today: row.timeline, yesterday: row.yesterdayTimeline, metric })
+      : dayChart({
+        today: row.timeline,
+        yesterday: row.yesterdayTimeline,
+        metric,
+        businessHours: config.businessHours,
+        nowMinutes: vm.atMinutes,
+        height: 240,
+      }),
+
+    h('div', { class: 'gap-strip' },
+      h('div', {}, h('span', { class: 'gap-label', text: 'Distância para a próxima posição' }),
+        h('span', { class: 'gap-value', text: row.gaps?.toNext ? money(row.gaps.toNext.revenue) : '— (líder)' })),
+      h('div', {}, h('span', { class: 'gap-label', text: 'Vantagem sobre a posição anterior' }),
+        h('span', { class: 'gap-value', text: row.gaps?.toPrevious ? money(row.gaps.toPrevious.revenue) : '— (último)' })),
+      h('div', {}, h('span', { class: 'gap-label', text: 'Distância para a liderança' }),
+        h('span', { class: 'gap-value', text: row.gaps?.toLeader ? money(row.gaps.toLeader.revenue) : '— (é o líder)' }))));
+}
+
+// ----------------------------------------------------------------- comparar
+function compareTab({ vm, app, awaiting }) {
+  if (awaiting) return h('section', { class: 'card' }, sectionTitle('Comparar'), waitingBlock({}));
+
+  const a = vm.rows.find((r) => r.sellerId === app.state.compareA) ?? vm.rows[0];
+  const b = vm.rows.find((r) => r.sellerId === app.state.compareB) ?? vm.rows[1] ?? vm.rows[0];
+  if (!a || !b) return h('section', { class: 'card' }, h('p', { class: 'muted', text: 'É preciso ao menos dois vendedores na base.' }));
+
+  const pick = (value, onchange, label) => h('select', {
+    class: 'select', 'aria-label': label, onchange: (e) => onchange(e.target.value),
+  }, vm.rows.map((r) => h('option', { value: r.sellerId, selected: r.sellerId === value }, r.sellerName)));
+
+  const line = (label, av, bv, better) => h('tr', {},
+    h('td', { text: label }),
+    h('td', { class: ['num', better === 'a' && 'cell-better'], text: av }),
+    h('td', { class: ['num', better === 'b' && 'cell-better'], text: bv }));
+
+  const cmp = (x, y) => (x > y ? 'a' : y > x ? 'b' : null);
+
+  return h('section', { class: 'card' },
+    sectionTitle('Comparar vendedores'),
+    h('div', { class: 'compare-picks' },
+      pick(a.sellerId, (v) => app.setCompare('compareA', v), 'Vendedor A'),
+      h('span', { class: 'versus', text: 'x' }),
+      pick(b.sellerId, (v) => app.setCompare('compareB', v), 'Vendedor B')),
+    h('div', { class: 'table-scroll' },
+      h('table', { class: 'data-table' },
+        h('thead', {}, h('tr', {},
+          h('th', { text: '' }),
+          h('th', { class: 'num', text: a.sellerName }),
+          h('th', { class: 'num', text: b.sellerName }))),
+        h('tbody', {},
+          line('Posição', ordinal(a.position), ordinal(b.position), cmp(-a.position, -b.position)),
+          line('Pedidos', number(a.performance.orders), number(b.performance.orders), cmp(a.performance.orders, b.performance.orders)),
+          line('Faturamento', money(a.performance.revenue), money(b.performance.revenue), cmp(a.performance.revenue, b.performance.revenue)),
+          line('Ritmo (R$/h)', moneyRate(a.performance.pace.revenue), moneyRate(b.performance.pace.revenue), cmp(a.performance.pace.revenue, b.performance.pace.revenue)),
+          line('Projeção', a.performance.projection.revenue === null ? '—' : money(a.performance.projection.revenue),
+            b.performance.projection.revenue === null ? '—' : money(b.performance.projection.revenue),
+            cmp(a.performance.projection.revenue ?? 0, b.performance.projection.revenue ?? 0)),
+          line('vs ontem (mesmo horário)', moneyDelta(a.performance.vsYesterdaySameTime.revenue.abs),
+            moneyDelta(b.performance.vsYesterdaySameTime.revenue.abs),
+            cmp(a.performance.vsYesterdaySameTime.revenue.abs, b.performance.vsYesterdaySameTime.revenue.abs)),
+          line('Nível', a.tier.current.name, b.tier.current.name, cmp(a.tier.index, b.tier.index)),
+          line('Movimento no dia', `${a.positionDelta >= 0 ? '+' : ''}${a.positionDelta}`,
+            `${b.positionDelta >= 0 ? '+' : ''}${b.positionDelta}`, cmp(a.positionDelta, b.positionDelta))))));
+}
+
+// ---------------------------------------------------------------- relatório
+function reportTab({ vm, app, awaiting, config }) {
+  const rows = vm.rows;
+
+  const csv = () => {
+    const head = [
+      'posicao', 'vendedor', 'pedidos_hoje', 'faturamento_hoje',
+      'pedidos_ontem_mesmo_horario', 'faturamento_ontem_mesmo_horario',
+      'dif_pedidos', 'dif_faturamento', 'dif_faturamento_pct',
+      'ritmo_pedidos_hora', 'ritmo_faturamento_hora',
+      'projecao_pedidos', 'projecao_faturamento',
+      'nivel', 'variacao_posicao', 'distancia_proxima_posicao',
+    ].join(';');
+    const body = rows.map((r) => {
+      const p = r.performance;
+      return [
+        r.position, `"${r.sellerName}"`, p.orders, p.revenue,
+        p.vsYesterdaySameTime.orders.baseline, p.vsYesterdaySameTime.revenue.baseline,
+        p.vsYesterdaySameTime.orders.abs, p.vsYesterdaySameTime.revenue.abs,
+        p.vsYesterdaySameTime.revenue.pct === null ? '' : (p.vsYesterdaySameTime.revenue.pct * 100).toFixed(1),
+        p.pace.orders.toFixed(2), p.pace.revenue.toFixed(2),
+        p.projection.orders ?? '', p.projection.revenue ?? '',
+        r.tier.current.name, r.positionDelta, r.gaps?.toNext?.revenue ?? '',
+      ].join(';');
+    }).join('\n');
+    return `${head}\n${body}`;
+  };
+
+  const json = () => JSON.stringify({
+    data: vm.date,
+    horario: timeFromMinutes(vm.atMinutes),
+    geradoEm: new Date().toISOString(),
+    expediente: config.businessHours,
+    equipe: vm.team,
+    ranking: rows.map((r) => ({
+      posicao: r.position,
+      vendedor: r.sellerName,
+      pedidos: r.performance.orders,
+      faturamento: r.performance.revenue,
+      projecao: r.performance.projection,
+      ritmo: r.performance.pace,
+      vsOntemMesmoHorario: r.performance.vsYesterdaySameTime,
+      nivel: r.tier.current.name,
+      variacaoPosicao: r.positionDelta,
+    })),
+  }, null, 2);
+
+  return h('section', { class: 'card' },
+    sectionTitle('Relatório administrativo'),
+    awaiting
+      ? waitingBlock({ title: 'Nada a exportar ainda', detail: 'A exportação fica disponível quando houver produção na base.' })
+      : h('div', {},
+        h('p', { class: 'muted', text: `Ranking completo de ${dateLongBR(vm.date)} às ${timeFromMinutes(vm.atMinutes)}, com ${number(rows.length)} vendedores.` }),
+        h('div', { class: 'button-row' },
+          h('button', {
+            class: 'btn btn-primary',
+            onclick: () => downloadFile(`liga-comercial-${vm.date}.csv`, csv(), 'text/csv'),
+            text: '⬇ Exportar CSV',
+          }),
+          h('button', {
+            class: 'btn',
+            onclick: () => downloadFile(`liga-comercial-${vm.date}.json`, json(), 'application/json'),
+            text: '⬇ Exportar JSON',
+          })),
+        h('p', { class: 'privacy-note' },
+          h('span', { 'aria-hidden': 'true', text: '🔒' }),
+          'A exportação é uma permissão exclusiva do gestor.')));
+}
+
+function footer({ vm, app }) {
+  return h('footer', { class: 'app-footer' },
+    h('span', { class: 'muted', text: `Atualizado às ${timeFromMinutes(vm.atMinutes)}` }),
+    h('button', { class: 'btn btn-ghost btn-sm', onclick: () => app.refresh(), text: '↻ Atualizar' }),
+    h('button', { class: 'btn btn-ghost btn-sm', onclick: () => app.logout(), text: 'Sair' }));
+}
