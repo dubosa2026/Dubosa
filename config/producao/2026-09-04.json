@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T19:17:34.960Z",
+  "publicadoEm": "2026-09-04T19:27:37.609Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 16:09",
-    "geradoEm": "2026-09-04T19:13:23.401Z"
+    "ultimaNota": "04/09/2026 16:17",
+    "geradoEm": "2026-09-04T19:23:30.351Z"
   },
   "equipe": [
     {
@@ -168,6 +168,11 @@
       "time": "16:17",
       "orders": 107,
       "revenue": 1993580.5
+    },
+    {
+      "time": "16:27",
+      "orders": 114,
+      "revenue": 2071251.65
     }
   ],
   "records": [
@@ -252,6 +257,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "elandia-camargo-rodrigues",
+      "sellerName": "ELANDIA CAMARGO RODRIGUES",
+      "date": "2026-09-04",
+      "time": "16:27",
+      "orders": 9,
+      "revenue": 0
+    },
+    {
       "sellerId": "erica-oliveira",
       "sellerName": "ERICA OLIVEIRA",
       "date": "2026-09-04",
@@ -265,6 +278,14 @@
       "date": "2026-09-04",
       "time": "15:06",
       "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "erica-oliveira",
+      "sellerName": "ERICA OLIVEIRA",
+      "date": "2026-09-04",
+      "time": "16:27",
+      "orders": 3,
       "revenue": 0
     },
     {
@@ -441,6 +462,14 @@
       "date": "2026-09-04",
       "time": "12:06",
       "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "maria-elisabete-tonon",
+      "sellerName": "MARIA ELISABETE TONON",
+      "date": "2026-09-04",
+      "time": "16:27",
+      "orders": 2,
       "revenue": 0
     },
     {
@@ -636,6 +665,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-09-04",
+      "time": "16:27",
+      "orders": 9,
+      "revenue": 0
+    },
+    {
       "sellerId": "paulo-roberto-da-silva-filho",
       "sellerName": "PAULO ROBERTO DA SILVA FILHO",
       "date": "2026-09-04",
@@ -812,6 +849,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "rosyrene-de-medeiros-celestino",
+      "sellerName": "ROSYRENE DE MEDEIROS CELESTINO",
+      "date": "2026-09-04",
+      "time": "16:27",
+      "orders": 3,
+      "revenue": 0
+    },
+    {
       "sellerId": "victor-vinicius-renno",
       "sellerName": "VICTOR VINICIUS RENNO",
       "date": "2026-09-04",
@@ -873,6 +918,14 @@
       "date": "2026-09-04",
       "time": "16:07",
       "orders": 10,
+      "revenue": 0
+    },
+    {
+      "sellerId": "victor-vinicius-renno",
+      "sellerName": "VICTOR VINICIUS RENNO",
+      "date": "2026-09-04",
+      "time": "16:27",
+      "orders": 11,
       "revenue": 0
     }
   ]
