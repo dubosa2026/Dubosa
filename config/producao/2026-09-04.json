@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T20:27:52.320Z",
+  "publicadoEm": "2026-09-04T20:37:55.057Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 17:18",
-    "geradoEm": "2026-09-04T20:23:16.339Z"
+    "ultimaNota": "04/09/2026 17:27",
+    "geradoEm": "2026-09-04T20:33:16.719Z"
   },
   "equipe": [
     {
@@ -203,6 +203,11 @@
       "time": "17:27",
       "orders": 157,
       "revenue": 2749830.25
+    },
+    {
+      "time": "17:37",
+      "orders": 161,
+      "revenue": 2835175.49
     }
   ],
   "records": [
@@ -327,6 +332,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "elandia-camargo-rodrigues",
+      "sellerName": "ELANDIA CAMARGO RODRIGUES",
+      "date": "2026-09-04",
+      "time": "17:37",
+      "orders": 13,
+      "revenue": 0
+    },
+    {
       "sellerId": "erica-oliveira",
       "sellerName": "ERICA OLIVEIRA",
       "date": "2026-09-04",
@@ -356,6 +369,14 @@
       "date": "2026-09-04",
       "time": "17:27",
       "orders": 4,
+      "revenue": 0
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "sellerName": "GIOVANNA DO CARMO FUJIMOTO",
+      "date": "2026-09-04",
+      "time": "17:37",
+      "orders": 1,
       "revenue": 0
     },
     {
@@ -959,6 +980,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "paulo-roberto-da-silva-filho",
+      "sellerName": "PAULO ROBERTO DA SILVA FILHO",
+      "date": "2026-09-04",
+      "time": "17:37",
+      "orders": 11,
+      "revenue": 0
+    },
+    {
       "sellerId": "rafael-vanderlei-lopes",
       "sellerName": "RAFAEL VANDERLEI LOPES",
       "date": "2026-09-04",
@@ -1044,6 +1073,14 @@
       "date": "2026-09-04",
       "time": "17:27",
       "orders": 21,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rafael-vanderlei-lopes",
+      "sellerName": "RAFAEL VANDERLEI LOPES",
+      "date": "2026-09-04",
+      "time": "17:37",
+      "orders": 22,
       "revenue": 0
     },
     {
