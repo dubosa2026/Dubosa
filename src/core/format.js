@@ -146,3 +146,18 @@ export function initials(fullName) {
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
+
+/**
+ * Hora de um instante ISO, no fuso do aplicativo.
+ *
+ * Serve para dizer QUANDO a base foi lida — informação diferente da hora do
+ * relógio, e a única que denuncia um coletor parado.
+ */
+export function horaDaLeitura(iso, timeZone = 'America/Sao_Paulo') {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone, hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(d);
+}

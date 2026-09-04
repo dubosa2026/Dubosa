@@ -960,6 +960,45 @@ await check('página HTML no lugar dos dados é diagnosticada', async () => {
 });
 
 // ------------------------------------------------------- COLETOR AUTOMÁTICO
+console.log('\nINSTALADOR DO VENDEDOR');
+const inst = await import('../src/core/instalador.js');
+const LINK_TESTE = 'https://dubosa2026.github.io/Dubosa/liga/#/v/EVFX-866X-9NBM';
+
+await check('o PowerShell executado comeca no lugar certo', () => {
+  // O marcador aparece DUAS vezes no arquivo: dentro da linha que o procura e
+  // depois, de verdade. Com IndexOf o PowerShell executado comecava no meio da
+  // propria linha de comando -- o instalador quebraria em toda maquina, longe
+  // daqui, e o teste e o unico lugar onde isso aparece.
+  const MARCA = '#INICIO-POWERSHELL#';
+  const bat = inst.instaladorWindows({ link: LINK_TESTE, nome: 'Alisson dos Santos Ribeiro' });
+  assertEqual(bat.split(MARCA).length - 1, 2, 'o marcador precisa aparecer duas vezes:');
+  assert(bat.includes('LastIndexOf('), 'IndexOf pegaria a ocorrencia errada');
+  const ps = bat.substring(bat.lastIndexOf(MARCA) + MARCA.length).trim();
+  assert(ps.startsWith('$ErrorActionPreference'), `o script comecaria em: ${ps.slice(0, 40)}`);
+});
+
+await check('o instalador leva o link da pessoa e a janela pedida', () => {
+  const bat = inst.instaladorWindows({ link: LINK_TESTE, nome: 'Alisson' });
+  assert(bat.includes(LINK_TESTE), 'o link da pessoa precisa estar dentro');
+  assert(bat.includes(`--window-size=${inst.JANELA.largura},${inst.JANELA.altura}`), 'janela do tamanho pedido');
+  assert(bat.includes('--app='), 'sem --app a janela vem com barra de enderecos e abas');
+  assert(bat.includes("GetFolderPath('Startup')"), 'sem isso nao ha inicializacao automatica');
+  assert(/CriarAtalho \(\[Environment\]::GetFolderPath\('Startup'\)\) 7/.test(bat),
+    'a abertura automatica precisa ser minimizada (estilo 7)');
+  assert(!bat.includes('${'.concat('JANELA')), 'sobrou marcador de template');
+});
+
+await check('link invalido nao vira instalador', () => {
+  let caiu = false;
+  try { inst.instaladorWindows({ link: 'EVFX-866X-9NBM' }); } catch { caiu = true; }
+  assert(caiu, 'um codigo solto nao e link e nao pode virar arquivo executavel');
+});
+
+await check('o nome do arquivo atravessa WhatsApp sem acento nem espaco', () => {
+  assertEqual(inst.nomeDeArquivo('Elândia Camargo Rodrigues'), 'Liga-Comercial-Elandia-Camargo-Rodrigues.bat');
+  assertEqual(inst.nomeDeArquivo(''), 'Liga-Comercial-vendedor.bat');
+});
+
 console.log('\nCOLETOR AUTOMÁTICO');
 const coletor = await import('../scripts/coletar-producao.mjs');
 

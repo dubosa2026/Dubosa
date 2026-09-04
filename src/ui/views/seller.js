@@ -6,7 +6,7 @@ import {
 import { waitingBlock, waitingValue } from '../components/waiting.js';
 import { dayChart, dayChartTable } from '../components/chart.js';
 import {
-  money, number, moneyDelta, numberDelta, percentDelta, ordinal, dateLongBR, timeFromMinutes,
+  money, number, moneyDelta, numberDelta, percentDelta, ordinal, dateLongBR, timeFromMinutes, horaDaLeitura,
 } from '../../core/format.js';
 import { versaoPublicada } from '../../core/settings.js';
 
@@ -390,7 +390,9 @@ function teamSection({ vm, awaiting }) {
 function footer({ vm, app }) {
   return h('footer', { class: 'app-footer' },
     h('span', { class: 'muted' },
-      `Atualizado às ${timeFromMinutes(vm.atMinutes)}`,
+      // A hora do relógio não diz nada sobre o placar: com o coletor parado, um
+      // número de horas atrás tem a mesma cara de um número de agora.
+      vm.lidaEm ? `Base lida às ${horaDaLeitura(vm.lidaEm)}` : `Atualizado às ${timeFromMinutes(vm.atMinutes)}`,
       versaoPublicada() ? h('span', { class: 'versao', title: 'Versão publicada deste aplicativo', text: ` · v${versaoPublicada()}` }) : null),
     h('button', { class: 'btn btn-ghost btn-sm', onclick: () => app.refresh(), text: '↻ Atualizar' }),
     h('button', { class: 'btn btn-ghost btn-sm', onclick: () => app.logout(), text: 'Sair' }));
