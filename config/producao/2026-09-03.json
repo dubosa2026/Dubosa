@@ -1,13 +1,20 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-03",
-  "publicadoEm": "2026-09-04T04:12:13.013Z",
+  "publicadoEm": "2026-09-04T10:18:45.271Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
     "ultimaNota": "03/09/2026 21:43",
     "geradoEm": "2026-09-04T00:51:42.903Z"
   },
+  "equipe": [
+    {
+      "time": "07:18",
+      "orders": 130,
+      "revenue": 2554422.63
+    }
+  ],
   "records": [
     {
       "sellerId": "alisson-dos-santos-ribeiro",
