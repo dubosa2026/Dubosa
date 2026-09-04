@@ -8,7 +8,12 @@
  *     atual seria pior que placar nenhum.
  */
 
-const VERSION = 'liga-v1';
+// Todo cache deste aplicativo começa com este prefixo. Não é enfeite: o
+// armazenamento de cache pertence à ORIGEM, não à pasta. Este app divide
+// dubosa2026.github.io com outros dois, e uma limpeza que apagasse "tudo que
+// não é meu" derrubaria o modo offline dos vizinhos — e o deles, o nosso.
+const PREFIXO = 'liga-';
+const VERSION = `${PREFIXO}v1`;
 const SHELL = [
   './',
   './index.html',
@@ -55,7 +60,9 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys
+        .filter((k) => k.startsWith(PREFIXO) && k !== VERSION)
+        .map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });

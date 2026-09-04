@@ -7,7 +7,7 @@ import { waitingBlock } from '../components/waiting.js';
 import { dayChart, dayChartTable, sparkline } from '../components/chart.js';
 import {
   money, number, moneyDelta, numberDelta, percentDelta, ordinal, decimal,
-  dateLongBR, timeFromMinutes, moneyRate,
+  dateLongBR, timeFromMinutes, moneyRate, orderRate,
 } from '../../core/format.js';
 
 /**
@@ -69,6 +69,7 @@ function header({ vm, app }) {
 
 function teamKpis({ app, vm, awaiting, config }) {
   const p = vm.team.performance;
+  const temFaturamento = vm.revenueAvailable;
   return h('section', { class: 'card' },
     sectionTitle('Resultado da equipe hoje',
       h('span', { class: 'section-hint', text: `${number(vm.team.activeCount)} de ${number(vm.team.sellerCount)} produzindo` })),
@@ -93,30 +94,60 @@ function teamKpis({ app, vm, awaiting, config }) {
             value: number(vm.team.orders),
             sub: comparison(p.vsYesterdaySameTime.orders, 'orders'),
           }),
-          statTile({
-            label: 'Faturamento da equipe', icon: '💰', hero: true,
-            value: money(vm.team.revenue),
-            sub: comparison(p.vsYesterdaySameTime.revenue, 'revenue'),
-          }),
+          temFaturamento
+            ? statTile({
+              label: 'Faturamento da equipe', icon: '💰', hero: true,
+              value: money(vm.team.revenue),
+              sub: comparison(p.vsYesterdaySameTime.revenue, 'revenue'),
+            })
+            : statTile({
+              label: 'Faturamento da equipe', icon: '💰', hero: true,
+              value: '—',
+              sub: 'a origem informa faturamento por carteira, não por vendedor',
+            }),
+          // Sem faturamento por vendedor, todo indicador de dinheiro vira R$ 0
+          // e mente. Nesses dias quem ocupa o lugar de destaque é o pedido —
+          // que é o que a origem realmente informa e o que decide o ranking.
           statTile({
             label: 'Projeção de fechamento', icon: '📈',
-            value: p.projection.revenue === null ? '—' : money(p.projection.revenue),
-            sub: h('span', { class: 'muted', text: p.projection.orders === null ? '' : `${number(p.projection.orders)} pedidos projetados` }),
+            value: temFaturamento
+              ? (p.projection.revenue === null ? '—' : money(p.projection.revenue))
+              : (p.projection.orders === null ? '—' : `${number(p.projection.orders)} pedidos`),
+            sub: h('span', {
+              class: 'muted',
+              text: temFaturamento
+                ? (p.projection.orders === null ? '' : `${number(p.projection.orders)} pedidos projetados`)
+                : 'no ritmo de agora até o fim do expediente',
+            }),
           }),
           statTile({
             label: 'Ritmo da equipe', icon: '⚡',
-            value: moneyRate(p.pace.revenue),
-            sub: h('span', { class: 'muted', text: `${decimal(p.pace.orders)} pedidos/hora` }),
+            value: temFaturamento ? moneyRate(p.pace.revenue) : orderRate(p.pace.orders),
+            sub: h('span', {
+              class: 'muted',
+              text: temFaturamento ? `${decimal(p.pace.orders)} pedidos/hora` : 'por hora de expediente',
+            }),
           })),
         h('div', { class: 'kpi-sub-grid' },
-          statTile({ label: 'Média por vendedor', value: money(vm.team.avgRevenue), icon: '👤' }),
+          temFaturamento
+            ? statTile({ label: 'Média por vendedor', value: money(vm.team.avgRevenue), icon: '👤' })
+            : statTile({ label: 'Média por vendedor', value: decimal(vm.team.avgOrders), icon: '👤', sub: h('span', { class: 'muted', text: 'pedidos por vendedor' }) }),
           statTile({ label: 'Média de pedidos', value: decimal(vm.team.avgOrders), icon: '📊' }),
-          statTile({
-            label: 'Meta da equipe',
-            value: p.goals.revenueProgress === null ? '—' : `${Math.round(p.goals.revenueProgress * 100)}%`,
-            icon: '🎯',
-            sub: h('span', { class: 'muted', text: `alvo ${money((config.goals?.dailyRevenue ?? 0) * vm.team.sellerCount)}` }),
-          }))));
+          temFaturamento
+            ? statTile({
+              label: 'Meta da equipe',
+              value: p.goals.revenueProgress === null ? '—' : `${Math.round(p.goals.revenueProgress * 100)}%`,
+              icon: '🎯',
+              sub: h('span', { class: 'muted', text: `alvo ${money((config.goals?.dailyRevenue ?? 0) * vm.team.sellerCount)}` }),
+            })
+            : statTile({
+              label: 'Meta da equipe',
+              value: p.goals.ordersProgress === null || p.goals.ordersProgress === undefined
+                ? '—'
+                : `${Math.round(p.goals.ordersProgress * 100)}%`,
+              icon: '🎯',
+              sub: h('span', { class: 'muted', text: `alvo ${number((config.goals?.dailyOrders ?? 0) * vm.team.sellerCount)} pedidos` }),
+            }))));
 }
 
 // ------------------------------------------------------------------ ranking
@@ -163,15 +194,23 @@ function rankingTab({ vm, awaiting, app }) {
           h('th', { class: 'num', text: 'Para a próxima' }),
           h('th', { text: 'Nível' }),
           h('th', { text: 'Curva' }))),
-        h('tbody', {}, vm.rows.map((row) => rankingRow(row, app))))),
+        h('tbody', {}, vm.rows.map((row) => rankingRow(row, app, vm.revenueAvailable))))),
     h('p', { class: 'privacy-note' },
       h('span', { 'aria-hidden': 'true', text: '🔒' }),
       'Esta tabela existe somente no seu perfil. O aplicativo do vendedor não tem tela, rota nem dado capaz de montá-la.'));
 }
 
-function rankingRow(row, app) {
+function rankingRow(row, app, temFaturamento = true) {
   const p = row.performance;
-  const r = p.vsYesterdaySameTime.revenue;
+  // Quando a origem informa faturamento só por carteira, `revenue` chega zero
+  // para todo mundo. Imprimir "R$ 0" seria afirmar que ninguém vendeu — a
+  // mesma confusão entre "zerado" e "não informado" que este aplicativo existe
+  // para não cometer. Sem o dado, as colunas de dinheiro passam a mostrar o que
+  // de fato está sendo disputado: pedidos.
+  const r = temFaturamento ? p.vsYesterdaySameTime.revenue : p.vsYesterdaySameTime.orders;
+  const semDado = () => h('span', {
+    class: 'muted', title: 'A origem dos dados não informa faturamento por vendedor', text: 'não informado',
+  });
   return h('tr', {
     class: [row.position === 1 && 'row-leader', row.semProducao && 'row-idle', row.foraDoCadastro && 'row-outsider'],
     onclick: () => app.openSeller(row.sellerId),
@@ -191,16 +230,20 @@ function rankingRow(row, app) {
     row.uf ? h('span', { class: 'uf-tag', text: row.uf }) : null,
     row.foraDoCadastro ? h('span', { class: 'flag-outsider', title: 'Veio na base mas não está no cadastro da equipe', text: 'FORA DO CADASTRO' }) : null)),
   h('td', { class: 'num strong', text: number(p.orders) }),
-  h('td', { class: 'num strong', text: money(p.revenue) }),
+  h('td', { class: 'num strong' }, temFaturamento ? money(p.revenue) : semDado()),
   h('td', { class: 'num' }, r.semBase
     ? h('span', { class: 'muted', title: 'Não há registro do dia anterior para comparar', text: 'sem base' })
-    : deltaBadge(r.direction, moneyDelta(r.abs), { size: 'sm' })),
+    : deltaBadge(r.direction, temFaturamento ? moneyDelta(r.abs) : numberDelta(r.abs), { size: 'sm' })),
   h('td', { class: 'num', text: r.semBase || r.pct === null ? '—' : percentDelta(r.pct) }),
-  h('td', { class: 'num', text: moneyRate(p.pace.revenue) }),
-  h('td', { class: 'num', text: p.projection.revenue === null ? '—' : money(p.projection.revenue) }),
-  h('td', { class: 'num', text: row.gaps?.toNext ? money(row.gaps.toNext.revenue) : '—' }),
+  h('td', { class: 'num', text: temFaturamento ? moneyRate(p.pace.revenue) : orderRate(p.pace.orders) }),
+  h('td', { class: 'num' }, temFaturamento
+    ? (p.projection.revenue === null ? '—' : money(p.projection.revenue))
+    : (p.projection.orders === null ? '—' : number(p.projection.orders))),
+  h('td', { class: 'num' }, row.gaps?.toNext
+    ? (temFaturamento ? money(row.gaps.toNext.revenue) : number(row.gaps.toNext.orders))
+    : '—'),
   h('td', {}, tierBadge(row.tier, { size: 'sm' })),
-  h('td', {}, sparkline(row.timeline, 'revenue')));
+  h('td', {}, sparkline(row.timeline, temFaturamento ? 'revenue' : 'orders')));
 }
 
 // --------------------------------------------------------- vendedor (drill)
