@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T18:07:00.470Z",
+  "publicadoEm": "2026-09-04T18:17:03.200Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 14:59",
-    "geradoEm": "2026-09-04T18:03:12.043Z"
+    "ultimaNota": "04/09/2026 15:08",
+    "geradoEm": "2026-09-04T18:13:20.173Z"
   },
   "equipe": [
     {
@@ -138,6 +138,11 @@
       "time": "15:06",
       "orders": 86,
       "revenue": 1718850.46
+    },
+    {
+      "time": "15:17",
+      "orders": 87,
+      "revenue": 1734618.46
     }
   ],
   "records": [
@@ -195,6 +200,14 @@
       "date": "2026-09-04",
       "time": "13:56",
       "orders": 5,
+      "revenue": 0
+    },
+    {
+      "sellerId": "elandia-camargo-rodrigues",
+      "sellerName": "ELANDIA CAMARGO RODRIGUES",
+      "date": "2026-09-04",
+      "time": "15:17",
+      "orders": 6,
       "revenue": 0
     },
     {
