@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T22:28:18.057Z",
+  "publicadoEm": "2026-09-04T23:08:24.164Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 19:10",
-    "geradoEm": "2026-09-04T22:23:04.815Z"
+    "ultimaNota": "04/09/2026 19:54",
+    "geradoEm": "2026-09-04T23:03:06.774Z"
   },
   "equipe": [
     {
@@ -243,6 +243,11 @@
       "time": "19:28",
       "orders": 174,
       "revenue": 3067845.23
+    },
+    {
+      "time": "20:08",
+      "orders": 175,
+      "revenue": 3081126.39
     }
   ],
   "records": [
@@ -1284,6 +1289,14 @@
       "date": "2026-09-04",
       "time": "18:58",
       "orders": 5,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rosyrene-de-medeiros-celestino",
+      "sellerName": "ROSYRENE DE MEDEIROS CELESTINO",
+      "date": "2026-09-04",
+      "time": "20:08",
+      "orders": 6,
       "revenue": 0
     },
     {
