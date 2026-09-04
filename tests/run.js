@@ -26,6 +26,14 @@ import { DemoSource } from '../src/data/sources/DemoSource.js';
 const here = dirname(fileURLToPath(import.meta.url));
 const config = JSON.parse(readFileSync(join(here, '..', 'config', 'app.config.json'), 'utf8'));
 
+// A configuração publicada vem com o faturamento individual DESLIGADO: a
+// origem informa valor por carteira, e mesmo que um dia passe a informar por
+// vendedor, mostrar isso é decisão de quem manda, não efeito colateral de uma
+// mudança na origem. Os testes que exercitam o mundo com faturamento por
+// vendedor ligam a chave explicitamente — assim cada teste diz qual dos dois
+// mundos está verificando, em vez de depender do padrão.
+const configComFaturamento = { ...config, ui: { ...config.ui, faturamentoIndividual: true } };
+
 let passed = 0;
 const failures = [];
 
@@ -300,7 +308,7 @@ await check('cadastro vazio não altera o dia', () => {
 // ----------------------------------------------------------- PRIVACIDADE 🔒
 console.log('\nPRIVACIDADE — REGRA ESTRUTURAL');
 const sellerView = access.buildSellerView({
-  today, yesterday, sellerId: 'joao pedro', sellerName: 'Joao Pedro', atMinutes: AT, config,
+  today, yesterday, sellerId: 'joao pedro', sellerName: 'Joao Pedro', atMinutes: AT, config: configComFaturamento,
 });
 
 await check('vendedor vê a própria posição', () => {
@@ -475,7 +483,7 @@ await check('sequência de alta performance exige alta performance também hoje'
 
 // ------------------------------------------------------------------- gestor
 console.log('\nPAINEL DO GESTOR');
-const managerView = access.buildManagerView({ today, yesterday, atMinutes: AT, config });
+const managerView = access.buildManagerView({ today, yesterday, atMinutes: AT, config: configComFaturamento });
 await check('gestor vê o ranking nominal completo', () => {
   assertEqual(managerView.rows.length, 5);
   assertEqual(managerView.rows[0].sellerName, 'Mariana Costa');
@@ -960,6 +968,58 @@ await check('página HTML no lugar dos dados é diagnosticada', async () => {
 });
 
 // ------------------------------------------------------- COLETOR AUTOMÁTICO
+console.log('\nFATURAMENTO INDIVIDUAL OCULTO');
+
+// O mundo real de hoje: origem com faturamento por vendedor E a chave
+// desligada. Nem assim pode aparecer.
+const DIA_COM_DINHEIRO = buildDayState({
+  status: 'ready', semantics: 'cumulative', date: DATE,
+  meta: { totaisDaEquipe: [{ time: '14:00', orders: 17, revenue: 370332 }] },
+  records: [
+    { sellerId: 'ana-ferreira', sellerName: 'ANA FERREIRA', date: DATE, time: '14:00', orders: 6, revenue: 120000 },
+    { sellerId: 'bruno-machado', sellerName: 'BRUNO MACHADO', date: DATE, time: '14:00', orders: 9, revenue: 200000 },
+    { sellerId: 'carla-tavares', sellerName: 'CARLA TAVARES', date: DATE, time: '14:00', orders: 2, revenue: 50332 },
+  ],
+});
+
+await check('a chave desligada esconde mesmo quando a origem informa', () => {
+  assertEqual(DIA_COM_DINHEIRO.revenueAvailable, true, 'a origem informa, e isso continua sendo verdade:');
+  assertEqual(access.podeMostrarFaturamentoIndividual(DIA_COM_DINHEIRO, config), false,
+    'a chave desligada manda, mesmo com a origem informando:');
+  assertEqual(access.podeMostrarFaturamentoIndividual(DIA_COM_DINHEIRO, configComFaturamento), true);
+});
+
+await check('com a chave desligada o ranking corre por pedidos', () => {
+  const regras = access.regrasDeRanking(DIA_COM_DINHEIRO, config);
+  assertEqual(regras.primary, 'orders');
+  // Bruno tem mais pedidos E mais faturamento; Ana tem 6 pedidos e Carla 2.
+  const r = ranking.rankAt(DIA_COM_DINHEIRO, AT, regras);
+  assertEqual(r[0].sellerName, 'BRUNO MACHADO');
+});
+
+await check('nenhum numero de faturamento individual atravessa o modelo do vendedor', () => {
+  const v = access.buildSellerView({
+    today: DIA_COM_DINHEIRO, yesterday: null, sellerId: 'ana-ferreira', sellerName: 'Ana Ferreira',
+    atMinutes: AT, config, origemConectada: true,
+  });
+  assertEqual(v.revenueAvailable, false);
+  assertEqual(v.myShareOfRevenue ?? null, null);
+  assertEqual(v.team.myShareOfRevenue, null, 'a fatia individual e faturamento individual disfarcado:');
+  // O total da equipe, esse fica.
+  assertEqual(v.team.revenue, 370332);
+  const textos = v.messages.map((m) => m.text).join(' ');
+  assert(!textos.includes('R$'), `mensagem com dinheiro individual: ${textos}`);
+});
+
+await check('a chave ligada devolve o faturamento individual', () => {
+  const v = access.buildSellerView({
+    today: DIA_COM_DINHEIRO, yesterday: null, sellerId: 'ana-ferreira', sellerName: 'Ana Ferreira',
+    atMinutes: AT, config: configComFaturamento, origemConectada: true,
+  });
+  assertEqual(v.revenueAvailable, true);
+  assertEqual(v.performance.revenue, 120000);
+});
+
 console.log('\nINSTALADOR DO VENDEDOR');
 const inst = await import('../src/core/instalador.js');
 const LINK_TESTE = 'https://dubosa2026.github.io/Dubosa/liga/#/v/EVFX-866X-9NBM';

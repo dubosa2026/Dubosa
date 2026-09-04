@@ -101,7 +101,8 @@
   "ui": {
     "refreshSeconds": 60,
     "compactByDefault": false,
-    "theme": "dark"
+    "theme": "dark",
+    "faturamentoIndividual": false
   },
   "dataSource": {
     "adapter": "arquivo",

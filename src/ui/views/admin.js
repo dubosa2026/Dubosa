@@ -668,6 +668,16 @@ function rulesPanel({ app, config }) {
       num('Minutos mínimos antes de projetar', 'projection.minElapsedMinutes', config.projection?.minElapsedMinutes ?? 30, 5, 'min'),
       num('Multiplicador máximo', 'projection.maxMultiplier', config.projection?.maxMultiplier ?? 4, 0.5, 'x')),
 
+    h('h3', { class: 'sub-title', text: 'Faturamento' }),
+    toggle('Mostrar faturamento por vendedor', 'ui.faturamentoIndividual',
+      config.ui?.faturamentoIndividual === true,
+      'Desligado, some de todas as telas e do relatório exportado. O total da equipe continua aparecendo.'),
+    h('div', { class: 'alert alert-info' },
+      h('strong', { text: 'Por que existe esta chave. ' }),
+      'O sistema de pedidos informa faturamento por carteira, não por vendedor — hoje não há o que mostrar. '
+      + 'Se um dia ele passar a informar, o valor individual apareceria na tela de todo mundo sem ninguém ter decidido isso. '
+      + 'Numa competição, faturamento individual é dado sensível: fica desligado até você ligar.'),
+
     h('h3', { class: 'sub-title', text: 'Privacidade' }),
     toggle('Mostrar o total da equipe ao vendedor', 'privacy.sellerSeesTeamAggregate',
       config.privacy?.sellerSeesTeamAggregate !== false, 'Somente somas — nunca resultado individual de colega.'),

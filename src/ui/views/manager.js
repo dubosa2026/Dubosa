@@ -213,9 +213,12 @@ function rankingTab({ vm, awaiting, app }) {
       ? null
       : h('div', { class: 'alert alert-info' },
         h('strong', { text: 'Ranking por pedidos. ' }),
-        'A origem dos dados informa faturamento por carteira, não por vendedor. '
-        + 'Repartir o valor da carteira entre a equipe daria um número plausível e falso, '
-        + 'então a coluna de faturamento fica vazia e a disputa corre por pedidos.'),
+        vm.faturamentoNaOrigem
+          ? 'O faturamento por vendedor está oculto por configuração — some das telas, das mensagens e do relatório. '
+            + 'Para mostrá-lo: Configuração → Regras → Faturamento. O total da equipe continua aparecendo.'
+          : 'A origem dos dados informa faturamento por carteira, não por vendedor. '
+            + 'Repartir o valor da carteira entre a equipe daria um número plausível e falso, '
+            + 'então a coluna de faturamento fica vazia e a disputa corre por pedidos.'),
     vm.foraDoCadastro?.length
       ? h('div', { class: 'alert alert-warn' },
         h('strong', { text: 'Fora do cadastro: ' }),
@@ -301,7 +304,8 @@ function sellerTab({ vm, config, app, awaiting }) {
   if (!row) return h('section', { class: 'card' }, h('p', { class: 'muted', text: 'Nenhum vendedor na base do dia.' }));
 
   const p = row.performance;
-  const metric = app.state.metric;
+  const temFaturamento = vm.revenueAvailable;
+  const metric = temFaturamento ? app.state.metric : 'orders';
 
   return h('section', { class: 'card' },
     sectionTitle('Painel individual',
@@ -331,18 +335,24 @@ function sellerTab({ vm, config, app, awaiting }) {
 
     h('div', { class: 'kpi-grid' },
       statTile({ label: 'Pedidos hoje', icon: '📦', hero: true, value: number(p.orders), sub: comparison(p.vsYesterdaySameTime.orders, 'orders') }),
-      statTile({ label: 'Faturamento hoje', icon: '💰', hero: true, value: money(p.revenue), sub: comparison(p.vsYesterdaySameTime.revenue, 'revenue') }),
+      temFaturamento
+        ? statTile({ label: 'Faturamento hoje', icon: '💰', hero: true, value: money(p.revenue), sub: comparison(p.vsYesterdaySameTime.revenue, 'revenue') })
+        : null,
       statTile({ label: 'Projeção de pedidos', icon: '📈', value: p.projection.orders === null ? '—' : number(p.projection.orders) }),
-      statTile({ label: 'Projeção de faturamento', icon: '📈', value: p.projection.revenue === null ? '—' : money(p.projection.revenue) })),
+      temFaturamento
+        ? statTile({ label: 'Projeção de faturamento', icon: '📈', value: p.projection.revenue === null ? '—' : money(p.projection.revenue) })
+        : null),
 
     h('div', { class: 'two-col' },
-      h('div', {}, sectionTitle('Ritmo'), pacePanel(p)),
+      h('div', {}, sectionTitle('Ritmo'), pacePanel(p, { temFaturamento })),
       h('div', {}, sectionTitle('Meta do dia'),
-        progressBar({
-          value: p.goals.revenueProgress ?? 0,
-          label: 'Faturamento',
-          caption: `${money(p.revenue)} de ${money(p.goals.revenue ?? 0)}`,
-        }),
+        temFaturamento
+          ? progressBar({
+            value: p.goals.revenueProgress ?? 0,
+            label: 'Faturamento',
+            caption: `${money(p.revenue)} de ${money(p.goals.revenue ?? 0)}`,
+          })
+          : null,
         progressBar({
           value: p.goals.ordersProgress ?? 0,
           label: 'Pedidos',
@@ -353,7 +363,9 @@ function sellerTab({ vm, config, app, awaiting }) {
     h('div', { class: 'chart-head' },
       sectionTitle('Evolução no dia'),
       h('div', { class: 'seg' },
-        h('button', { class: ['seg-btn', metric === 'revenue' && 'seg-on'], onclick: () => app.setMetric('revenue'), text: 'Faturamento' }),
+        temFaturamento
+          ? h('button', { class: ['seg-btn', metric === 'revenue' && 'seg-on'], onclick: () => app.setMetric('revenue'), text: 'Faturamento' })
+          : null,
         h('button', { class: ['seg-btn', metric === 'orders' && 'seg-on'], onclick: () => app.setMetric('orders'), text: 'Pedidos' }),
         h('button', { class: 'seg-btn', onclick: () => app.toggleChartTable(), text: app.state.chartAsTable ? 'Gráfico' : 'Tabela' }))),
     h('div', { class: 'legend' },
@@ -372,16 +384,24 @@ function sellerTab({ vm, config, app, awaiting }) {
 
     h('div', { class: 'gap-strip' },
       h('div', {}, h('span', { class: 'gap-label', text: 'Distância para a próxima posição' }),
-        h('span', { class: 'gap-value', text: row.gaps?.toNext ? money(row.gaps.toNext.revenue) : '— (líder)' })),
+        h('span', { class: 'gap-value', text: row.gaps?.toNext ? distancia(row.gaps.toNext, temFaturamento) : '— (líder)' })),
       h('div', {}, h('span', { class: 'gap-label', text: 'Vantagem sobre a posição anterior' }),
-        h('span', { class: 'gap-value', text: row.gaps?.toPrevious ? money(row.gaps.toPrevious.revenue) : '— (último)' })),
+        h('span', { class: 'gap-value', text: row.gaps?.toPrevious ? distancia(row.gaps.toPrevious, temFaturamento) : '— (último)' })),
       h('div', {}, h('span', { class: 'gap-label', text: 'Distância para a liderança' }),
-        h('span', { class: 'gap-value', text: row.gaps?.toLeader ? money(row.gaps.toLeader.revenue) : '— (é o líder)' }))));
+        h('span', { class: 'gap-value', text: row.gaps?.toLeader ? distancia(row.gaps.toLeader, temFaturamento) : '— (é o líder)' }))));
+}
+
+/** Distância entre posições, dita no indicador que está valendo. */
+function distancia(gap, temFaturamento) {
+  return temFaturamento
+    ? money(gap.revenue)
+    : `${number(gap.orders)} ${gap.orders === 1 ? 'pedido' : 'pedidos'}`;
 }
 
 // ----------------------------------------------------------------- comparar
 function compareTab({ vm, app, awaiting }) {
   if (awaiting) return h('section', { class: 'card' }, sectionTitle('Comparar'), waitingBlock({}));
+  const temFaturamento = vm.revenueAvailable;
 
   const a = vm.rows.find((r) => r.sellerId === app.state.compareA) ?? vm.rows[0];
   const b = vm.rows.find((r) => r.sellerId === app.state.compareB) ?? vm.rows[1] ?? vm.rows[0];
@@ -413,14 +433,26 @@ function compareTab({ vm, app, awaiting }) {
         h('tbody', {},
           line('Posição', ordinal(a.position), ordinal(b.position), cmp(-a.position, -b.position)),
           line('Pedidos', number(a.performance.orders), number(b.performance.orders), cmp(a.performance.orders, b.performance.orders)),
-          line('Faturamento', money(a.performance.revenue), money(b.performance.revenue), cmp(a.performance.revenue, b.performance.revenue)),
-          line('Ritmo (R$/h)', moneyRate(a.performance.pace.revenue), moneyRate(b.performance.pace.revenue), cmp(a.performance.pace.revenue, b.performance.pace.revenue)),
-          line('Projeção', a.performance.projection.revenue === null ? '—' : money(a.performance.projection.revenue),
-            b.performance.projection.revenue === null ? '—' : money(b.performance.projection.revenue),
-            cmp(a.performance.projection.revenue ?? 0, b.performance.projection.revenue ?? 0)),
-          line('vs ontem (mesmo horário)', moneyDelta(a.performance.vsYesterdaySameTime.revenue.abs),
-            moneyDelta(b.performance.vsYesterdaySameTime.revenue.abs),
-            cmp(a.performance.vsYesterdaySameTime.revenue.abs, b.performance.vsYesterdaySameTime.revenue.abs)),
+          temFaturamento
+            ? line('Faturamento', money(a.performance.revenue), money(b.performance.revenue), cmp(a.performance.revenue, b.performance.revenue))
+            : null,
+          temFaturamento
+            ? line('Ritmo (R$/h)', moneyRate(a.performance.pace.revenue), moneyRate(b.performance.pace.revenue), cmp(a.performance.pace.revenue, b.performance.pace.revenue))
+            : line('Ritmo (pedidos/h)', orderRate(a.performance.pace.orders), orderRate(b.performance.pace.orders), cmp(a.performance.pace.orders, b.performance.pace.orders)),
+          temFaturamento
+            ? line('Projeção', a.performance.projection.revenue === null ? '—' : money(a.performance.projection.revenue),
+              b.performance.projection.revenue === null ? '—' : money(b.performance.projection.revenue),
+              cmp(a.performance.projection.revenue ?? 0, b.performance.projection.revenue ?? 0))
+            : line('Projeção (pedidos)', a.performance.projection.orders === null ? '—' : number(a.performance.projection.orders),
+              b.performance.projection.orders === null ? '—' : number(b.performance.projection.orders),
+              cmp(a.performance.projection.orders ?? 0, b.performance.projection.orders ?? 0)),
+          temFaturamento
+            ? line('vs ontem (mesmo horário)', moneyDelta(a.performance.vsYesterdaySameTime.revenue.abs),
+              moneyDelta(b.performance.vsYesterdaySameTime.revenue.abs),
+              cmp(a.performance.vsYesterdaySameTime.revenue.abs, b.performance.vsYesterdaySameTime.revenue.abs))
+            : line('vs ontem (mesmo horário)', numberDelta(a.performance.vsYesterdaySameTime.orders.abs),
+              numberDelta(b.performance.vsYesterdaySameTime.orders.abs),
+              cmp(a.performance.vsYesterdaySameTime.orders.abs, b.performance.vsYesterdaySameTime.orders.abs)),
           line('Nível', a.tier.current.name, b.tier.current.name, cmp(a.tier.index, b.tier.index)),
           line('Movimento no dia', `${a.positionDelta >= 0 ? '+' : ''}${a.positionDelta}`,
             `${b.positionDelta >= 0 ? '+' : ''}${b.positionDelta}`, cmp(a.positionDelta, b.positionDelta))))));
@@ -429,26 +461,44 @@ function compareTab({ vm, app, awaiting }) {
 // ---------------------------------------------------------------- relatório
 function reportTab({ vm, app, awaiting, config }) {
   const rows = vm.rows;
+  const temFaturamento = vm.revenueAvailable;
 
+  // A exportação segue a mesma regra da tela. Um relatório que levasse o
+  // faturamento individual anularia o motivo de ele estar oculto: bastaria
+  // baixar o arquivo.
   const csv = () => {
     const head = [
-      'posicao', 'vendedor', 'pedidos_hoje', 'faturamento_hoje',
-      'pedidos_ontem_mesmo_horario', 'faturamento_ontem_mesmo_horario',
-      'dif_pedidos', 'dif_faturamento', 'dif_faturamento_pct',
-      'ritmo_pedidos_hora', 'ritmo_faturamento_hora',
-      'projecao_pedidos', 'projecao_faturamento',
+      'posicao', 'vendedor', 'pedidos_hoje',
+      ...(temFaturamento ? ['faturamento_hoje'] : []),
+      'pedidos_ontem_mesmo_horario',
+      ...(temFaturamento ? ['faturamento_ontem_mesmo_horario'] : []),
+      'dif_pedidos',
+      ...(temFaturamento ? ['dif_faturamento', 'dif_faturamento_pct'] : ['dif_pedidos_pct']),
+      'ritmo_pedidos_hora',
+      ...(temFaturamento ? ['ritmo_faturamento_hora'] : []),
+      'projecao_pedidos',
+      ...(temFaturamento ? ['projecao_faturamento'] : []),
       'nivel', 'variacao_posicao', 'distancia_proxima_posicao',
     ].join(';');
     const body = rows.map((r) => {
       const p = r.performance;
+      const pctPedidos = p.vsYesterdaySameTime.orders.pct;
       return [
-        r.position, `"${r.sellerName}"`, p.orders, p.revenue,
-        p.vsYesterdaySameTime.orders.baseline, p.vsYesterdaySameTime.revenue.baseline,
-        p.vsYesterdaySameTime.orders.abs, p.vsYesterdaySameTime.revenue.abs,
-        p.vsYesterdaySameTime.revenue.pct === null ? '' : (p.vsYesterdaySameTime.revenue.pct * 100).toFixed(1),
-        p.pace.orders.toFixed(2), p.pace.revenue.toFixed(2),
-        p.projection.orders ?? '', p.projection.revenue ?? '',
-        r.tier.current.name, r.positionDelta, r.gaps?.toNext?.revenue ?? '',
+        r.position, `"${r.sellerName}"`, p.orders,
+        ...(temFaturamento ? [p.revenue] : []),
+        p.vsYesterdaySameTime.orders.baseline,
+        ...(temFaturamento ? [p.vsYesterdaySameTime.revenue.baseline] : []),
+        p.vsYesterdaySameTime.orders.abs,
+        ...(temFaturamento
+          ? [p.vsYesterdaySameTime.revenue.abs,
+            p.vsYesterdaySameTime.revenue.pct === null ? '' : (p.vsYesterdaySameTime.revenue.pct * 100).toFixed(1)]
+          : [pctPedidos === null || pctPedidos === undefined ? '' : (pctPedidos * 100).toFixed(1)]),
+        p.pace.orders.toFixed(2),
+        ...(temFaturamento ? [p.pace.revenue.toFixed(2)] : []),
+        p.projection.orders ?? '',
+        ...(temFaturamento ? [p.projection.revenue ?? ''] : []),
+        r.tier.current.name, r.positionDelta,
+        (temFaturamento ? r.gaps?.toNext?.revenue : r.gaps?.toNext?.orders) ?? '',
       ].join(';');
     }).join('\n');
     return `${head}\n${body}`;
@@ -464,9 +514,13 @@ function reportTab({ vm, app, awaiting, config }) {
       posicao: r.position,
       vendedor: r.sellerName,
       pedidos: r.performance.orders,
-      faturamento: r.performance.revenue,
-      projecao: r.performance.projection,
-      ritmo: r.performance.pace,
+      ...(temFaturamento ? { faturamento: r.performance.revenue } : {}),
+      projecao: temFaturamento
+        ? r.performance.projection
+        : { orders: r.performance.projection.orders, ordersModel: r.performance.projection.ordersModel },
+      ritmo: temFaturamento
+        ? r.performance.pace
+        : { orders: r.performance.pace.orders, ordersStatus: r.performance.pace.ordersStatus },
       vsOntemMesmoHorario: r.performance.vsYesterdaySameTime,
       nivel: r.tier.current.name,
       variacaoPosicao: r.positionDelta,
