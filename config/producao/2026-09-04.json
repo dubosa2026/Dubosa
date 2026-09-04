@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T16:26:37.735Z",
+  "publicadoEm": "2026-09-04T16:46:41.048Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 13:19",
-    "geradoEm": "2026-09-04T16:23:12.678Z"
+    "ultimaNota": "04/09/2026 13:38",
+    "geradoEm": "2026-09-04T16:43:19.775Z"
   },
   "equipe": [
     {
@@ -93,6 +93,11 @@
       "time": "13:26",
       "orders": 62,
       "revenue": 1313249.55
+    },
+    {
+      "time": "13:46",
+      "orders": 64,
+      "revenue": 1328029.31
     }
   ],
   "records": [
@@ -126,6 +131,14 @@
       "date": "2026-09-04",
       "time": "10:04",
       "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "elandia-camargo-rodrigues",
+      "sellerName": "ELANDIA CAMARGO RODRIGUES",
+      "date": "2026-09-04",
+      "time": "13:46",
+      "orders": 4,
       "revenue": 0
     },
     {
@@ -278,6 +291,14 @@
       "date": "2026-09-04",
       "time": "13:06",
       "orders": 6,
+      "revenue": 0
+    },
+    {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "sellerName": "MARIA PAULA BERTAGLIA NESTOR",
+      "date": "2026-09-04",
+      "time": "13:46",
+      "orders": 7,
       "revenue": 0
     },
     {
