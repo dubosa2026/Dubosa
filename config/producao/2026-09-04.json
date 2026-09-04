@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T17:26:50.428Z",
+  "publicadoEm": "2026-09-04T17:36:52.803Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 14:19",
-    "geradoEm": "2026-09-04T17:23:21.562Z"
+    "ultimaNota": "04/09/2026 14:29",
+    "geradoEm": "2026-09-04T17:33:25.601Z"
   },
   "equipe": [
     {
@@ -118,6 +118,11 @@
       "time": "14:26",
       "orders": 74,
       "revenue": 1499704.43
+    },
+    {
+      "time": "14:36",
+      "orders": 75,
+      "revenue": 1510945.87
     }
   ],
   "records": [
@@ -463,6 +468,14 @@
       "date": "2026-09-04",
       "time": "14:26",
       "orders": 4,
+      "revenue": 0
+    },
+    {
+      "sellerId": "paulo-roberto-da-silva-filho",
+      "sellerName": "PAULO ROBERTO DA SILVA FILHO",
+      "date": "2026-09-04",
+      "time": "14:36",
+      "orders": 5,
       "revenue": 0
     },
     {
