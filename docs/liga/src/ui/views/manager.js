@@ -7,7 +7,7 @@ import { waitingBlock } from '../components/waiting.js';
 import { dayChart, dayChartTable, sparkline } from '../components/chart.js';
 import {
   money, number, moneyDelta, numberDelta, percentDelta, ordinal, decimal,
-  dateLongBR, timeFromMinutes, moneyRate, orderRate,
+  dateBR, dateLongBR, timeFromMinutes, moneyRate, orderRate,
 } from '../../core/format.js';
 
 /**
@@ -19,7 +19,7 @@ import {
  * É o único perfil que enxerga nomes ao lado de números.
  */
 
-export function managerView({ vm, config, app }) {
+export function managerView({ vm, config, app, revendo = false }) {
   // Espera é só quando a base não está conectada. Equipe inteira zerada às 8h
   // é um placar legítimo — e uma informação que o gestor precisa ver.
   const awaiting = vm.status !== 'ready';
@@ -27,6 +27,16 @@ export function managerView({ vm, config, app }) {
 
   return h('div', { class: 'view view-manager' },
     header({ vm, app }),
+    revendo
+      ? h('div', { class: 'preview-bar' },
+        h('span', {}, h('strong', { text: `Fechamento de ${dateLongBR(vm.date)}. ` }),
+          'Este é o dia inteiro, já encerrado — não é o placar de hoje.'),
+        h('button', {
+          class: 'btn btn-sm',
+          onclick: () => app.voltarParaHoje(),
+          text: '← Voltar para hoje',
+        }))
+      : null,
     teamKpis({ app, vm, awaiting, config }),
     h('nav', { class: 'tabs', role: 'tablist' },
       tabButton('ranking', 'Ranking', tab, app),
@@ -71,6 +81,8 @@ function teamKpis({ app, vm, awaiting, config }) {
   const p = vm.team.performance;
   const temFaturamento = vm.revenueAvailable;
   const falhou = vm.status === 'error' && Boolean(vm.sourceMessage);
+  const aindaNaoAbriu = !falhou && vm.phase === 'antes';
+  const ultimoFechamento = app.fechamentoAnterior;
   return h('section', { class: 'card' },
     sectionTitle('Resultado da equipe hoje',
       h('span', { class: 'section-hint', text: `${number(vm.team.activeCount)} de ${number(vm.team.sellerCount)} produzindo` })),
@@ -83,15 +95,29 @@ function teamKpis({ app, vm, awaiting, config }) {
       // ler a origem". As duas davam a mesma tela, e quem olhasse não teria
       // como saber se era cedo demais ou se algo estava quebrado.
       ? waitingBlock({
-        title: falhou ? 'Não consegui ler a base de dados' : undefined,
+        title: falhou
+          ? 'Não consegui ler a base de dados'
+          : (aindaNaoAbriu ? 'O expediente de hoje ainda não começou' : undefined),
         detail: falhou
           ? `${vm.sourceMessage} Enquanto isso, dá para lançar a produção à mão — o painel funciona igual.`
-          : 'Nenhuma produção foi lançada hoje. Abra o sistema de pedidos, selecione a lista da sua equipe, '
-            + 'copie e cole aqui: o painel inteiro — ranking, ritmo, projeção e comparação com ontem — se monta a partir disso.',
-        fields: falhou ? [] : undefined,
+          : aindaNaoAbriu
+            // Placar vazio de madrugada nao e defeito, e a hora. Sem dizer
+            // isso, a tela e indistinguivel de uma que quebrou.
+            ? `O dia começa às ${config.businessHours?.start ?? '08:00'} e o placar enche a partir daí. `
+              + 'Nada produzido até agora é o esperado a esta hora.'
+            : 'Nenhuma produção foi lançada hoje. Abra o sistema de pedidos, selecione a lista da sua equipe, '
+              + 'copie e cole aqui: o painel inteiro — ranking, ritmo, projeção e comparação com ontem — se monta a partir disso.',
+        fields: falhou || aindaNaoAbriu ? [] : undefined,
         action: h('div', { class: 'button-row' },
+          ultimoFechamento
+            ? h('button', {
+              class: 'btn btn-primary',
+              onclick: () => app.verFechamentoAnterior(),
+              text: `Ver o fechamento de ${dateBR(ultimoFechamento.date)}`,
+            })
+            : null,
           h('button', {
-            class: 'btn btn-primary',
+            class: ultimoFechamento ? 'btn' : 'btn btn-primary',
             onclick: () => { app.setAdminTab('lancar'); app.goAdmin(); },
             text: 'Lançar a produção de hoje',
           })),
