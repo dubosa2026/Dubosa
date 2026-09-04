@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T20:07:47.211Z",
+  "publicadoEm": "2026-09-04T20:17:49.686Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 16:58",
-    "geradoEm": "2026-09-04T20:03:26.017Z"
+    "ultimaNota": "04/09/2026 17:09",
+    "geradoEm": "2026-09-04T20:13:17.199Z"
   },
   "equipe": [
     {
@@ -193,6 +193,11 @@
       "time": "17:07",
       "orders": 141,
       "revenue": 2574934.11
+    },
+    {
+      "time": "17:17",
+      "orders": 148,
+      "revenue": 2650705.67
     }
   ],
   "records": [
@@ -218,6 +223,14 @@
       "date": "2026-09-04",
       "time": "14:56",
       "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "diego-adan-ohnuma-angeli",
+      "sellerName": "DIEGO ADAN OHNUMA ANGELI",
+      "date": "2026-09-04",
+      "time": "17:17",
+      "orders": 3,
       "revenue": 0
     },
     {
@@ -458,6 +471,14 @@
       "date": "2026-09-04",
       "time": "16:47",
       "orders": 10,
+      "revenue": 0
+    },
+    {
+      "sellerId": "leonardo-costa-oliveira",
+      "sellerName": "LEONARDO COSTA OLIVEIRA",
+      "date": "2026-09-04",
+      "time": "17:17",
+      "orders": 11,
       "revenue": 0
     },
     {
@@ -653,6 +674,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "sellerName": "MARIA PAULA BERTAGLIA NESTOR",
+      "date": "2026-09-04",
+      "time": "17:17",
+      "orders": 15,
+      "revenue": 0
+    },
+    {
       "sellerId": "matheus-souza-de-barros",
       "sellerName": "MATHEUS SOUZA DE BARROS",
       "date": "2026-09-04",
@@ -701,6 +730,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "matheus-souza-de-barros",
+      "sellerName": "MATHEUS SOUZA DE BARROS",
+      "date": "2026-09-04",
+      "time": "17:17",
+      "orders": 7,
+      "revenue": 0
+    },
+    {
       "sellerId": "munari-angela-mariano",
       "sellerName": "MUNARI ANGELA MARIANO",
       "date": "2026-09-04",
@@ -722,6 +759,14 @@
       "date": "2026-09-04",
       "time": "12:16",
       "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "murilo-bedani-rogerio",
+      "sellerName": "MURILO BEDANI ROGERIO",
+      "date": "2026-09-04",
+      "time": "17:17",
+      "orders": 2,
       "revenue": 0
     },
     {
@@ -994,6 +1039,14 @@
       "date": "2026-09-04",
       "time": "17:07",
       "orders": 10,
+      "revenue": 0
+    },
+    {
+      "sellerId": "ricardo-carniato-rodrigues",
+      "sellerName": "RICARDO CARNIATO RODRIGUES",
+      "date": "2026-09-04",
+      "time": "17:17",
+      "orders": 12,
       "revenue": 0
     },
     {
