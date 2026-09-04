@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T18:17:03.200Z",
+  "publicadoEm": "2026-09-04T18:37:06.372Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 15:08",
-    "geradoEm": "2026-09-04T18:13:20.173Z"
+    "ultimaNota": "04/09/2026 15:28",
+    "geradoEm": "2026-09-04T18:33:15.293Z"
   },
   "equipe": [
     {
@@ -143,6 +143,11 @@
       "time": "15:17",
       "orders": 87,
       "revenue": 1734618.46
+    },
+    {
+      "time": "15:37",
+      "orders": 92,
+      "revenue": 1780732.91
     }
   ],
   "records": [
@@ -256,6 +261,14 @@
       "date": "2026-09-04",
       "time": "13:56",
       "orders": 4,
+      "revenue": 0
+    },
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-09-04",
+      "time": "15:37",
+      "orders": 5,
       "revenue": 0
     },
     {
@@ -435,6 +448,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "sellerName": "MARIA PAULA BERTAGLIA NESTOR",
+      "date": "2026-09-04",
+      "time": "15:37",
+      "orders": 10,
+      "revenue": 0
+    },
+    {
       "sellerId": "matheus-souza-de-barros",
       "sellerName": "MATHEUS SOUZA DE BARROS",
       "date": "2026-09-04",
@@ -571,6 +592,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "paulo-roberto-da-silva-filho",
+      "sellerName": "PAULO ROBERTO DA SILVA FILHO",
+      "date": "2026-09-04",
+      "time": "15:37",
+      "orders": 8,
+      "revenue": 0
+    },
+    {
       "sellerId": "rafael-vanderlei-lopes",
       "sellerName": "RAFAEL VANDERLEI LOPES",
       "date": "2026-09-04",
@@ -624,6 +653,14 @@
       "date": "2026-09-04",
       "time": "14:26",
       "orders": 17,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rafael-vanderlei-lopes",
+      "sellerName": "RAFAEL VANDERLEI LOPES",
+      "date": "2026-09-04",
+      "time": "15:37",
+      "orders": 18,
       "revenue": 0
     },
     {
@@ -696,6 +733,14 @@
       "date": "2026-09-04",
       "time": "14:56",
       "orders": 7,
+      "revenue": 0
+    },
+    {
+      "sellerId": "victor-vinicius-renno",
+      "sellerName": "VICTOR VINICIUS RENNO",
+      "date": "2026-09-04",
+      "time": "15:37",
+      "orders": 8,
       "revenue": 0
     }
   ]
