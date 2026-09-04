@@ -1,0 +1,75 @@
+# Coleta a produção do sistema de pedidos para a Liga Comercial.
+#
+# POR QUE ESTE ARQUIVO ESTÁ NESTA BRANCH, e não junto do aplicativo que ele
+# serve: agendamento no GitHub Actions só dispara a partir da branch PADRÃO do
+# repositório. Um `schedule` em qualquer outra branch é lido e ignorado — o
+# arquivo existe, a aba Actions mostra o workflow, e ele nunca roda. Esta é a
+# branch padrão, então é daqui que o relógio funciona.
+#
+# Nada desta branch é usado na coleta. O passo de checkout troca para a branch
+# da Liga e é lá que o script vive, que o arquivo do dia é gravado e que o
+# aplicativo publicado vai ler. Este arquivo é só o despertador.
+#
+# ANTES DE FUNCIONAR, uma coisa só:
+#   Settings → Secrets and variables → Actions → New repository secret
+#     Nome:  PEDIDOS_PIN
+#     Valor: o PIN de acesso ao sistema de pedidos
+#
+# O PIN fica nos segredos do GitHub. Ele nunca aparece no código, no histórico
+# nem no registro de execução.
+
+name: Coletar produção
+
+on:
+  schedule:
+    # A cada 10 minutos, das 8h às 21h de Brasília (11h–00h UTC), de segunda a
+    # sexta. É o mesmo ritmo em que o próprio sistema de pedidos se atualiza:
+    # coletar mais vezes não traria número novo.
+    - cron: '*/10 11-23 * * 1-5'
+  workflow_dispatch:        # permite rodar à mão pelo botão "Run workflow"
+
+permissions:
+  contents: write
+
+concurrency:
+  # Duas coletas ao mesmo tempo brigariam pelo mesmo arquivo.
+  group: coletar-producao
+  cancel-in-progress: false
+
+env:
+  BRANCH_DA_LIGA: claude/sales-competition-app-t0sv4b
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/sales-competition-app-t0sv4b
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Ler o sistema de pedidos
+        env:
+          PEDIDOS_BASE: ${{ vars.PEDIDOS_BASE || 'https://pedidos-belenergy-tega.netlify.app' }}
+          PEDIDOS_PIN: ${{ secrets.PEDIDOS_PIN }}
+        run: node scripts/coletar-producao.mjs
+
+      - name: Gravar o dia
+        run: |
+          if [ -z "$(git status --porcelain config/producao)" ]; then
+            echo "Nada mudou desde a última coleta."
+            exit 0
+          fi
+          git config user.name  "Coletor da Liga"
+          git config user.email "actions@github.com"
+          git add config/producao
+          git commit -m "Producao de $(TZ=America/Sao_Paulo date '+%d/%m/%Y as %H:%M')"
+          # Outra coleta pode ter gravado enquanto esta rodava.
+          for tentativa in 1 2 3; do
+            git pull --rebase --autostash origin "$BRANCH_DA_LIGA" && break
+            sleep 5
+          done
+          git push origin "HEAD:$BRANCH_DA_LIGA"
