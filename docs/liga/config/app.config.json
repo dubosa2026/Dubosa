@@ -1,0 +1,112 @@
+{
+  "$schema": "./app.config.schema.json",
+  "app": {
+    "name": "Liga Comercial",
+    "org": "Dubosa",
+    "version": "1.0.0",
+    "timezone": "America/Sao_Paulo",
+    "locale": "pt-BR",
+    "currency": "BRL"
+  },
+  "businessHours": {
+    "start": "08:00",
+    "end": "18:00",
+    "breaks": [
+      {
+        "start": "12:00",
+        "end": "13:00"
+      }
+    ],
+    "workdays": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "holidays": []
+  },
+  "ranking": {
+    "primary": "revenue",
+    "tiebreakers": [
+      "orders",
+      "firstToReach",
+      "name"
+    ],
+    "includeZeroProduction": true
+  },
+  "projection": {
+    "model": "blend",
+    "curveWeight": 0.6,
+    "minElapsedMinutes": 30,
+    "maxMultiplier": 4,
+    "roundOrdersTo": 1
+  },
+  "goals": {
+    "dailyOrders": 12,
+    "dailyRevenue": 100000
+  },
+  "tiers": [
+    {
+      "id": "bronze",
+      "name": "BRONZE",
+      "minRevenue": 0,
+      "minOrders": 0
+    },
+    {
+      "id": "prata",
+      "name": "PRATA",
+      "minRevenue": 40000,
+      "minOrders": 4
+    },
+    {
+      "id": "ouro",
+      "name": "OURO",
+      "minRevenue": 80000,
+      "minOrders": 8
+    },
+    {
+      "id": "platina",
+      "name": "PLATINA",
+      "minRevenue": 130000,
+      "minOrders": 12
+    },
+    {
+      "id": "elite",
+      "name": "ELITE",
+      "minRevenue": 200000,
+      "minOrders": 16
+    }
+  ],
+  "achievements": {
+    "arrancadaBefore": "10:00",
+    "arrancadaGoalPct": 0.3,
+    "metaDiariaMode": "revenue",
+    "altaPerformancePaceRatio": 1.2,
+    "altaPerformanceStreakDays": 3
+  },
+  "messages": {
+    "gapAlertRevenue": 10000,
+    "gapAlertOrders": 2,
+    "cooldownMinutes": 10,
+    "maxVisible": 4
+  },
+  "privacy": {
+    "sellerSeesTeamAggregate": true,
+    "minTeamSizeForAggregate": 3,
+    "sellerSeesGapToNext": true,
+    "sellerSeesGapToPrevious": true,
+    "sellerSeesPositionOutOfTotal": true
+  },
+  "ui": {
+    "refreshSeconds": 60,
+    "compactByDefault": false,
+    "theme": "dark"
+  },
+  "dataSource": {
+    "adapter": "arquivo",
+    "options": {
+      "pasta": "https://raw.githubusercontent.com/dubosa2026/Dubosa/claude/sales-competition-app-t0sv4b/config/producao"
+    }
+  }
+}

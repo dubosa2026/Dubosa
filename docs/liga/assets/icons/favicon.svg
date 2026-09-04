@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Liga Comercial">
+  <rect width="64" height="64" rx="12" fill="#0b0e14"/>
+  <rect x="12" y="34" width="10" height="18" rx="2.5" fill="#3987e5"/>
+  <rect x="27" y="26" width="10" height="26" rx="2.5" fill="#3987e5"/>
+  <rect x="42" y="18" width="10" height="34" rx="2.5" fill="#e0b53c"/>
+</svg>
