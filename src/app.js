@@ -12,6 +12,9 @@ import {
   loadTeam, saveLocalTeam, indexTeam, resolveSeller, addToTeam, removeFromTeam,
   teamFromLines, emptyTeam,
 } from './core/team.js';
+import {
+  linksGuardados, guardarLink, esquecerLink, importarLinks,
+} from './core/links.js';
 import { createSource } from './data/sources/registry.js';
 import { parsePastedProduction } from './data/parsePasted.js';
 import { registrarProducao } from './data/sources/ManualSource.js';
@@ -444,6 +447,7 @@ class App {
     this.roster = roster;
     saveLocalRoster(roster);
     this.state.issuedTokens = { ...this.state.issuedTokens, [sellerId]: token };
+    await guardarLink(sellerId, token, this.roster);
     this.render();
   }
 
@@ -452,6 +456,8 @@ class App {
     this.roster = roster;
     saveLocalRoster(roster);
     this.state.issuedTokens = { ...this.state.issuedTokens, [sellerId]: token };
+    // O link antigo morre neste instante: quem o tiver na mao para de entrar.
+    await guardarLink(sellerId, token, this.roster);
     this.render();
   }
 
@@ -461,6 +467,13 @@ class App {
     const issued = { ...this.state.issuedTokens };
     delete issued[sellerId];
     this.state.issuedTokens = issued;
+    esquecerLink(sellerId);
+    this.render();
+  }
+
+  /** Guarda os links que o gestor ja tem em maos, conferindo um a um. */
+  async importarLinks(texto) {
+    this.state.importacaoDeLinks = await importarLinks(texto, this.roster);
     this.render();
   }
 

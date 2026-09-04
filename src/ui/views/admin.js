@@ -6,6 +6,7 @@ import { exportTeam } from '../../core/team.js';
 import { money, number as fmtNumber } from '../../core/format.js';
 import { normalizeMoney } from '../../data/types.js';
 import { exportConfig, versaoPublicada } from '../../core/settings.js';
+import { linksGuardados } from '../../core/links.js';
 import { instaladorWindows, nomeDeArquivo, JANELA } from '../../core/instalador.js';
 
 /**
@@ -299,7 +300,11 @@ function accessPanel({ app, roster, rosterOrigin, team }) {
     nenhum: 'Nenhum acesso cadastrado ainda.',
   };
 
-  const issued = app.state.issuedTokens ?? {};
+  // O que foi gerado nesta sessão MAIS o que já estava guardado neste
+  // aparelho. Sem a segunda parte, atualizar a página apagava os links da
+  // tela e a única saída oferecida era gerar outros — que invalidam os que
+  // a equipe já tem.
+  const issued = { ...linksGuardados(), ...(app.state.issuedTokens ?? {}) };
 
   return h('section', { class: 'card' },
     sectionTitle('Acessos da equipe'),
@@ -325,7 +330,7 @@ function accessPanel({ app, roster, rosterOrigin, team }) {
             h('th', { text: 'Vendedor' }),
             h('th', { text: 'Link pessoal' }),
             h('th', { text: '' }))),
-          h('tbody', {}, roster.sellers.map((s) => {
+          h('tbody', {}, umaLinhaPorPessoa(roster.sellers).map((s) => {
             const token = issued[s.sellerId];
             const link = token ? buildLink(app.baseUrl, 'seller', token) : null;
             return h('tr', { class: s.naoPublicado && 'row-outsider' },
@@ -356,6 +361,8 @@ function accessPanel({ app, roster, rosterOrigin, team }) {
                 h('button', { class: 'btn btn-sm btn-danger', onclick: () => app.removeSeller(s.sellerId), text: 'Remover' })));
           })))))
       : h('p', { class: 'muted', text: 'Nenhum vendedor cadastrado. Adicione o primeiro acima.' }),
+
+    importarLinksBox({ app }),
 
     h('div', { class: 'divider' }),
     sectionTitle('Seu acesso de gestor'),
@@ -396,8 +403,67 @@ function accessPanel({ app, roster, rosterOrigin, team }) {
       'O arquivo publicado guarda o hash do código, não o código. Quem ler o arquivo não consegue montar o link de ninguém.'));
 }
 
+/**
+ * Uma linha por pessoa.
+ *
+ * Regerar um acesso deixava a pessoa duas vezes na lista: a entrada do arquivo
+ * publicado e a criada aqui. Duas linhas iguais, uma marcada e outra não, e
+ * nenhuma pista de qual delas vale.
+ */
+function umaLinhaPorPessoa(sellers = []) {
+  const porId = new Map();
+  for (const s of sellers) {
+    const antes = porId.get(s.sellerId);
+    // Fica a entrada mais recente, e ela carrega a marca de não publicada —
+    // que é justamente o que precisa aparecer.
+    if (!antes || s.naoPublicado) porId.set(s.sellerId, s);
+  }
+  return [...porId.values()];
+}
+
+/**
+ * Recupera os links que o gestor já tem em mãos.
+ *
+ * Sem isto, os links distribuídos antes desta versão continuariam invisíveis
+ * na tela, e a única forma de vê-los de novo seria gerar outros — quebrando os
+ * que a equipe já usa. Cada código colado é conferido contra o cadastro: entra
+ * se abrir a porta que promete, e é descartado se não abrir.
+ */
+function importarLinksBox({ app }) {
+  const caixa = h('textarea', {
+    class: 'input textarea', rows: '3', 'aria-label': 'Links conhecidos',
+    placeholder: 'Cole aqui a lista de links que você já enviou à equipe',
+  });
+  const resultado = app.state.importacaoDeLinks;
+
+  return h('div', { class: 'alert alert-info' },
+    h('strong', { text: 'Já tem os links da equipe? Cole aqui. ' }),
+    'Eles ficam gravados neste aparelho e param de sumir quando a página é atualizada. '
+    + 'Cada um é conferido contra o cadastro — o que não abrir a porta é descartado.',
+    caixa,
+    h('div', { class: 'button-row' },
+      h('button', {
+        class: 'btn',
+        onclick: () => app.importarLinks(caixa.value),
+        text: 'Conferir e guardar',
+      })),
+    resultado
+      ? h('div', {},
+        resultado.guardados.length
+          ? h('p', { class: 'muted', text: `Guardados: ${resultado.guardados.join(', ')}.` })
+          : h('p', { class: 'muted', text: 'Nenhum código válido encontrado no texto.' }),
+        resultado.desconhecidos.length
+          ? h('p', { class: 'muted', text: `Não conferem com o cadastro e foram descartados: ${resultado.desconhecidos.join(', ')}.` })
+          : null)
+      : null);
+}
+
 function linksCsv(app, roster) {
-  const issued = app.state.issuedTokens ?? {};
+  // O que foi gerado nesta sessão MAIS o que já estava guardado neste
+  // aparelho. Sem a segunda parte, atualizar a página apagava os links da
+  // tela e a única saída oferecida era gerar outros — que invalidam os que
+  // a equipe já tem.
+  const issued = { ...linksGuardados(), ...(app.state.issuedTokens ?? {}) };
   const head = 'vendedor;link';
   const body = (roster.sellers ?? [])
     .filter((s) => issued[s.sellerId])
