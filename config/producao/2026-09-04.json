@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T13:36:01.060Z",
+  "publicadoEm": "2026-09-04T13:46:03.624Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 10:27",
-    "geradoEm": "2026-09-04T13:31:44.861Z"
+    "ultimaNota": "04/09/2026 10:38",
+    "geradoEm": "2026-09-04T13:41:45.378Z"
   },
   "equipe": [
     {
@@ -33,6 +33,11 @@
       "time": "10:36",
       "orders": 40,
       "revenue": 921238.56
+    },
+    {
+      "time": "10:46",
+      "orders": 42,
+      "revenue": 949608.23
     }
   ],
   "records": [
@@ -109,6 +114,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "lucas-dos-reis-bernardes-da-silveira",
+      "sellerName": "LUCAS DOS REIS BERNARDES DA SILVEIRA",
+      "date": "2026-09-04",
+      "time": "10:46",
+      "orders": 3,
+      "revenue": 0
+    },
+    {
       "sellerId": "maria-paula-bertaglia-nestor",
       "sellerName": "MARIA PAULA BERTAGLIA NESTOR",
       "date": "2026-09-04",
@@ -170,6 +183,14 @@
       "date": "2026-09-04",
       "time": "10:25",
       "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-09-04",
+      "time": "10:46",
+      "orders": 4,
       "revenue": 0
     },
     {
