@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T19:47:42.252Z",
+  "publicadoEm": "2026-09-04T19:57:44.656Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 16:39",
-    "geradoEm": "2026-09-04T19:43:17.372Z"
+    "ultimaNota": "04/09/2026 16:49",
+    "geradoEm": "2026-09-04T19:53:11.514Z"
   },
   "equipe": [
     {
@@ -183,6 +183,11 @@
       "time": "16:47",
       "orders": 130,
       "revenue": 2398576.33
+    },
+    {
+      "time": "16:57",
+      "orders": 137,
+      "revenue": 2521152.39
     }
   ],
   "records": [
@@ -368,6 +373,14 @@
       "date": "2026-09-04",
       "time": "16:37",
       "orders": 10,
+      "revenue": 0
+    },
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-09-04",
+      "time": "16:57",
+      "orders": 12,
       "revenue": 0
     },
     {
@@ -619,6 +632,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "sellerName": "MARIA PAULA BERTAGLIA NESTOR",
+      "date": "2026-09-04",
+      "time": "16:57",
+      "orders": 14,
+      "revenue": 0
+    },
+    {
       "sellerId": "matheus-souza-de-barros",
       "sellerName": "MATHEUS SOUZA DE BARROS",
       "date": "2026-09-04",
@@ -752,6 +773,14 @@
       "date": "2026-09-04",
       "time": "16:27",
       "orders": 9,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-09-04",
+      "time": "16:57",
+      "orders": 10,
       "revenue": 0
     },
     {
@@ -936,6 +965,14 @@
       "date": "2026-09-04",
       "time": "16:47",
       "orders": 6,
+      "revenue": 0
+    },
+    {
+      "sellerId": "ricardo-carniato-rodrigues",
+      "sellerName": "RICARDO CARNIATO RODRIGUES",
+      "date": "2026-09-04",
+      "time": "16:57",
+      "orders": 9,
       "revenue": 0
     },
     {
