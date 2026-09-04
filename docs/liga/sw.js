@@ -17,7 +17,7 @@ const PREFIXO = 'liga-';
 // isso o nome do cache nunca mudava, e como a casca é servida do cache
 // primeiro, um aparelho que já tinha aberto o aplicativo continuava rodando a
 // versão antiga para sempre — correção publicada que nunca chegava a ninguém.
-const VERSION = `${PREFIXO}183c739fedef`;
+const VERSION = `${PREFIXO}1a492029030a`;
 const SHELL = [
   './',
   './index.html',
