@@ -311,7 +311,15 @@ function accessPanel({ app, roster, rosterOrigin, team }) {
       : null,
 
     (roster.sellers ?? []).length
-      ? h('div', { class: 'table-scroll' },
+      ? h('div', {},
+        (roster.sellers ?? []).some((s) => s.naoPublicado)
+          ? h('div', { class: 'alert alert-warn' },
+            h('strong', { text: 'Há links que só funcionam neste navegador. ' }),
+            'Os marcados como NÃO PUBLICADO foram criados aqui e ainda não estão no arquivo de acessos do site. '
+            + 'Se você enviar um deles, a pessoa vai receber "código não reconhecido". '
+            + 'Enquanto não publicar o arquivo, use os links que já estavam valendo.')
+          : null,
+        h('div', { class: 'table-scroll' },
         h('table', { class: 'data-table' },
           h('thead', {}, h('tr', {},
             h('th', { text: 'Vendedor' }),
@@ -320,8 +328,11 @@ function accessPanel({ app, roster, rosterOrigin, team }) {
           h('tbody', {}, roster.sellers.map((s) => {
             const token = issued[s.sellerId];
             const link = token ? buildLink(app.baseUrl, 'seller', token) : null;
-            return h('tr', {},
-              h('td', { text: s.name }),
+            return h('tr', { class: s.naoPublicado && 'row-outsider' },
+              h('td', {}, s.name,
+                s.naoPublicado
+                  ? h('span', { class: 'flag-outsider', title: 'Existe só neste navegador', text: 'NÃO PUBLICADO' })
+                  : null),
               h('td', { class: 'link-cell' },
                 link
                   ? h('code', { class: 'link-code', text: link })
@@ -343,7 +354,7 @@ function accessPanel({ app, roster, rosterOrigin, team }) {
                   : null,
                 h('button', { class: 'btn btn-sm', onclick: () => app.regenerateSeller(s.sellerId, s.name), text: 'Novo link' }),
                 h('button', { class: 'btn btn-sm btn-danger', onclick: () => app.removeSeller(s.sellerId), text: 'Remover' })));
-          }))))
+          })))))
       : h('p', { class: 'muted', text: 'Nenhum vendedor cadastrado. Adicione o primeiro acima.' }),
 
     h('div', { class: 'divider' }),

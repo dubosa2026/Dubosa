@@ -69,7 +69,13 @@ export async function loadRoster(url = 'config/equipe.json') {
   if (published && local) {
     // O publicado manda; o local completa com quem ainda não foi publicado.
     const known = new Set((published.sellers ?? []).map((s) => s.tokenHash));
-    const extra = (local.sellers ?? []).filter((s) => !known.has(s.tokenHash));
+    // Marcado, e não escondido: um acesso criado aqui existe só neste
+    // navegador até o arquivo ser publicado. O link dele funciona para quem o
+    // criou e para mais ninguém — e sem essa marca o gestor manda o link
+    // achando que está tudo certo.
+    const extra = (local.sellers ?? [])
+      .filter((s) => !known.has(s.tokenHash))
+      .map((s) => ({ ...s, naoPublicado: true }));
     return {
       roster: {
         ...published,

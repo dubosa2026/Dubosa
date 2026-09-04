@@ -1,10 +1,12 @@
 import { mount, h, downloadFile } from './ui/dom.js';
-import { loadConfig, getConfig, updateConfig, resetConfig } from './core/settings.js';
+import {
+  loadConfig, getConfig, updateConfig, resetConfig, instalarAplicativo,
+} from './core/settings.js';
 import {
   loadRoster, saveLocalRoster, createSellerAccess, setManagerAccess, removeSellerAccess, emptyRoster,
 } from './core/roster.js';
 import {
-  resolveIdentity, resolveFirstIdentity, parseRoute, buildLink,
+  resolveIdentity, resolveFirstIdentity, candidatosDeEntrada, parseRoute, buildLink,
 } from './core/identity.js';
 import {
   loadTeam, saveLocalTeam, indexTeam, resolveSeller, addToTeam, removeFromTeam,
@@ -103,6 +105,8 @@ class App {
     this.rosterOrigin = loaded.origin;
     this.setTeam(loadedTeam.team, loadedTeam.origin);
 
+    this.state.instalacaoDispensada = this.readPref('instalacaoDispensada', false);
+    globalThis.addEventListener('liga:instalavel', () => this.render());
     globalThis.addEventListener('hashchange', () => this.handleRoute());
     await this.handleRoute();
   }
@@ -114,15 +118,27 @@ class App {
     // vazia que não mostra nada do que o aplicativo faz.
     const inicial = parseRoute(globalThis.__LIGA_DADOS__?.rotaInicial ?? '').token;
 
-    const candidatos = [route.token, stored, inicial].filter(Boolean);
+    // UM LINK NO ENDEREÇO É PALAVRA FINAL.
+    //
+    // Havia uma corrente de tentativas aqui: link, depois o código guardado no
+    // navegador, depois o da demonstração. Ela existe para não trancar quem tem
+    // um link bom com um código guardado que morreu — mas aplicada a um link
+    // que FALHOU ela vira outra coisa. Quem abrisse o link de um vendedor num
+    // navegador onde o gestor já tinha entrado caía no painel do gestor: o
+    // código do link não resolvia, e o guardado resolvia. Ranking nominal da
+    // equipe inteira, para quem abriu um link de vendedor.
+    //
+    // Então a corrente só vale quando o endereço NÃO traz código. Trazendo, ou
+    // ele vale ou a porta fica fechada.
+    const candidatos = candidatosDeEntrada({
+      tokenDoEndereco: route.token, guardado: stored, inicial,
+    });
     if (!candidatos.length) {
       this.identity = null;
       this.render();
       return;
     }
 
-    // Um código guardado que deixou de existir não pode trancar a porta de quem
-    // acabou de abrir um link válido. Ver core/identity.js.
     const escolhido = await resolveFirstIdentity(candidatos, this.roster);
     const identidade = escolhido?.identity ?? null;
     const token = escolhido?.token ?? null;
@@ -130,6 +146,16 @@ class App {
     if (!identidade) {
       this.error = 'Código de acesso não reconhecido. Peça o link ao gestor.';
       this.writePref('token', null);
+      this.identity = null;
+      this.render();
+      return;
+    }
+
+    // O endereço pede um perfil; o código diz qual perfil ele é. Divergiu, não
+    // se abre nada: um código de gestor colado numa rota de vendedor (ou o
+    // contrário) é sinal de link trocado, não de permissão.
+    if (route.view && route.token && identidade.role !== (route.view === 'manager' ? 'manager' : 'seller')) {
+      this.error = 'Este link não corresponde ao tipo de acesso do código. Peça o link ao gestor.';
       this.identity = null;
       this.render();
       return;
@@ -310,6 +336,18 @@ class App {
   setManagerTab(tab) { this.state.managerTab = tab; this.render(); }
 
   setAdminTab(tab) { this.state.adminTab = tab; this.render(); }
+
+  async instalar() {
+    const aceitou = await instalarAplicativo();
+    if (aceitou) this.state.instalacaoDispensada = true;
+    this.render();
+  }
+
+  dispensarInstalacao() {
+    this.state.instalacaoDispensada = true;
+    this.writePref('instalacaoDispensada', true);
+    this.render();
+  }
 
   /**
    * O último dia com produção, quando existe.
