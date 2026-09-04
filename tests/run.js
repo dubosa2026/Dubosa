@@ -783,6 +783,29 @@ await check('a origem que não informa faturamento é reconhecida', () => {
   assertEqual(SO_PEDIDOS.revenueAvailable, false);
 });
 
+await check('sem faturamento, o nível corre por pedidos', () => {
+  // Todo nivel acima do BRONZE exige faturamento minimo. Com a origem
+  // informando zero para todo mundo, quem fez treze pedidos ficava preso no
+  // BRONZE lendo "faltam R$ 40.000 para subir".
+  const semFat = gamification.tierFor(13, 0, config.tiers, { temFaturamento: false });
+  assertEqual(semFat.current.name, 'PLATINA', '13 pedidos deveriam valer PLATINA:');
+  assertEqual(semFat.missingRevenue, null, 'nao ha distancia em reais a informar:');
+  const comFat = gamification.tierFor(13, 0, config.tiers);
+  assertEqual(comFat.current.name, 'BRONZE', 'com faturamento de verdade, zero e zero:');
+});
+
+await check('sem faturamento, a disputa não emudece no painel do vendedor', () => {
+  const v = access.buildSellerView({
+    today: SO_PEDIDOS, yesterday: null, sellerId: 'ana-ferreira', sellerName: 'Ana Ferreira', atMinutes: AT, config,
+  });
+  assertEqual(v.revenueAvailable, false);
+  assert(v.messages.length > 0, 'o vendedor ficou sem nenhuma mensagem');
+  const textos = v.messages.map((m) => m.text).join(' ');
+  assert(!textos.includes('R$'), `mensagem falando em reais que a origem nao informa: ${textos}`);
+  assert(!textos.includes('placar está zerado'), 'seis pedidos nao sao placar zerado');
+  assertEqual(v.tier.current.name, 'PRATA', 'seis pedidos deveriam valer PRATA:');
+});
+
 await check('sem faturamento, o ranking passa a ser por pedidos', () => {
   const regras = access.regrasDeRanking(SO_PEDIDOS, config);
   assertEqual(regras.primary, 'orders');

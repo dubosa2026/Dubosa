@@ -261,7 +261,8 @@ export function buildSellerView({
     }
     : null;
 
-  const tier = tierFor(performance.orders, performance.revenue, config.tiers);
+  const tier = tierFor(performance.orders, performance.revenue, config.tiers,
+    { temFaturamento: today?.revenueAvailable !== false });
 
   const teamFirstOrder = (today?.sellers ?? [])
     .map((s) => s.firstOrderMinutes)
@@ -298,6 +299,7 @@ export function buildSellerView({
     positions,
     tier,
     phase: dayPhase(businessHours, atMinutes),
+    temFaturamento: today?.revenueAvailable !== false,
     config: config.messages,
     others,
     identifyingTokens: identifying,
@@ -397,7 +399,8 @@ export function buildManagerView({
       ? null
       : rankAt(today, openingMark, regrasDeRanking(today, config)).find((e) => e.sellerId === entry.sellerId);
     const gaps = gapsFor(ranked, entry.sellerId);
-    const tier = tierFor(entry.orders, entry.revenue, config.tiers);
+    const tier = tierFor(entry.orders, entry.revenue, config.tiers,
+      { temFaturamento: today?.revenueAvailable !== false });
 
     return {
       sellerId: entry.sellerId,

@@ -9,14 +9,26 @@ import { toMinutes } from './clock.js';
  * em `config/app.config.json` -> `tiers` e `achievements`.
  */
 
-/** Nível atual e progresso até o próximo, a partir da produção do dia. */
-export function tierFor(orders, revenue, tiers = []) {
-  const sorted = [...tiers].sort((a, b) => a.minRevenue - b.minRevenue);
+/**
+ * Nível atual e progresso até o próximo, a partir da produção do dia.
+ *
+ * `temFaturamento: false` diz que a origem não informa faturamento por
+ * vendedor. Sem isso, `revenue` chega zero para todo mundo e a exigência de
+ * faturamento de cada nível nunca é atendida: quem fez treze pedidos ficaria
+ * preso no BRONZE, com a tela dizendo que faltam quarenta mil reais para
+ * subir. O nível passa a correr só por pedidos — o mesmo critério que o
+ * ranking já usa nesses dias.
+ */
+export function tierFor(orders, revenue, tiers = [], { temFaturamento = true } = {}) {
+  const sorted = [...tiers].sort((a, b) => (temFaturamento
+    ? a.minRevenue - b.minRevenue
+    : (a.minOrders ?? 0) - (b.minOrders ?? 0)));
   let current = sorted[0] ?? { id: 'bronze', name: 'BRONZE', minRevenue: 0, minOrders: 0 };
   let index = 0;
 
   sorted.forEach((tier, i) => {
-    if (revenue >= tier.minRevenue && orders >= (tier.minOrders ?? 0)) {
+    const faturamentoOk = !temFaturamento || revenue >= tier.minRevenue;
+    if (faturamentoOk && orders >= (tier.minOrders ?? 0)) {
       current = tier;
       index = i;
     }
@@ -25,11 +37,15 @@ export function tierFor(orders, revenue, tiers = []) {
   const next = sorted[index + 1] ?? null;
   let progress = 1;
   if (next) {
-    const revSpan = next.minRevenue - current.minRevenue;
-    const revProgress = revSpan > 0 ? (revenue - current.minRevenue) / revSpan : 1;
     const ordSpan = (next.minOrders ?? 0) - (current.minOrders ?? 0);
     const ordProgress = ordSpan > 0 ? (orders - (current.minOrders ?? 0)) / ordSpan : 1;
-    progress = Math.min(1, Math.max(0, Math.min(revProgress, ordProgress)));
+    if (temFaturamento) {
+      const revSpan = next.minRevenue - current.minRevenue;
+      const revProgress = revSpan > 0 ? (revenue - current.minRevenue) / revSpan : 1;
+      progress = Math.min(1, Math.max(0, Math.min(revProgress, ordProgress)));
+    } else {
+      progress = Math.min(1, Math.max(0, ordProgress));
+    }
   }
 
   return {
@@ -38,7 +54,9 @@ export function tierFor(orders, revenue, tiers = []) {
     index,
     total: sorted.length,
     progress,
-    missingRevenue: next ? Math.max(0, next.minRevenue - revenue) : 0,
+    // Sem faturamento na origem, não há distância em reais a informar. Zero
+    // seria lido como "já alcançou".
+    missingRevenue: temFaturamento && next ? Math.max(0, next.minRevenue - revenue) : null,
     missingOrders: next ? Math.max(0, (next.minOrders ?? 0) - orders) : 0,
   };
 }

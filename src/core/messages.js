@@ -56,12 +56,16 @@ export function assertNoIdentityLeak(text, others = [], tokens = null) {
  * @param {Array} ctx.others  colegas, usados só pela barreira de privacidade
  * @param {Set<string>} ctx.identifyingTokens termos que identificam um colega
  * @param {boolean} ctx.awaitingData true quando a base ainda não foi conectada
+ * @param {boolean} ctx.temFaturamento false quando a origem informa faturamento
+ *   só por carteira. Sem isto, toda frase de dinheiro sai zerada e a disputa
+ *   fica muda justamente para quem está produzindo.
  * @returns {Array<{id:string, tone:string, icon:string, text:string, priority:number}>}
  */
 export function buildMessages(ctx) {
   const {
     performance, gaps, positions, tier, phase = 'aberto', config = {},
     others = [], identifyingTokens: tokens = new Set(), awaitingData = false,
+    temFaturamento = true,
   } = ctx;
 
   // Sem base conectada não existe desempenho a comentar. Uma frase motivacional
@@ -89,7 +93,9 @@ export function buildMessages(ctx) {
     ? positions.opening - positions.current
     : 0;
 
-  if (gaps?.isLeader && revenue > 0) {
+  const produziu = temFaturamento ? revenue > 0 : orders > 0;
+
+  if (gaps?.isLeader && produziu) {
     push('lideranca', TONE.TRIUNFO, '🏆',
       gained > 0 ? 'Você assumiu a liderança. Agora é segurar.' : 'Você está em 1º lugar. Ninguém passou.', 100);
   }
@@ -125,19 +131,25 @@ export function buildMessages(ctx) {
 
   // --- Comparação com o próprio desempenho de ontem ------------------------
   const vsY = performance?.vsYesterdaySameTime;
-  if (vsY && vsY.revenue.baseline > 0) {
-    if (vsY.revenue.abs > 0) {
-      const pct = vsY.revenue.pct != null ? ` (${percent(vsY.revenue.pct)} acima)` : '';
+  const contraOntem = temFaturamento ? vsY?.revenue : vsY?.orders;
+  if (contraOntem && contraOntem.baseline > 0) {
+    if (contraOntem.abs > 0) {
+      const pct = contraOntem.pct != null ? ` (${percent(contraOntem.pct)} acima)` : '';
       push('acima-de-ontem', TONE.RITMO, '🔥',
         `Você está produzindo mais que ontem neste mesmo horário${pct}.`, 80);
-    } else if (vsY.revenue.abs < 0) {
+    } else if (contraOntem.abs < 0) {
+      const atras = temFaturamento
+        ? moneyDelta(contraOntem.abs).replace('−', '')
+        : `${number(Math.abs(contraOntem.abs))} ${Math.abs(contraOntem.abs) === 1 ? 'pedido' : 'pedidos'}`;
       push('abaixo-de-ontem', TONE.ALERTA, '🚨',
-        `Atenção: seu ritmo caiu. Você está ${moneyDelta(vsY.revenue.abs).replace('−', '')} atrás de ontem neste horário.`, 82);
+        `Atenção: seu ritmo caiu. Você está ${atras} atrás de ontem neste horário.`, 82);
     }
   }
 
   // --- Ritmo em relação ao necessário -------------------------------------
-  const paceStatus = performance?.pace?.revenueStatus?.status;
+  const paceStatus = (temFaturamento
+    ? performance?.pace?.revenueStatus
+    : performance?.pace?.ordersStatus)?.status;
   if (paceStatus === 'acima') {
     push('ritmo-acima', TONE.RITMO, '🎯', 'Seu ritmo está acima do necessário. Mantenha.', 78);
   } else if (paceStatus === 'no-ritmo') {
@@ -153,18 +165,25 @@ export function buildMessages(ctx) {
     push('pre-abertura', TONE.NEUTRO, '⏳', 'O expediente ainda não começou. Prepare o dia.', 40);
   } else if (phase === 'encerrado') {
     push('encerrado', TONE.NEUTRO, '🏁', 'Dia encerrado. O placar de amanhã começa zerado.', 40);
-  } else if (orders === 0 && revenue === 0) {
+  } else if (!produziu) {
     push('sem-producao', TONE.ALERTA, '🚀', 'O dia começou e seu placar está zerado. Abra o marcador.', 92);
-  } else if ((performance?.remainingMinutes ?? 0) <= 120 && gaps?.toNext && gaps.toNext.revenue > 0) {
+  } else if ((performance?.remainingMinutes ?? 0) <= 120 && gaps?.toNext
+      && (temFaturamento ? gaps.toNext.revenue > 0 : gaps.toNext.orders > 0)) {
+    const falta = temFaturamento
+      ? money(gaps.toNext.revenue)
+      : `${number(gaps.toNext.orders)} ${gaps.toNext.orders === 1 ? 'pedido' : 'pedidos'}`;
     push('reta-final', TONE.DISPUTA, '⚡',
-      `Reta final: ainda dá para virar o jogo. Faltam ${money(gaps.toNext.revenue)}.`, 87);
+      `Reta final: ainda dá para virar o jogo. Faltam ${falta}.`, 87);
   }
 
   // --- Nível ---------------------------------------------------------------
-  if (tier?.next && tier.missingRevenue > 0) {
+  if (tier?.next && (tier.missingRevenue > 0 || (!temFaturamento && tier.missingOrders > 0))) {
+    const falta = temFaturamento
+      ? money(tier.missingRevenue)
+      : `${number(tier.missingOrders)} ${tier.missingOrders === 1 ? 'pedido' : 'pedidos'}`;
     push('proximo-nivel', TONE.RITMO, '🏅',
-      `Faltam ${money(tier.missingRevenue)} para o nível ${tier.next.name}.`, 64);
-  } else if (tier && !tier.next && revenue > 0) {
+      `Faltam ${falta} para o nível ${tier.next.name}.`, 64);
+  } else if (tier && !tier.next && produziu) {
     push('nivel-maximo', TONE.TRIUNFO, '👑', `Nível ${tier.current.name} alcançado — o topo da escala.`, 76);
   }
 
