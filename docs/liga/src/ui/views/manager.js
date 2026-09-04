@@ -140,10 +140,15 @@ function teamKpis({ app, vm, awaiting, config }) {
               value: money(vm.team.revenue),
               sub: comparison(p.vsYesterdaySameTime.revenue, 'revenue'),
             })
+            // Sem faturamento por vendedor, o total da carteira ainda é um
+            // número real — e é o resultado do dia da equipe. Deixar a linha
+            // vazia com ele à mão era jogar fora o que a origem informa.
             : statTile({
               label: 'Faturamento da equipe', icon: '💰', hero: true,
-              value: '—',
-              sub: 'a origem informa faturamento por carteira, não por vendedor',
+              value: vm.team.revenueInformadaPelaOrigem ? money(vm.team.revenue) : '—',
+              sub: vm.team.revenueInformadaPelaOrigem
+                ? 'total da carteira — a origem não reparte por vendedor'
+                : 'a origem informa faturamento por carteira, não por vendedor',
             }),
           // Sem faturamento por vendedor, todo indicador de dinheiro vira R$ 0
           // e mente. Nesses dias quem ocupa o lugar de destaque é o pedido —

@@ -102,6 +102,10 @@ export class PublishedFileSource extends DataSource {
         // repassar, o aplicativo leria zero como "não vendeu" em vez de
         // "não informado", e ranquearia todo mundo empatado em R$ 0.
         faturamentoPorVendedor: json?.faturamentoPorVendedor,
+        // Faturamento da carteira ao longo do dia. Existe mesmo quando não há
+        // faturamento por vendedor — é o resultado da equipe, e sem repassar
+        // aqui o painel mostraria a linha vazia tendo o número à mão.
+        totaisDaEquipe: Array.isArray(json?.equipe) ? json.equipe : null,
       },
     };
   }
