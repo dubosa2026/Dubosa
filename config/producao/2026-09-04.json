@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T23:08:24.164Z",
+  "publicadoEm": "2026-09-04T23:58:30.674Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 19:54",
-    "geradoEm": "2026-09-04T23:03:06.774Z"
+    "ultimaNota": "04/09/2026 20:45",
+    "geradoEm": "2026-09-04T23:53:11.696Z"
   },
   "equipe": [
     {
@@ -248,6 +248,11 @@
       "time": "20:08",
       "orders": 175,
       "revenue": 3081126.39
+    },
+    {
+      "time": "20:58",
+      "orders": 177,
+      "revenue": 3112107.72
     }
   ],
   "records": [
@@ -417,6 +422,14 @@
       "date": "2026-09-04",
       "time": "17:27",
       "orders": 4,
+      "revenue": 0
+    },
+    {
+      "sellerId": "erica-oliveira",
+      "sellerName": "ERICA OLIVEIRA",
+      "date": "2026-09-04",
+      "time": "20:58",
+      "orders": 5,
       "revenue": 0
     },
     {
@@ -905,6 +918,14 @@
       "date": "2026-09-04",
       "time": "18:28",
       "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "munari-angela-mariano",
+      "sellerName": "MUNARI ANGELA MARIANO",
+      "date": "2026-09-04",
+      "time": "20:58",
+      "orders": 4,
       "revenue": 0
     },
     {
