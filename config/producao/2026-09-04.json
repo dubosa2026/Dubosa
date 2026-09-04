@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T17:36:52.803Z",
+  "publicadoEm": "2026-09-04T17:46:55.385Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 14:29",
-    "geradoEm": "2026-09-04T17:33:25.601Z"
+    "ultimaNota": "04/09/2026 14:38",
+    "geradoEm": "2026-09-04T17:43:15.933Z"
   },
   "equipe": [
     {
@@ -123,6 +123,11 @@
       "time": "14:36",
       "orders": 75,
       "revenue": 1510945.87
+    },
+    {
+      "time": "14:46",
+      "orders": 77,
+      "revenue": 1553208.27
     }
   ],
   "records": [
@@ -447,6 +452,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-09-04",
+      "time": "14:46",
+      "orders": 7,
+      "revenue": 0
+    },
+    {
       "sellerId": "paulo-roberto-da-silva-filho",
       "sellerName": "PAULO ROBERTO DA SILVA FILHO",
       "date": "2026-09-04",
@@ -476,6 +489,14 @@
       "date": "2026-09-04",
       "time": "14:36",
       "orders": 5,
+      "revenue": 0
+    },
+    {
+      "sellerId": "paulo-roberto-da-silva-filho",
+      "sellerName": "PAULO ROBERTO DA SILVA FILHO",
+      "date": "2026-09-04",
+      "time": "14:46",
+      "orders": 6,
       "revenue": 0
     },
     {
