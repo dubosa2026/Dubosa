@@ -1,58 +1,62 @@
 # Coleta a produção do sistema de pedidos para a Liga Comercial.
 #
-# POR QUE ESTE ARQUIVO ESTÁ NESTA BRANCH, e não junto do aplicativo que ele
-# serve: agendamento no GitHub Actions só dispara a partir da branch PADRÃO do
-# repositório. Um `schedule` em qualquer outra branch é lido e ignorado — o
-# arquivo existe, a aba Actions mostra o workflow, e ele nunca roda. Esta é a
-# branch padrão, então é daqui que o relógio funciona.
+# POR QUE UMA EXECUÇÃO LONGA, E NÃO UMA A CADA 10 MINUTOS.
 #
-# Nada desta branch é usado na coleta. O passo de checkout troca para a branch
-# da Liga e é lá que o script vive, que o arquivo do dia é gravado e que o
-# aplicativo publicado vai ler. Este arquivo é só o despertador.
+# A primeira versão pedia ao agendador do GitHub ~50 disparos por dia. Em dois
+# dias de tentativa, com dois formatos de horário diferentes — inclusive fora do
+# minuto cheio, como a própria documentação recomenda —, o agendador disparou
+# ZERO vezes. Todas as coletas que aconteceram foram acionadas à mão. O
+# workflow está ativo, na branch padrão, e roda quando acionado: o que falha é
+# a fila do agendamento, e ela não está sob nosso controle.
+#
+# Então uma execução passa a cobrir o expediente inteiro: ela entra em laço e
+# coleta de dez em dez minutos por conta própria. O agendador precisa acertar
+# UMA vez por período, em vez de cinquenta — e quando erra todas, um clique em
+# "Run workflow" recupera o dia inteiro.
+#
+# O custo disso é tempo de execução parado entre as coletas. Em repositório
+# público o GitHub não cobra minutos, então o preço é zero; num repositório
+# privado esta escolha teria de ser outra.
+#
+# POR QUE ESTE ARQUIVO ESTÁ NESTA BRANCH: agendamento só dispara a partir da
+# branch PADRÃO do repositório. Nada mais desta branch é usado — o checkout
+# troca para a branch da Liga, e é lá que o script vive e que o arquivo do dia
+# é gravado.
 #
 # ANTES DE FUNCIONAR, uma coisa só:
 #   Settings → Secrets and variables → Actions → New repository secret
 #     Nome:  PIN            (ou PEDIDOS_PIN, se preferir)
 #     Valor: o PIN de acesso ao sistema de pedidos
-#
-# Dois nomes aceitos de proposito. O nome do segredo so admite letras, numeros
-# e sublinhado, e sublinhado em teclado de celular exige trocar de pagina --
-# quem digita "PEDIDOS PIN" com espaco leva erro e nao entende por que. O nome
-# PIN nao tem essa armadilha. PEDIDOS_PIN continua valendo e vem primeiro.
-#
-# O PIN fica nos segredos do GitHub. Ele nunca aparece no código, no histórico
-# nem no registro de execução.
 
 name: Coletar produção
 
 on:
   schedule:
-    # A cada 15 minutos, das 8h às 21h de Brasília (11h–00h UTC), de segunda a
-    # sexta.
-    #
-    # OS MINUTOS QUEBRADOS SÃO DE PROPÓSITO. O agendamento do GitHub é servido
-    # por ordem de fila e não tem hora marcada: a documentação avisa que ele
-    # atrasa nos períodos de carga alta, e o pico é o começo de cada hora. Com
-    # `*/10` a primeira coleta do dia caía exatamente em :00, junto com o mundo
-    # inteiro — e num dia inteiro de sexta nenhuma execução agendada disparou,
-    # só as manuais. Fora do minuto cheio a fila é curta.
-    - cron: '4,19,34,49 11-23 * * 1-5'
-  workflow_dispatch:        # permite rodar à mão pelo botão "Run workflow"
+    # Três largadas por dia útil, em minuto quebrado. Cada uma cobre o
+    # expediente pelas horas seguintes; basta uma pegar.
+    - cron: '4 11 * * 1-5'    # 08h04 de Brasília — abertura
+    - cron: '4 15 * * 1-5'    # 12h04 — se a primeira falhou
+    - cron: '4 19 * * 1-5'    # 16h04 — se as duas falharam
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  # Duas coletas ao mesmo tempo brigariam pelo mesmo arquivo.
+  # A largada seguinte espera a anterior terminar, em vez de brigar pelo mesmo
+  # arquivo. Na prática elas se emendam e cobrem o dia.
   group: coletar-producao
   cancel-in-progress: false
 
 env:
   BRANCH_DA_LIGA: claude/sales-competition-app-t0sv4b
+  INTERVALO_SEGUNDOS: 600
+  FIM_DO_EXPEDIENTE: '21:30'
 
 jobs:
   coletar:
     runs-on: ubuntu-latest
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,25 +66,48 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Ler o sistema de pedidos
+      - name: Coletar durante o expediente
         env:
           PEDIDOS_BASE: ${{ vars.PEDIDOS_BASE || 'https://pedidos-belenergy-tega.netlify.app' }}
           PEDIDOS_PIN: ${{ secrets.PEDIDOS_PIN || secrets.PIN }}
-        run: node scripts/coletar-producao.mjs
-
-      - name: Gravar o dia
         run: |
-          if [ -z "$(git status --porcelain config/producao)" ]; then
-            echo "Nada mudou desde a última coleta."
-            exit 0
-          fi
+          set -u
           git config user.name  "Coletor da Liga"
           git config user.email "actions@github.com"
-          git add config/producao
-          git commit -m "Producao de $(TZ=America/Sao_Paulo date '+%d/%m/%Y as %H:%M')"
-          # Outra coleta pode ter gravado enquanto esta rodava.
-          for tentativa in 1 2 3; do
-            git pull --rebase --autostash origin "$BRANCH_DA_LIGA" && break
-            sleep 5
+
+          # Margem para a execução terminar antes do limite do runner.
+          LIMITE=$(( $(date +%s) + 340 * 60 ))
+          RODADA=0
+
+          while :; do
+            RODADA=$(( RODADA + 1 ))
+            AGORA=$(TZ=America/Sao_Paulo date '+%H:%M')
+            echo "::group::Rodada $RODADA — $AGORA de Brasília"
+
+            # Uma falha de rede não pode derrubar o dia inteiro: a rodada
+            # seguinte tenta de novo.
+            if node scripts/coletar-producao.mjs; then
+              if [ -n "$(git status --porcelain config/producao)" ]; then
+                git add config/producao
+                git commit -m "Producao de $(TZ=America/Sao_Paulo date '+%d/%m/%Y as %H:%M')"
+                for tentativa in 1 2 3; do
+                  git pull --rebase --autostash origin "$BRANCH_DA_LIGA" && break
+                  sleep 5
+                done
+                git push origin "HEAD:$BRANCH_DA_LIGA" || echo "Push falhou; a proxima rodada tenta de novo."
+              fi
+            else
+              echo "Leitura falhou nesta rodada. Seguindo."
+            fi
+            echo "::endgroup::"
+
+            if [ "$AGORA" \> "$FIM_DO_EXPEDIENTE" ]; then
+              echo "Expediente encerrado ($AGORA). Fim."
+              break
+            fi
+            if [ "$(date +%s)" -ge "$LIMITE" ]; then
+              echo "Limite desta execucao atingido. A proxima largada continua."
+              break
+            fi
+            sleep "$INTERVALO_SEGUNDOS"
           done
-          git push origin "HEAD:$BRANCH_DA_LIGA"
