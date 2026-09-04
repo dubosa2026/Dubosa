@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T13:15:56.483Z",
+  "publicadoEm": "2026-09-04T13:25:58.784Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 10:08",
-    "geradoEm": "2026-09-04T13:11:35.013Z"
+    "ultimaNota": "04/09/2026 10:19",
+    "geradoEm": "2026-09-04T13:21:47.069Z"
   },
   "equipe": [
     {
@@ -23,6 +23,11 @@
       "time": "10:15",
       "orders": 31,
       "revenue": 821336.03
+    },
+    {
+      "time": "10:25",
+      "orders": 38,
+      "revenue": 901486.04
     }
   ],
   "records": [
@@ -67,6 +72,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-09-04",
+      "time": "10:25",
+      "orders": 2,
+      "revenue": 0
+    },
+    {
       "sellerId": "leonardo-costa-oliveira",
       "sellerName": "LEONARDO COSTA OLIVEIRA",
       "date": "2026-09-04",
@@ -107,6 +120,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "sellerName": "MARIA PAULA BERTAGLIA NESTOR",
+      "date": "2026-09-04",
+      "time": "10:25",
+      "orders": 4,
+      "revenue": 0
+    },
+    {
       "sellerId": "matheus-souza-de-barros",
       "sellerName": "MATHEUS SOUZA DE BARROS",
       "date": "2026-09-04",
@@ -128,6 +149,14 @@
       "date": "2026-09-04",
       "time": "10:04",
       "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-09-04",
+      "time": "10:25",
+      "orders": 3,
       "revenue": 0
     },
     {
@@ -163,11 +192,27 @@
       "revenue": 0
     },
     {
+      "sellerId": "rafael-vanderlei-lopes",
+      "sellerName": "RAFAEL VANDERLEI LOPES",
+      "date": "2026-09-04",
+      "time": "10:25",
+      "orders": 14,
+      "revenue": 0
+    },
+    {
       "sellerId": "rosyrene-de-medeiros-celestino",
       "sellerName": "ROSYRENE DE MEDEIROS CELESTINO",
       "date": "2026-09-04",
       "time": "08:48",
       "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rosyrene-de-medeiros-celestino",
+      "sellerName": "ROSYRENE DE MEDEIROS CELESTINO",
+      "date": "2026-09-04",
+      "time": "10:25",
+      "orders": 2,
       "revenue": 0
     },
     {
