@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T13:56:06.219Z",
+  "publicadoEm": "2026-09-04T14:06:08.764Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 10:50",
-    "geradoEm": "2026-09-04T13:51:38.719Z"
+    "ultimaNota": "04/09/2026 10:59",
+    "geradoEm": "2026-09-04T14:01:41.626Z"
   },
   "equipe": [
     {
@@ -43,6 +43,11 @@
       "time": "10:56",
       "orders": 44,
       "revenue": 968819.77
+    },
+    {
+      "time": "11:06",
+      "orders": 47,
+      "revenue": 1061359.91
     }
   ],
   "records": [
@@ -215,6 +220,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "paulo-roberto-da-silva-filho",
+      "sellerName": "PAULO ROBERTO DA SILVA FILHO",
+      "date": "2026-09-04",
+      "time": "11:06",
+      "orders": 2,
+      "revenue": 0
+    },
+    {
       "sellerId": "rafael-vanderlei-lopes",
       "sellerName": "RAFAEL VANDERLEI LOPES",
       "date": "2026-09-04",
@@ -260,6 +273,14 @@
       "date": "2026-09-04",
       "time": "10:56",
       "orders": 16,
+      "revenue": 0
+    },
+    {
+      "sellerId": "ricardo-carniato-rodrigues",
+      "sellerName": "RICARDO CARNIATO RODRIGUES",
+      "date": "2026-09-04",
+      "time": "11:06",
+      "orders": 2,
       "revenue": 0
     },
     {
