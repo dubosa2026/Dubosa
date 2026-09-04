@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T20:58:00.903Z",
+  "publicadoEm": "2026-09-04T21:18:04.501Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 17:49",
-    "geradoEm": "2026-09-04T20:53:13.669Z"
+    "ultimaNota": "04/09/2026 18:07",
+    "geradoEm": "2026-09-04T21:13:11.230Z"
   },
   "equipe": [
     {
@@ -218,6 +218,11 @@
       "time": "17:57",
       "orders": 166,
       "revenue": 2929597.01
+    },
+    {
+      "time": "18:18",
+      "orders": 168,
+      "revenue": 2946015.17
     }
   ],
   "records": [
@@ -755,6 +760,14 @@
       "date": "2026-09-04",
       "time": "17:17",
       "orders": 15,
+      "revenue": 0
+    },
+    {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "sellerName": "MARIA PAULA BERTAGLIA NESTOR",
+      "date": "2026-09-04",
+      "time": "18:18",
+      "orders": 16,
       "revenue": 0
     },
     {
@@ -1307,6 +1320,14 @@
       "date": "2026-09-04",
       "time": "17:57",
       "orders": 14,
+      "revenue": 0
+    },
+    {
+      "sellerId": "victor-vinicius-renno",
+      "sellerName": "VICTOR VINICIUS RENNO",
+      "date": "2026-09-04",
+      "time": "18:18",
+      "orders": 15,
       "revenue": 0
     }
   ]
