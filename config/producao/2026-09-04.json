@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T21:58:13.451Z",
+  "publicadoEm": "2026-09-04T22:28:18.057Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 18:44",
-    "geradoEm": "2026-09-04T21:53:14.130Z"
+    "ultimaNota": "04/09/2026 19:10",
+    "geradoEm": "2026-09-04T22:23:04.815Z"
   },
   "equipe": [
     {
@@ -238,6 +238,11 @@
       "time": "18:58",
       "orders": 173,
       "revenue": 3054882.67
+    },
+    {
+      "time": "19:28",
+      "orders": 174,
+      "revenue": 3067845.23
     }
   ],
   "records": [
@@ -791,6 +796,14 @@
       "date": "2026-09-04",
       "time": "18:28",
       "orders": 17,
+      "revenue": 0
+    },
+    {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "sellerName": "MARIA PAULA BERTAGLIA NESTOR",
+      "date": "2026-09-04",
+      "time": "19:28",
+      "orders": 18,
       "revenue": 0
     },
     {
