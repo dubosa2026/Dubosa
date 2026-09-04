@@ -126,22 +126,34 @@ export function buildMessages(ctx) {
   // --- Disputa com os vizinhos (magnitude, nunca identidade) --------------
   if (gaps?.toNext) {
     const { revenue: gapRev, orders: gapOrd } = gaps.toNext;
-    if (gapRev > 0 && gapRev <= gapAlertRevenue) {
+    // Sem faturamento individual liberado, a disputa se conta em pedidos. Era
+    // por aqui que o valor voltava a aparecer quando a origem informava e a
+    // chave estava desligada.
+    if (temFaturamento && gapRev > 0 && gapRev <= gapAlertRevenue) {
       push('quase-la', TONE.DISPUTA, '⚔️',
         `A disputa está apertando. Faltam ${money(gapRev)} para avançar.`, 90);
-    } else if (gapRev > 0) {
+    } else if (temFaturamento && gapRev > 0) {
       push('distancia-proxima', TONE.DISPUTA, '🚀',
         `Você está a ${money(gapRev)} da próxima posição.`, 70);
     }
     if (gapOrd > 0 && gapOrd <= gapAlertOrders) {
       push('pedidos-para-avancar', TONE.DISPUTA, '📦',
         `Faltam ${number(gapOrd)} ${gapOrd === 1 ? 'pedido' : 'pedidos'} para avançar.`, 75);
+    } else if (!temFaturamento && gapOrd > 0) {
+      push('distancia-proxima', TONE.DISPUTA, '🚀',
+        `Você está a ${number(gapOrd)} ${gapOrd === 1 ? 'pedido' : 'pedidos'} da próxima posição.`, 70);
     }
   }
 
-  if (gaps?.toPrevious && gaps.toPrevious.revenue >= 0 && gaps.toPrevious.revenue <= gapAlertRevenue && revenue > 0) {
-    push('sendo-alcancado', TONE.ALERTA, '🛡️',
-      `Estão a ${money(gaps.toPrevious.revenue)} de você. Segure a posição.`, 85);
+  if (gaps?.toPrevious && produziu) {
+    const atras = temFaturamento ? gaps.toPrevious.revenue : gaps.toPrevious.orders;
+    const limite = temFaturamento ? gapAlertRevenue : gapAlertOrders;
+    if (atras >= 0 && atras <= limite) {
+      push('sendo-alcancado', TONE.ALERTA, '🛡️',
+        temFaturamento
+          ? `Estão a ${money(atras)} de você. Segure a posição.`
+          : `Estão a ${number(atras)} ${atras === 1 ? 'pedido' : 'pedidos'} de você. Segure a posição.`, 85);
+    }
   }
 
   // --- Comparação com o próprio desempenho de ontem ------------------------

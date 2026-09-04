@@ -106,9 +106,30 @@ export function assertCan(role, capability, config = {}, ctx = {}) {
  * empate zerado para a equipe inteira. Nesse caso o critério passa a ser
  * pedidos, que é o dado que existe de verdade.
  */
+/**
+ * O faturamento POR VENDEDOR pode ser mostrado?
+ *
+ * Duas condições, e as duas mandam:
+ *
+ *   - a origem informa faturamento por vendedor. O sistema de pedidos da
+ *     empresa informa por carteira, então hoje não;
+ *   - `ui.faturamentoIndividual` está ligado na configuração.
+ *
+ * A segunda existe porque a primeira pode mudar sozinha. Se um dia a origem
+ * passar a mandar valor por vendedor, ele apareceria na tela de todo mundo sem
+ * ninguém ter decidido isso — e faturamento individual é dado sensível numa
+ * competição. Fica desligado até alguém ligar.
+ *
+ * O total da equipe não passa por aqui: ele é resultado coletivo, vem da
+ * própria origem e continua visível.
+ */
+export function podeMostrarFaturamentoIndividual(dayState, config) {
+  return dayState?.revenueAvailable !== false && config?.ui?.faturamentoIndividual === true;
+}
+
 export function regrasDeRanking(dayState, config) {
   const base = config?.ranking ?? {};
-  if (dayState?.revenueAvailable === false) {
+  if (!podeMostrarFaturamentoIndividual(dayState, config)) {
     return {
       ...base,
       primary: 'orders',
@@ -262,7 +283,7 @@ export function buildSellerView({
     : null;
 
   const tier = tierFor(performance.orders, performance.revenue, config.tiers,
-    { temFaturamento: today?.revenueAvailable !== false });
+    { temFaturamento: podeMostrarFaturamentoIndividual(today, config) });
 
   const teamFirstOrder = (today?.sellers ?? [])
     .map((s) => s.firstOrderMinutes)
@@ -299,7 +320,7 @@ export function buildSellerView({
     positions,
     tier,
     phase: dayPhase(businessHours, atMinutes),
-    temFaturamento: today?.revenueAvailable !== false,
+    temFaturamento: podeMostrarFaturamentoIndividual(today, config),
     origemConectada,
     businessHours,
     config: config.messages,
@@ -326,6 +347,7 @@ export function buildSellerView({
       // vindo da carteira e o individual não existindo, a divisão não tem
       // numerador — e um número aqui seria inventado.
       myShareOfRevenue: aggregate.revenue > 0 && !aggregate.revenueInformadaPelaOrigem
+        && podeMostrarFaturamentoIndividual(today, config)
         ? performance.revenue / aggregate.revenue
         : null,
       vsYesterdaySameTime: yAggregate
@@ -353,7 +375,8 @@ export function buildSellerView({
     lidaEm: today?.fetchedAt ?? null,
     isDemo: Boolean(today?.isDemo),
     hasData: Boolean(me && me.timeline.length),
-    revenueAvailable: today?.revenueAvailable !== false,
+    revenueAvailable: podeMostrarFaturamentoIndividual(today, config),
+    faturamentoNaOrigem: today?.revenueAvailable !== false,
     awaitingData,
     semProducao: !awaitingData && !(me && me.timeline.length),
     performance,
@@ -410,7 +433,7 @@ export function buildManagerView({
       : rankAt(today, openingMark, regrasDeRanking(today, config)).find((e) => e.sellerId === entry.sellerId);
     const gaps = gapsFor(ranked, entry.sellerId);
     const tier = tierFor(entry.orders, entry.revenue, config.tiers,
-      { temFaturamento: today?.revenueAvailable !== false });
+      { temFaturamento: podeMostrarFaturamentoIndividual(today, config) });
 
     return {
       sellerId: entry.sellerId,
@@ -461,7 +484,8 @@ export function buildManagerView({
     lidaEm: today?.fetchedAt ?? null,
     isDemo: Boolean(today?.isDemo),
     hasData: Boolean(today?.hasData),
-    revenueAvailable: today?.revenueAvailable !== false,
+    revenueAvailable: podeMostrarFaturamentoIndividual(today, config),
+    faturamentoNaOrigem: today?.revenueAvailable !== false,
     elapsedMinutes: elapsedBusinessMinutes(businessHours, atMinutes),
     rows,
     foraDoCadastro: today?.foraDoCadastro ?? [],

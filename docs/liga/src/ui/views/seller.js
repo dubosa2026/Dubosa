@@ -337,6 +337,15 @@ function tierSection({ vm, awaiting }) {
     }))));
 }
 
+/** O que falta para a próxima posição, no indicador que está valendo. */
+function faltaParaAvancar(gap, temFaturamento) {
+  const valor = temFaturamento ? gap.revenue : gap.orders;
+  if (!(valor > 0)) return 'Empate na próxima posição';
+  return temFaturamento
+    ? `${money(gap.revenue)} para avançar`
+    : `${number(gap.orders)} ${gap.orders === 1 ? 'pedido' : 'pedidos'} para avançar`;
+}
+
 /** O que ainda falta para o próximo nível, dito só com o que a base informa. */
 function faltaParaONivel(t) {
   const pedidos = t.missingOrders > 0
@@ -401,7 +410,9 @@ function footer({ vm, app }) {
 // ---------------------------------------------------------- modo compacto
 function compactView({ vm, app, awaiting }) {
   const next = vm.gaps?.toNext;
-  const paceStatus = vm.performance.pace?.revenueStatus?.status;
+  const paceStatus = (vm.revenueAvailable
+    ? vm.performance.pace?.revenueStatus
+    : vm.performance.pace?.ordersStatus)?.status;
   const top = vm.messages[0] ?? null;
 
   return h('div', { class: 'view view-compact' },
@@ -418,13 +429,17 @@ function compactView({ vm, app, awaiting }) {
       h('div', { class: 'compact-stat' },
         h('span', { class: 'compact-stat-label', text: 'Pedidos' }),
         h('span', { class: 'compact-stat-value', text: awaiting ? '—' : number(vm.performance.orders) })),
-      h('div', { class: 'compact-stat' },
-        h('span', { class: 'compact-stat-label', text: 'Faturamento' }),
-        h('span', { class: 'compact-stat-value', text: awaiting ? '—' : money(vm.performance.revenue) }))),
+      vm.revenueAvailable
+        ? h('div', { class: 'compact-stat' },
+          h('span', { class: 'compact-stat-label', text: 'Faturamento' }),
+          h('span', { class: 'compact-stat-value', text: awaiting ? '—' : money(vm.performance.revenue) }))
+        : h('div', { class: 'compact-stat' },
+          h('span', { class: 'compact-stat-label', text: 'Posição' }),
+          h('span', { class: 'compact-stat-value', text: awaiting ? '—' : ordinal(vm.gaps?.position) }))),
     !awaiting && next
       ? h('div', { class: 'compact-gap' },
         h('span', { 'aria-hidden': 'true', text: '⚔️' }),
-        h('span', { text: next.revenue > 0 ? `${money(next.revenue)} para avançar` : 'Empate na próxima posição' }))
+        h('span', { text: faltaParaAvancar(next, vm.revenueAvailable) }))
       : null,
     !awaiting && paceStatus
       ? h('div', { class: ['compact-pace', paceStatus === 'abaixo' || paceStatus === 'parado' ? 'tone-warn' : 'tone-good'] },
