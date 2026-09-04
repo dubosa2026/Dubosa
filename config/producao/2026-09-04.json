@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T17:16:48.225Z",
+  "publicadoEm": "2026-09-04T17:26:50.428Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 14:09",
-    "geradoEm": "2026-09-04T17:13:19.065Z"
+    "ultimaNota": "04/09/2026 14:19",
+    "geradoEm": "2026-09-04T17:23:21.562Z"
   },
   "equipe": [
     {
@@ -113,6 +113,11 @@
       "time": "14:16",
       "orders": 71,
       "revenue": 1473974.39
+    },
+    {
+      "time": "14:26",
+      "orders": 74,
+      "revenue": 1499704.43
     }
   ],
   "records": [
@@ -453,6 +458,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "paulo-roberto-da-silva-filho",
+      "sellerName": "PAULO ROBERTO DA SILVA FILHO",
+      "date": "2026-09-04",
+      "time": "14:26",
+      "orders": 4,
+      "revenue": 0
+    },
+    {
       "sellerId": "rafael-vanderlei-lopes",
       "sellerName": "RAFAEL VANDERLEI LOPES",
       "date": "2026-09-04",
@@ -498,6 +511,14 @@
       "date": "2026-09-04",
       "time": "10:56",
       "orders": 16,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rafael-vanderlei-lopes",
+      "sellerName": "RAFAEL VANDERLEI LOPES",
+      "date": "2026-09-04",
+      "time": "14:26",
+      "orders": 17,
       "revenue": 0
     },
     {
