@@ -359,11 +359,19 @@ function accessPanel({ app, roster, rosterOrigin, team }) {
 
     h('div', { class: 'divider' }),
     sectionTitle('Seu acesso de gestor'),
+    // Este link ficava logo abaixo da tabela dos vendedores, num bloco de
+    // código igual aos outros. Copiar a linha errada mostra o resultado
+    // nominal da equipe inteira para um vendedor.
+    h('div', { class: 'alert alert-warn' },
+      h('strong', { text: '⚠ Este link não é de vendedor. ' }),
+      'Ele abre o resultado de toda a equipe, com nomes e posições. '
+      + 'Não envie por WhatsApp, não guarde junto com os outros e não cole em conversa de grupo. '
+      + 'Os links dos vendedores são os da tabela acima.'),
     roster.manager
       ? h('div', {},
         app.state.managerToken
-          ? h('div', { class: 'alert alert-info' },
-            h('strong', { text: 'Guarde este link agora: ' }),
+          ? h('div', { class: 'alert alert-error' },
+            h('strong', { text: 'SOMENTE SEU — guarde agora: ' }),
             h('code', { class: 'link-code', text: buildLink(app.baseUrl, 'manager', app.state.managerToken) }))
           : h('p', { class: 'muted', text: 'Acesso de gestor configurado.' }),
         h('button', { class: 'btn btn-sm', onclick: () => app.regenerateManager(), text: 'Gerar novo link de gestor' }))

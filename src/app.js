@@ -310,6 +310,7 @@ class App {
 
   logout() {
     this.writePref('token', null);
+    this.writePref('gestorConfirmado', false);
     this.identity = null;
     clearInterval(this.timer);
     globalThis.location.hash = '#/entrar';
@@ -336,6 +337,16 @@ class App {
   setManagerTab(tab) { this.state.managerTab = tab; this.render(); }
 
   setAdminTab(tab) { this.state.adminTab = tab; this.render(); }
+
+  /** Este aparelho já assumiu ser o do gestor alguma vez? */
+  get gestorConfirmado() {
+    return this.readPref('gestorConfirmado', false) === true;
+  }
+
+  confirmarGestor() {
+    this.writePref('gestorConfirmado', true);
+    this.render();
+  }
 
   async instalar() {
     const aceitou = await instalarAplicativo();

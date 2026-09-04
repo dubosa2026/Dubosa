@@ -20,7 +20,44 @@ import { versaoPublicada } from '../../core/settings.js';
  * É o único perfil que enxerga nomes ao lado de números.
  */
 
+/**
+ * PORTA DO PAINEL DO GESTOR
+ *
+ * O link do gestor abre o resultado nominal da equipe inteira em qualquer
+ * aparelho — é o que ele faz, e é o que o torna perigoso numa lista de
+ * contatos. Duas vezes um vendedor abriu um link e caiu aqui.
+ *
+ * Isto não é senha e não finge ser: quem tem o link continua podendo entrar.
+ * O que ele impede é o ACIDENTE — o link colado na conversa errada, a linha
+ * copiada errada da lista. Antes de qualquer número aparecer, a tela diz de
+ * quem é este painel e oferece a saída a quem não deveria estar aqui.
+ */
+function portaDoGestor({ app }) {
+  return h('div', { class: 'view view-login' },
+    h('div', { class: 'login-card' },
+      h('div', { class: 'login-logo', 'aria-hidden': 'true', text: '🔐' }),
+      h('h1', { class: 'login-title', text: 'Painel do Gestor' }),
+      h('p', { class: 'login-sub' },
+        'Este link mostra o resultado de ',
+        h('strong', { text: 'toda a equipe, com nomes e posições' }),
+        '. Ele é do gestor.'),
+      h('div', { class: 'alert alert-warn' },
+        h('strong', { text: 'Você é vendedor? ' }),
+        'Então este link foi enviado por engano — feche esta página e peça o seu link pessoal ao gestor. '
+        + 'O seu mostra os seus números, e ninguém vê os do outro.'),
+      h('button', {
+        class: 'btn btn-primary btn-block',
+        onclick: () => app.confirmarGestor(),
+        text: 'Sou o gestor — abrir o painel',
+      }),
+      h('p', { class: 'login-note' },
+        h('span', { 'aria-hidden': 'true', text: '🔒' }),
+        'Esta confirmação é pedida uma vez por aparelho.')));
+}
+
 export function managerView({ vm, config, app, revendo = false }) {
+  if (!app.gestorConfirmado) return portaDoGestor({ app });
+
   // Espera é só quando a base não está conectada. Equipe inteira zerada às 8h
   // é um placar legítimo — e uma informação que o gestor precisa ver.
   const awaiting = vm.status !== 'ready';
