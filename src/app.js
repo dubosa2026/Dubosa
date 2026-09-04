@@ -20,7 +20,9 @@ import {
 import { buildDayState, emptyDayState, mergeTeam } from './data/store.js';
 import { slugifyName as slug } from './data/types.js';
 import { buildSellerView, buildManagerView, markHighPerformance } from './core/access.js';
-import { nowInTimezone, previousBusinessDay, previousBusinessDays } from './core/clock.js';
+import {
+  nowInTimezone, previousBusinessDay, previousBusinessDays, totalBusinessMinutes,
+} from './core/clock.js';
 import { sellerView } from './ui/views/seller.js';
 import { managerView } from './ui/views/manager.js';
 import { loginView } from './ui/views/login.js';
@@ -307,6 +309,23 @@ class App {
   setManagerTab(tab) { this.state.managerTab = tab; this.render(); }
 
   setAdminTab(tab) { this.state.adminTab = tab; this.render(); }
+
+  /**
+   * O último dia com produção, quando existe.
+   *
+   * Às sete da manhã — e em qualquer hora antes do primeiro pedido — o painel
+   * de hoje está legitimamente vazio, e ficava só nisso: uma tela de espera
+   * sem nada para olhar, com o fechamento de ontem já carregado na memória do
+   * aplicativo e sem forma de ver.
+   */
+  get fechamentoAnterior() {
+    const d = this.data.yesterday;
+    return d?.sellers?.length ? d : null;
+  }
+
+  verFechamentoAnterior() { this.state.revendoDiaAnterior = true; this.render(); }
+
+  voltarParaHoje() { this.state.revendoDiaAnterior = false; this.render(); }
 
   /**
    * Gestor vendo o painel de um vendedor exatamente como ele vê.
@@ -647,14 +666,17 @@ class App {
       }
 
       if (this.identity.role === 'manager') {
+        // Um dia fechado se olha inteiro: avaliá-lo no minuto atual mostraria
+        // o placar de ontem às 01h19, que é vazio.
+        const revendo = this.state.revendoDiaAnterior && this.fechamentoAnterior;
         const vm = buildManagerView({
-          today,
-          yesterday: this.data.yesterday,
-          atMinutes,
+          today: revendo ? this.fechamentoAnterior : today,
+          yesterday: revendo ? null : this.data.yesterday,
+          atMinutes: revendo ? totalBusinessMinutes(config.businessHours) : atMinutes,
           config,
-          historyDays: this.data.historyDays,
+          historyDays: revendo ? [] : this.data.historyDays,
         });
-        mount(this.root, banner, managerView({ vm, config, app: this }));
+        mount(this.root, banner, managerView({ vm, config, app: this, revendo: Boolean(revendo) }));
       } else {
         const vm = this.sellerVM ?? buildSellerView({
           today,
