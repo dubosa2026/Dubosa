@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T17:46:55.385Z",
+  "publicadoEm": "2026-09-04T17:56:58.000Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 14:38",
-    "geradoEm": "2026-09-04T17:43:15.933Z"
+    "ultimaNota": "04/09/2026 14:49",
+    "geradoEm": "2026-09-04T17:53:14.020Z"
   },
   "equipe": [
     {
@@ -128,6 +128,11 @@
       "time": "14:46",
       "orders": 77,
       "revenue": 1553208.27
+    },
+    {
+      "time": "14:56",
+      "orders": 83,
+      "revenue": 1680306.14
     }
   ],
   "records": [
@@ -145,6 +150,14 @@
       "date": "2026-09-04",
       "time": "10:04",
       "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "diego-adan-ohnuma-angeli",
+      "sellerName": "DIEGO ADAN OHNUMA ANGELI",
+      "date": "2026-09-04",
+      "time": "14:56",
+      "orders": 2,
       "revenue": 0
     },
     {
@@ -305,6 +318,14 @@
       "date": "2026-09-04",
       "time": "14:16",
       "orders": 6,
+      "revenue": 0
+    },
+    {
+      "sellerId": "lucas-dos-reis-bernardes-da-silveira",
+      "sellerName": "LUCAS DOS REIS BERNARDES DA SILVEIRA",
+      "date": "2026-09-04",
+      "time": "14:56",
+      "orders": 7,
       "revenue": 0
     },
     {
@@ -500,6 +521,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "paulo-roberto-da-silva-filho",
+      "sellerName": "PAULO ROBERTO DA SILVA FILHO",
+      "date": "2026-09-04",
+      "time": "14:56",
+      "orders": 7,
+      "revenue": 0
+    },
+    {
       "sellerId": "rafael-vanderlei-lopes",
       "sellerName": "RAFAEL VANDERLEI LOPES",
       "date": "2026-09-04",
@@ -564,6 +593,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "ricardo-carniato-rodrigues",
+      "sellerName": "RICARDO CARNIATO RODRIGUES",
+      "date": "2026-09-04",
+      "time": "14:56",
+      "orders": 4,
+      "revenue": 0
+    },
+    {
       "sellerId": "rosyrene-de-medeiros-celestino",
       "sellerName": "ROSYRENE DE MEDEIROS CELESTINO",
       "date": "2026-09-04",
@@ -609,6 +646,14 @@
       "date": "2026-09-04",
       "time": "14:16",
       "orders": 6,
+      "revenue": 0
+    },
+    {
+      "sellerId": "victor-vinicius-renno",
+      "sellerName": "VICTOR VINICIUS RENNO",
+      "date": "2026-09-04",
+      "time": "14:56",
+      "orders": 7,
       "revenue": 0
     }
   ]
