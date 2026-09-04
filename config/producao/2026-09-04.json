@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T13:25:58.784Z",
+  "publicadoEm": "2026-09-04T13:36:01.060Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 10:19",
-    "geradoEm": "2026-09-04T13:21:47.069Z"
+    "ultimaNota": "04/09/2026 10:27",
+    "geradoEm": "2026-09-04T13:31:44.861Z"
   },
   "equipe": [
     {
@@ -28,6 +28,11 @@
       "time": "10:25",
       "orders": 38,
       "revenue": 901486.04
+    },
+    {
+      "time": "10:36",
+      "orders": 40,
+      "revenue": 921238.56
     }
   ],
   "records": [
@@ -136,6 +141,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "matheus-souza-de-barros",
+      "sellerName": "MATHEUS SOUZA DE BARROS",
+      "date": "2026-09-04",
+      "time": "10:36",
+      "orders": 2,
+      "revenue": 0
+    },
+    {
       "sellerId": "nilton-renato-vicente-junior",
       "sellerName": "NILTON RENATO VICENTE JUNIOR",
       "date": "2026-09-04",
@@ -197,6 +210,14 @@
       "date": "2026-09-04",
       "time": "10:25",
       "orders": 14,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rafael-vanderlei-lopes",
+      "sellerName": "RAFAEL VANDERLEI LOPES",
+      "date": "2026-09-04",
+      "time": "10:36",
+      "orders": 15,
       "revenue": 0
     },
     {
