@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T19:57:44.656Z",
+  "publicadoEm": "2026-09-04T20:07:47.211Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 16:49",
-    "geradoEm": "2026-09-04T19:53:11.514Z"
+    "ultimaNota": "04/09/2026 16:58",
+    "geradoEm": "2026-09-04T20:03:26.017Z"
   },
   "equipe": [
     {
@@ -188,6 +188,11 @@
       "time": "16:57",
       "orders": 137,
       "revenue": 2521152.39
+    },
+    {
+      "time": "17:07",
+      "orders": 141,
+      "revenue": 2574934.11
     }
   ],
   "records": [
@@ -285,6 +290,14 @@
       "date": "2026-09-04",
       "time": "16:47",
       "orders": 11,
+      "revenue": 0
+    },
+    {
+      "sellerId": "elandia-camargo-rodrigues",
+      "sellerName": "ELANDIA CAMARGO RODRIGUES",
+      "date": "2026-09-04",
+      "time": "17:07",
+      "orders": 12,
       "revenue": 0
     },
     {
@@ -976,6 +989,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "ricardo-carniato-rodrigues",
+      "sellerName": "RICARDO CARNIATO RODRIGUES",
+      "date": "2026-09-04",
+      "time": "17:07",
+      "orders": 10,
+      "revenue": 0
+    },
+    {
       "sellerId": "rosyrene-de-medeiros-celestino",
       "sellerName": "ROSYRENE DE MEDEIROS CELESTINO",
       "date": "2026-09-04",
@@ -997,6 +1018,14 @@
       "date": "2026-09-04",
       "time": "16:27",
       "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rosyrene-de-medeiros-celestino",
+      "sellerName": "ROSYRENE DE MEDEIROS CELESTINO",
+      "date": "2026-09-04",
+      "time": "17:07",
+      "orders": 4,
       "revenue": 0
     },
     {
@@ -1077,6 +1106,14 @@
       "date": "2026-09-04",
       "time": "16:37",
       "orders": 12,
+      "revenue": 0
+    },
+    {
+      "sellerId": "victor-vinicius-renno",
+      "sellerName": "VICTOR VINICIUS RENNO",
+      "date": "2026-09-04",
+      "time": "17:07",
+      "orders": 13,
       "revenue": 0
     }
   ]
