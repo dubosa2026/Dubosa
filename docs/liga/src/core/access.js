@@ -196,7 +196,7 @@ function historyContextFor(sellerId, historyDays) {
  */
 export function buildSellerView({
   today, yesterday, sellerId, sellerName, atMinutes, config, historyDays = [],
-  competitive = null, teamFromSource = null,
+  competitive = null, teamFromSource = null, origemConectada = false,
 }) {
   const businessHours = config.businessHours;
   const me = today?.sellers?.find((s) => s.sellerId === sellerId) ?? null;
@@ -300,6 +300,8 @@ export function buildSellerView({
     tier,
     phase: dayPhase(businessHours, atMinutes),
     temFaturamento: today?.revenueAvailable !== false,
+    origemConectada,
+    businessHours,
     config: config.messages,
     others,
     identifyingTokens: identifying,
@@ -341,6 +343,7 @@ export function buildSellerView({
     phase: dayPhase(businessHours, atMinutes),
     status: today?.status ?? 'awaiting_source',
     sourceMessage: today?.message ?? null,
+    origemConectada,
     isDemo: Boolean(today?.isDemo),
     hasData: Boolean(me && me.timeline.length),
     revenueAvailable: today?.revenueAvailable !== false,
@@ -368,7 +371,7 @@ export function buildSellerView({
  * O gestor vê o ranking nominal, cada vendedor individualmente e os agregados.
  */
 export function buildManagerView({
-  today, yesterday, atMinutes, config, historyDays = [],
+  today, yesterday, atMinutes, config, historyDays = [], origemConectada = false,
 }) {
   const businessHours = config.businessHours;
   const ranked = rankAt(today, atMinutes, regrasDeRanking(today, config));
@@ -447,6 +450,7 @@ export function buildManagerView({
     phase: dayPhase(businessHours, atMinutes),
     status: today?.status ?? 'awaiting_source',
     sourceMessage: today?.message ?? null,
+    origemConectada,
     isDemo: Boolean(today?.isDemo),
     hasData: Boolean(today?.hasData),
     revenueAvailable: today?.revenueAvailable !== false,

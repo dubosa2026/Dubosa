@@ -241,6 +241,7 @@ class App {
       this.sellerVM = buildSellerView({
         today: this.data.today ?? emptyDayState(this.now?.date ?? null),
         yesterday: this.data.yesterday,
+        origemConectada: this.source?.isConnected === true,
         sellerId: this.identity.sellerId,
         sellerName: this.identity.sellerName,
         atMinutes: this.now?.minutes ?? 0,
@@ -323,9 +324,28 @@ class App {
     return d?.sellers?.length ? d : null;
   }
 
-  verFechamentoAnterior() { this.state.revendoDiaAnterior = true; this.render(); }
+  /**
+   * Qual dia o painel mostra.
+   *
+   * 'auto' é o padrão e resolve sozinho: enquanto hoje não tiver produção, o
+   * painel fica no último fechamento; no primeiro pedido do dia ele passa para
+   * hoje sem ninguém clicar em nada. Exigir um clique toda manhã só transfere
+   * para quem usa um trabalho que o aplicativo sabe fazer.
+   *
+   * As duas escolhas explícitas valem enquanto hoje continuar vazio. Quando
+   * entra produção, o automático retoma — foi para isso que se pediu o
+   * fechamento em primeiro lugar.
+   */
+  get diaEmFoco() {
+    const hojeTemDados = Boolean(this.data.today?.sellers?.some((v) => v.timeline?.length));
+    if (hojeTemDados) return 'hoje';
+    if (this.state.focoDoDia === 'hoje') return 'hoje';
+    return this.fechamentoAnterior ? 'anterior' : 'hoje';
+  }
 
-  voltarParaHoje() { this.state.revendoDiaAnterior = false; this.render(); }
+  verFechamentoAnterior() { this.state.focoDoDia = 'anterior'; this.render(); }
+
+  voltarParaHoje() { this.state.focoDoDia = 'hoje'; this.render(); }
 
   /**
    * Gestor vendo o painel de um vendedor exatamente como ele vê.
@@ -668,13 +688,14 @@ class App {
       if (this.identity.role === 'manager') {
         // Um dia fechado se olha inteiro: avaliá-lo no minuto atual mostraria
         // o placar de ontem às 01h19, que é vazio.
-        const revendo = this.state.revendoDiaAnterior && this.fechamentoAnterior;
+        const revendo = this.diaEmFoco === 'anterior' && this.fechamentoAnterior;
         const vm = buildManagerView({
           today: revendo ? this.fechamentoAnterior : today,
           yesterday: revendo ? null : this.data.yesterday,
           atMinutes: revendo ? totalBusinessMinutes(config.businessHours) : atMinutes,
           config,
           historyDays: revendo ? [] : this.data.historyDays,
+          origemConectada: this.source?.isConnected === true,
         });
         mount(this.root, banner, managerView({ vm, config, app: this, revendo: Boolean(revendo) }));
       } else {

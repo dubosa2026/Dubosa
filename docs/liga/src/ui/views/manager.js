@@ -30,11 +30,12 @@ export function managerView({ vm, config, app, revendo = false }) {
     revendo
       ? h('div', { class: 'preview-bar' },
         h('span', {}, h('strong', { text: `Fechamento de ${dateLongBR(vm.date)}. ` }),
-          'Este é o dia inteiro, já encerrado — não é o placar de hoje.'),
+          'Hoje ainda não tem produção, então o painel está mostrando a última atualização. '
+          + 'Assim que o primeiro pedido do dia entrar, ele passa para hoje sozinho.'),
         h('button', {
           class: 'btn btn-sm',
           onclick: () => app.voltarParaHoje(),
-          text: '← Voltar para hoje',
+          text: 'Ver o painel de hoje',
         }))
       : null,
     teamKpis({ app, vm, awaiting, config }),
@@ -101,12 +102,15 @@ function teamKpis({ app, vm, awaiting, config }) {
         detail: falhou
           ? `${vm.sourceMessage} Enquanto isso, dá para lançar a produção à mão — o painel funciona igual.`
           : aindaNaoAbriu
-            // Placar vazio de madrugada nao e defeito, e a hora. Sem dizer
-            // isso, a tela e indistinguivel de uma que quebrou.
+            // Placar vazio de madrugada não é defeito, é a hora. Sem dizer
+            // isso, a tela é indistinguível de uma que quebrou.
             ? `O dia começa às ${config.businessHours?.start ?? '08:00'} e o placar enche a partir daí. `
               + 'Nada produzido até agora é o esperado a esta hora.'
-            : 'Nenhuma produção foi lançada hoje. Abra o sistema de pedidos, selecione a lista da sua equipe, '
-              + 'copie e cole aqui: o painel inteiro — ranking, ritmo, projeção e comparação com ontem — se monta a partir disso.',
+            : vm.origemConectada
+              ? 'A base está conectada e ainda não trouxe nenhum pedido de hoje. '
+                + 'A leitura acontece de dez em dez minutos; o placar abre no primeiro pedido da equipe.'
+              : 'Nenhuma produção foi lançada hoje. Abra o sistema de pedidos, selecione a lista da sua equipe, '
+                + 'copie e cole aqui: o painel inteiro — ranking, ritmo, projeção e comparação com ontem — se monta a partir disso.',
         fields: falhou || aindaNaoAbriu ? [] : undefined,
         action: h('div', { class: 'button-row' },
           ultimoFechamento
