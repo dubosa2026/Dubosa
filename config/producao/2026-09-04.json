@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T13:46:03.624Z",
+  "publicadoEm": "2026-09-04T13:56:06.219Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 10:38",
-    "geradoEm": "2026-09-04T13:41:45.378Z"
+    "ultimaNota": "04/09/2026 10:50",
+    "geradoEm": "2026-09-04T13:51:38.719Z"
   },
   "equipe": [
     {
@@ -38,6 +38,11 @@
       "time": "10:46",
       "orders": 42,
       "revenue": 949608.23
+    },
+    {
+      "time": "10:56",
+      "orders": 44,
+      "revenue": 968819.77
     }
   ],
   "records": [
@@ -146,6 +151,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "sellerName": "MARIA PAULA BERTAGLIA NESTOR",
+      "date": "2026-09-04",
+      "time": "10:56",
+      "orders": 5,
+      "revenue": 0
+    },
+    {
       "sellerId": "matheus-souza-de-barros",
       "sellerName": "MATHEUS SOUZA DE BARROS",
       "date": "2026-09-04",
@@ -239,6 +252,14 @@
       "date": "2026-09-04",
       "time": "10:36",
       "orders": 15,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rafael-vanderlei-lopes",
+      "sellerName": "RAFAEL VANDERLEI LOPES",
+      "date": "2026-09-04",
+      "time": "10:56",
+      "orders": 16,
       "revenue": 0
     },
     {
