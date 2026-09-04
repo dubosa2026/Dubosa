@@ -47,7 +47,7 @@ export function instaladorWindows({ link, nome = '' }) {
   const linkPS = String(link).replace(/'/g, "''");
   const paraQuem = nome ? ` de ${nome}` : '';
 
-  return `@echo off
+  return paraWindows(`@echo off
 REM ============================================================
 REM  Liga Comercial${paraQuem}
 REM
@@ -62,6 +62,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "$t=[IO.File]::ReadAllTex
 exit /b
 #INICIO-POWERSHELL#
 $ErrorActionPreference = 'Stop'
+try {
 $link   = '${linkPS}'
 $nome   = 'Liga Comercial'
 $perfil = Join-Path $env:LOCALAPPDATA 'LigaComercial\\perfil'
@@ -121,6 +122,28 @@ Write-Host '  de um cronometro, para ficar de lado durante o dia.'
 Write-Host ''
 Start-Process -FilePath $navegador -ArgumentList $argumentos
 Write-Host '  Abrindo...' -ForegroundColor Green
-Start-Sleep -Seconds 2
-`;
+Start-Sleep -Seconds 3
+}
+catch {
+  Write-Host ''
+  Write-Host '  Nao consegui concluir a instalacao.' -ForegroundColor Red
+  Write-Host ("  " + $_.Exception.Message) -ForegroundColor Red
+  Write-Host ''
+  Write-Host '  Mande esta mensagem para quem enviou o arquivo.' -ForegroundColor DarkGray
+  Write-Host ''
+  Read-Host '  Enter para fechar' | Out-Null
+}
+`);
+}
+
+/**
+ * Fim de linha do Windows.
+ *
+ * Não é detalhe de estilo: um `.bat` gravado com as quebras de linha do
+ * Unix não executa. O navegador gera o arquivo exatamente como o texto foi
+ * escrito, e este projeto é escrito em Linux — o arquivo chegava com LF, o
+ * Windows não fazia nada, e não havia mensagem nenhuma para explicar.
+ */
+function paraWindows(texto) {
+  return texto.replace(/\r?\n/g, '\r\n');
 }

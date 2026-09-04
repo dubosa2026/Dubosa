@@ -337,7 +337,7 @@ function accessPanel({ app, roster, rosterOrigin, team }) {
                   ? h('button', {
                     class: 'btn btn-sm',
                     title: 'Baixa um instalador com o link desta pessoa já dentro',
-                    onclick: () => downloadFile(nomeDeArquivo(s.name), instaladorWindows({ link, nome: s.name })),
+                    onclick: () => downloadFile(nomeDeArquivo(s.name), instaladorWindows({ link, nome: s.name }), 'application/octet-stream'),
                     text: '⬇ Instalador',
                   })
                   : null,
@@ -761,7 +761,7 @@ function instaladorAvulso() {
   const gerar = () => {
     try {
       const link = campo.value.trim();
-      downloadFile(nomeDeArquivo(nome.value), instaladorWindows({ link, nome: nome.value.trim() }));
+      downloadFile(nomeDeArquivo(nome.value), instaladorWindows({ link, nome: nome.value.trim() }), 'application/octet-stream');
       aviso.textContent = 'Arquivo baixado. Envie para essa pessoa.';
     } catch (err) {
       aviso.textContent = err.message;
@@ -783,7 +783,16 @@ function installPanel({ app, roster }) {
     sectionTitle('Instalar no computador do vendedor'),
     h('p', { class: 'muted', text: 'O objetivo é um atalho na área de trabalho, abertura automática ao ligar o computador e uma janela pequena que fique de lado sem atrapalhar.' }),
 
-    h('h3', { class: 'sub-title', text: 'Windows — atalho + inicialização automática' }),
+    h('h3', { class: 'sub-title', text: 'O caminho mais simples — instalar pelo próprio navegador' }),
+    h('div', { class: 'alert alert-info' },
+      h('strong', { text: 'Sem arquivo nenhum, e funciona em qualquer sistema. ' }),
+      'O aplicativo já se instala pelo Chrome. É o mesmo resultado: janela própria, sem barra de endereços nem abas.'),
+    h('ol', { class: 'steps' },
+      h('li', { text: 'Abra o link pessoal no Chrome ou no Edge.' }),
+      h('li', { text: 'Menu ⋮ → Instalar Liga Comercial (ou o ícone de instalar na barra de endereços).' }),
+      h('li', { text: 'Para abrir junto com o computador: chrome://apps → clique com o botão direito em Liga Comercial → Iniciar ao fazer login.' })),
+
+    h('h3', { class: 'sub-title', text: 'Windows — atalho + inicialização automática, em dois cliques' }),
     h('div', { class: 'alert alert-info' },
       h('strong', { text: 'Um arquivo por pessoa, na aba Acessos. ' }),
       'Cada linha tem o botão ⬇ Instalador: ele baixa um arquivo com o link daquele vendedor já dentro. '
