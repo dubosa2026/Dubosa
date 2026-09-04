@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T17:06:45.920Z",
+  "publicadoEm": "2026-09-04T17:16:48.225Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 13:59",
-    "geradoEm": "2026-09-04T17:03:11.581Z"
+    "ultimaNota": "04/09/2026 14:09",
+    "geradoEm": "2026-09-04T17:13:19.065Z"
   },
   "equipe": [
     {
@@ -108,6 +108,11 @@
       "time": "14:06",
       "orders": 69,
       "revenue": 1427919.04
+    },
+    {
+      "time": "14:16",
+      "orders": 71,
+      "revenue": 1473974.39
     }
   ],
   "records": [
@@ -277,6 +282,14 @@
       "date": "2026-09-04",
       "time": "13:26",
       "orders": 5,
+      "revenue": 0
+    },
+    {
+      "sellerId": "lucas-dos-reis-bernardes-da-silveira",
+      "sellerName": "LUCAS DOS REIS BERNARDES DA SILVEIRA",
+      "date": "2026-09-04",
+      "time": "14:16",
+      "orders": 6,
       "revenue": 0
     },
     {
@@ -533,6 +546,14 @@
       "date": "2026-09-04",
       "time": "12:56",
       "orders": 5,
+      "revenue": 0
+    },
+    {
+      "sellerId": "victor-vinicius-renno",
+      "sellerName": "VICTOR VINICIUS RENNO",
+      "date": "2026-09-04",
+      "time": "14:16",
+      "orders": 6,
       "revenue": 0
     }
   ]
