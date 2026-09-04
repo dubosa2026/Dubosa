@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T21:48:10.566Z",
+  "publicadoEm": "2026-09-04T21:58:13.451Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 18:36",
-    "geradoEm": "2026-09-04T21:43:07.645Z"
+    "ultimaNota": "04/09/2026 18:44",
+    "geradoEm": "2026-09-04T21:53:14.130Z"
   },
   "equipe": [
     {
@@ -233,6 +233,11 @@
       "time": "18:48",
       "orders": 171,
       "revenue": 3017121.7
+    },
+    {
+      "time": "18:58",
+      "orders": 173,
+      "revenue": 3054882.67
     }
   ],
   "records": [
@@ -973,6 +978,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-09-04",
+      "time": "18:58",
+      "orders": 11,
+      "revenue": 0
+    },
+    {
       "sellerId": "paulo-roberto-da-silva-filho",
       "sellerName": "PAULO ROBERTO DA SILVA FILHO",
       "date": "2026-09-04",
@@ -1250,6 +1263,14 @@
       "date": "2026-09-04",
       "time": "17:07",
       "orders": 4,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rosyrene-de-medeiros-celestino",
+      "sellerName": "ROSYRENE DE MEDEIROS CELESTINO",
+      "date": "2026-09-04",
+      "time": "18:58",
+      "orders": 5,
       "revenue": 0
     },
     {
