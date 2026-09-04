@@ -1,26 +1,63 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T11:48:34.228Z",
+  "publicadoEm": "2026-09-04T13:04:38.512Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 08:39",
-    "geradoEm": "2026-09-04T11:41:34.458Z"
+    "ultimaNota": "04/09/2026 09:58",
+    "geradoEm": "2026-09-04T13:01:43.779Z"
   },
   "equipe": [
     {
       "time": "08:48",
       "orders": 13,
       "revenue": 515585.78
+    },
+    {
+      "time": "10:04",
+      "orders": 27,
+      "revenue": 785626.79
     }
   ],
   "records": [
+    {
+      "sellerId": "diego-adan-ohnuma-angeli",
+      "sellerName": "DIEGO ADAN OHNUMA ANGELI",
+      "date": "2026-09-04",
+      "time": "10:04",
+      "orders": 1,
+      "revenue": 0
+    },
     {
       "sellerId": "elandia-camargo-rodrigues",
       "sellerName": "ELANDIA CAMARGO RODRIGUES",
       "date": "2026-09-04",
       "time": "08:48",
+      "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "elandia-camargo-rodrigues",
+      "sellerName": "ELANDIA CAMARGO RODRIGUES",
+      "date": "2026-09-04",
+      "time": "10:04",
+      "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-09-04",
+      "time": "10:04",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "leonardo-costa-oliveira",
+      "sellerName": "LEONARDO COSTA OLIVEIRA",
+      "date": "2026-09-04",
+      "time": "10:04",
       "orders": 2,
       "revenue": 0
     },
@@ -41,10 +78,42 @@
       "revenue": 0
     },
     {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "sellerName": "MARIA PAULA BERTAGLIA NESTOR",
+      "date": "2026-09-04",
+      "time": "10:04",
+      "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "matheus-souza-de-barros",
+      "sellerName": "MATHEUS SOUZA DE BARROS",
+      "date": "2026-09-04",
+      "time": "10:04",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
       "sellerId": "nilton-renato-vicente-junior",
       "sellerName": "NILTON RENATO VICENTE JUNIOR",
       "date": "2026-09-04",
       "time": "08:48",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-09-04",
+      "time": "10:04",
+      "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "paulo-roberto-da-silva-filho",
+      "sellerName": "PAULO ROBERTO DA SILVA FILHO",
+      "date": "2026-09-04",
+      "time": "10:04",
       "orders": 1,
       "revenue": 0
     },
@@ -54,6 +123,14 @@
       "date": "2026-09-04",
       "time": "08:48",
       "orders": 5,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rafael-vanderlei-lopes",
+      "sellerName": "RAFAEL VANDERLEI LOPES",
+      "date": "2026-09-04",
+      "time": "10:04",
+      "orders": 9,
       "revenue": 0
     },
     {
