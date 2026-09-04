@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T20:47:57.592Z",
+  "publicadoEm": "2026-09-04T20:58:00.903Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 17:37",
-    "geradoEm": "2026-09-04T20:43:15.446Z"
+    "ultimaNota": "04/09/2026 17:49",
+    "geradoEm": "2026-09-04T20:53:13.669Z"
   },
   "equipe": [
     {
@@ -213,6 +213,11 @@
       "time": "17:47",
       "orders": 164,
       "revenue": 2874757.73
+    },
+    {
+      "time": "17:57",
+      "orders": 166,
+      "revenue": 2929597.01
     }
   ],
   "records": [
@@ -1169,6 +1174,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "ricardo-carniato-rodrigues",
+      "sellerName": "RICARDO CARNIATO RODRIGUES",
+      "date": "2026-09-04",
+      "time": "17:57",
+      "orders": 15,
+      "revenue": 0
+    },
+    {
       "sellerId": "rosyrene-de-medeiros-celestino",
       "sellerName": "ROSYRENE DE MEDEIROS CELESTINO",
       "date": "2026-09-04",
@@ -1286,6 +1299,14 @@
       "date": "2026-09-04",
       "time": "17:07",
       "orders": 13,
+      "revenue": 0
+    },
+    {
+      "sellerId": "victor-vinicius-renno",
+      "sellerName": "VICTOR VINICIUS RENNO",
+      "date": "2026-09-04",
+      "time": "17:57",
+      "orders": 14,
       "revenue": 0
     }
   ]
