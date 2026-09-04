@@ -37,7 +37,7 @@ export function sellerView({ vm, config, app }) {
       sectionTitle('Ritmo de produção'),
       awaiting
         ? waitingBlock({ compact: true, title: 'Sem ritmo para medir', detail: 'O ritmo é calculado sobre os pedidos e o faturamento do dia.' })
-        : pacePanel(vm.performance)),
+        : pacePanel(vm.performance, { temFaturamento: vm.revenueAvailable })),
     chartSection({ vm, config, app, awaiting }),
     tierSection({ vm, awaiting }),
     h('section', { class: 'card' },
@@ -208,7 +208,12 @@ function comparisonSection({ vm, awaiting }) {
 // ---------------------------------------------------------------- projeção
 function projectionSection({ vm, awaiting, config }) {
   const p = vm.performance.projection;
-  const waitingPace = p.revenueModel === 'aguardando';
+  const temFaturamento = vm.revenueAvailable;
+  // Sem faturamento na origem o modelo de faturamento é sempre 'sem-producao',
+  // e a tela dizia "sem produção registrada até agora" ao lado de treze
+  // pedidos. Quem manda na leitura é o modelo do indicador que existe.
+  const modelo = temFaturamento ? p.revenueModel : p.ordersModel;
+  const waitingPace = modelo === 'aguardando';
 
   return h('section', { class: 'card' },
     sectionTitle('Projeção de fechamento', h('span', {
@@ -225,13 +230,19 @@ function projectionSection({ vm, awaiting, config }) {
             value: p.orders === null ? '—' : number(p.orders),
             sub: h('span', { class: 'muted', text: `realizado: ${number(vm.performance.orders)}` }),
           }),
-          statTile({
-            label: 'Faturamento projetado', icon: '💰',
-            value: p.revenue === null ? '—' : money(p.revenue),
-            sub: h('span', { class: 'muted', text: `realizado: ${money(vm.performance.revenue)}` }),
-          })),
+          temFaturamento
+            ? statTile({
+              label: 'Faturamento projetado', icon: '💰',
+              value: p.revenue === null ? '—' : money(p.revenue),
+              sub: h('span', { class: 'muted', text: `realizado: ${money(vm.performance.revenue)}` }),
+            })
+            : statTile({
+              label: 'Faturamento projetado', icon: '💰',
+              value: '—',
+              sub: h('span', { class: 'muted', text: 'não informado pela origem' }),
+            })),
     !awaiting && !waitingPace
-      ? h('p', { class: 'projection-note', text: projectionNote(p.revenueModel) })
+      ? h('p', { class: 'projection-note', text: projectionNote(modelo) })
       : null);
 }
 
@@ -247,16 +258,21 @@ function projectionNote(model) {
 
 // ----------------------------------------------------------------- gráfico
 function chartSection({ vm, config, app, awaiting }) {
-  const metric = app.state.metric;
-  const toggle = h('div', { class: 'seg', role: 'group', 'aria-label': 'Indicador do gráfico' },
-    h('button', {
-      class: ['seg-btn', metric === 'revenue' && 'seg-on'],
-      onclick: () => app.setMetric('revenue'), text: 'Faturamento',
-    }),
-    h('button', {
-      class: ['seg-btn', metric === 'orders' && 'seg-on'],
-      onclick: () => app.setMetric('orders'), text: 'Pedidos',
-    }));
+  // Sem faturamento na origem não há curva de faturamento para desenhar, e a
+  // preferência guardada abriria o gráfico numa aba permanentemente vazia.
+  const temFaturamento = vm.revenueAvailable;
+  const metric = temFaturamento ? app.state.metric : 'orders';
+  const toggle = temFaturamento
+    ? h('div', { class: 'seg', role: 'group', 'aria-label': 'Indicador do gráfico' },
+      h('button', {
+        class: ['seg-btn', metric === 'revenue' && 'seg-on'],
+        onclick: () => app.setMetric('revenue'), text: 'Faturamento',
+      }),
+      h('button', {
+        class: ['seg-btn', metric === 'orders' && 'seg-on'],
+        onclick: () => app.setMetric('orders'), text: 'Pedidos',
+      }))
+    : h('span', { class: 'section-hint', text: 'pedidos' });
 
   const semCurvaPropria = !vm.charts.mine.length;
   const body = awaiting
@@ -311,15 +327,25 @@ function tierSection({ vm, awaiting }) {
       ? progressBar({
         value: t.progress,
         label: `Rumo a ${t.next.name}`,
-        caption: t.missingRevenue > 0 || t.missingOrders > 0
-          ? `Faltam ${money(t.missingRevenue)}${t.missingOrders > 0 ? ` e ${number(t.missingOrders)} ${t.missingOrders === 1 ? 'pedido' : 'pedidos'}` : ''}.`
-          : 'Nível alcançado.',
+        caption: faltaParaONivel(t),
       })
       : h('p', { class: 'muted', text: 'Nível máximo da escala alcançado hoje.' }),
     h('div', { class: 'tier-scale' }, (vm.tier.total ? Array.from({ length: vm.tier.total }) : []).map((_, i) => h('span', {
       class: ['tier-step', i <= vm.tier.index && 'tier-step-on'],
       'aria-hidden': 'true',
     }))));
+}
+
+/** O que ainda falta para o próximo nível, dito só com o que a base informa. */
+function faltaParaONivel(t) {
+  const pedidos = t.missingOrders > 0
+    ? `${number(t.missingOrders)} ${t.missingOrders === 1 ? 'pedido' : 'pedidos'}`
+    : null;
+  // `missingRevenue` vem nulo quando a origem não informa faturamento por
+  // vendedor. Zero ali seria lido como "já alcançou".
+  const reais = t.missingRevenue > 0 ? money(t.missingRevenue) : null;
+  if (!reais && !pedidos) return 'Nível alcançado.';
+  return `Faltam ${[reais, pedidos].filter(Boolean).join(' e ')}.`;
 }
 
 // ------------------------------------------------------------------ equipe
@@ -339,7 +365,11 @@ function teamSection({ vm, awaiting }) {
       ? waitingBlock({ compact: true, title: 'Sem totais ainda', detail: 'Os totais da equipe dependem da base de dados.' })
       : h('div', {}, h('div', { class: 'team-grid' },
         statTile({ label: 'Pedidos da equipe', value: number(vm.team.orders), icon: '📦' }),
-        statTile({ label: 'Faturamento da equipe', value: money(vm.team.revenue), icon: '💰' }),
+        statTile({
+          label: 'Faturamento da equipe', icon: '💰',
+          value: vm.revenueAvailable ? money(vm.team.revenue) : '—',
+          sub: vm.revenueAvailable ? null : h('span', { class: 'muted', text: 'não informado pela origem' }),
+        }),
         statTile({ label: 'Vendedores ativos', value: `${number(vm.team.activeCount)} de ${number(vm.team.sellerCount)}`, icon: '👥' }),
         statTile({
           label: 'Sua fatia do faturamento',

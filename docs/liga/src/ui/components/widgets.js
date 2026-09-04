@@ -114,8 +114,15 @@ export function achievementGrid(achievements = []) {
   }))));
 }
 
-/** Painel de ritmo. */
-export function pacePanel(performance) {
+/**
+ * Painel de ritmo.
+ *
+ * `temFaturamento: false` — a origem não informa faturamento por vendedor.
+ * A linha de reais some, e o julgamento do ritmo passa a olhar os pedidos:
+ * `revenueStatus` seria sempre "parado", e o painel diria "sem produção ainda"
+ * ao lado de treze pedidos feitos.
+ */
+export function pacePanel(performance, { temFaturamento = true } = {}) {
   const p = performance?.pace;
   if (!p) return null;
   const statusText = {
@@ -129,14 +136,16 @@ export function pacePanel(performance) {
   const tone = {
     acima: 'good', 'no-ritmo': 'good', abaixo: 'warn', 'meta-atingida': 'good', parado: 'warn', 'sem-tempo': 'neutral',
   };
-  const status = p.revenueStatus?.status ?? 'parado';
+  const status = (temFaturamento ? p.revenueStatus?.status : p.ordersStatus?.status) ?? 'parado';
   return h('div', { class: 'pace-panel' },
     h('div', { class: 'pace-row' },
       h('span', { class: 'pace-label', text: 'Ritmo de pedidos' }),
       h('span', { class: 'pace-value', text: `${decimal(p.orders)} /hora` })),
-    h('div', { class: 'pace-row' },
-      h('span', { class: 'pace-label', text: 'Ritmo de faturamento' }),
-      h('span', { class: 'pace-value', text: moneyRate(p.revenue) })),
+    temFaturamento
+      ? h('div', { class: 'pace-row' },
+        h('span', { class: 'pace-label', text: 'Ritmo de faturamento' }),
+        h('span', { class: 'pace-value', text: moneyRate(p.revenue) }))
+      : null,
     h('div', { class: ['pace-status', `tone-${tone[status] ?? 'neutral'}`] },
       h('span', { 'aria-hidden': 'true', text: status === 'abaixo' || status === 'parado' ? '⚡' : '🎯' }),
       h('span', { text: statusText[status] ?? '—' })));
