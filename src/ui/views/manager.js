@@ -27,7 +27,7 @@ export function managerView({ vm, config, app }) {
 
   return h('div', { class: 'view view-manager' },
     header({ vm, app }),
-    teamKpis({ vm, awaiting, config }),
+    teamKpis({ app, vm, awaiting, config }),
     h('nav', { class: 'tabs', role: 'tablist' },
       tabButton('ranking', 'Ranking', tab, app),
       tabButton('vendedor', 'Vendedor', tab, app),
@@ -67,13 +67,25 @@ function header({ vm, app }) {
       h('button', { class: 'btn btn-ghost btn-sm', onclick: () => app.goAdmin(), text: '⚙ Configuração' })));
 }
 
-function teamKpis({ vm, awaiting, config }) {
+function teamKpis({ app, vm, awaiting, config }) {
   const p = vm.team.performance;
   return h('section', { class: 'card' },
     sectionTitle('Resultado da equipe hoje',
       h('span', { class: 'section-hint', text: `${number(vm.team.activeCount)} de ${number(vm.team.sellerCount)} produzindo` })),
     awaiting
-      ? waitingBlock({})
+      // Sem caminho de saída, esta tela é um beco: diz que falta base e para
+      // por aí. O gestor é justamente quem pode resolver, então o botão que
+      // resolve fica aqui, e não escondido atrás do menu de configuração.
+      ? waitingBlock({
+        detail: 'Nenhuma produção foi lançada hoje. Abra o sistema de pedidos, selecione a lista da sua equipe, '
+          + 'copie e cole aqui: o painel inteiro — ranking, ritmo, projeção e comparação com ontem — se monta a partir disso.',
+        action: h('div', { class: 'button-row' },
+          h('button', {
+            class: 'btn btn-primary',
+            onclick: () => { app.setAdminTab('lancar'); app.goAdmin(); },
+            text: 'Lançar a produção de hoje',
+          })),
+      })
       : h('div', {},
         h('div', { class: 'kpi-grid' },
           statTile({
@@ -110,7 +122,9 @@ function teamKpis({ vm, awaiting, config }) {
 // ------------------------------------------------------------------ ranking
 function rankingTab({ vm, awaiting, app }) {
   if (awaiting) {
-    return h('section', { class: 'card' }, sectionTitle('Ranking da equipe'), waitingBlock({}));
+    return h('section', { class: 'card' }, sectionTitle('Ranking da equipe'),
+      waitingBlock({ compact: true, title: 'Ranking em espera',
+        detail: 'As posições aparecem assim que houver produção lançada no dia.' }));
   }
   const zerados = vm.rows.filter((r) => r.semProducaoNaBase || r.semProducao).length;
 

@@ -114,7 +114,13 @@ if (demonstracao) {
   if (primeiro) console.log(`link de exemplo: #/v/${primeiro[1]}  (${primeiro[0]})`);
 }
 
+// No formato de artefato quem manda no <html> é a página hospedeira, e é lá
+// que mora o `data-theme` do aplicativo. Sem carimbá-lo, o painel — que é um
+// placar escuro por decisão de projeto, não por falta de tema claro — abriria
+// no tema de quem estivesse olhando. O CSS já trata os três estados; aqui só
+// se declara qual deles este produto usa.
 const cabecaDoArtefato = `<title>Liga Comercial</title>
+<script>document.documentElement.setAttribute('data-theme', 'dark');<\/script>
 <style>
 ${css}
 </style>
