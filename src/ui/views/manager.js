@@ -70,6 +70,7 @@ function header({ vm, app }) {
 function teamKpis({ app, vm, awaiting, config }) {
   const p = vm.team.performance;
   const temFaturamento = vm.revenueAvailable;
+  const falhou = vm.status === 'error' && Boolean(vm.sourceMessage);
   return h('section', { class: 'card' },
     sectionTitle('Resultado da equipe hoje',
       h('span', { class: 'section-hint', text: `${number(vm.team.activeCount)} de ${number(vm.team.sellerCount)} produzindo` })),
@@ -77,9 +78,17 @@ function teamKpis({ app, vm, awaiting, config }) {
       // Sem caminho de saída, esta tela é um beco: diz que falta base e para
       // por aí. O gestor é justamente quem pode resolver, então o botão que
       // resolve fica aqui, e não escondido atrás do menu de configuração.
+      //
+      // E "ainda não há produção hoje" não é a mesma coisa que "não consegui
+      // ler a origem". As duas davam a mesma tela, e quem olhasse não teria
+      // como saber se era cedo demais ou se algo estava quebrado.
       ? waitingBlock({
-        detail: 'Nenhuma produção foi lançada hoje. Abra o sistema de pedidos, selecione a lista da sua equipe, '
-          + 'copie e cole aqui: o painel inteiro — ranking, ritmo, projeção e comparação com ontem — se monta a partir disso.',
+        title: falhou ? 'Não consegui ler a base de dados' : undefined,
+        detail: falhou
+          ? `${vm.sourceMessage} Enquanto isso, dá para lançar a produção à mão — o painel funciona igual.`
+          : 'Nenhuma produção foi lançada hoje. Abra o sistema de pedidos, selecione a lista da sua equipe, '
+            + 'copie e cole aqui: o painel inteiro — ranking, ritmo, projeção e comparação com ontem — se monta a partir disso.',
+        fields: falhou ? [] : undefined,
         action: h('div', { class: 'button-row' },
           h('button', {
             class: 'btn btn-primary',

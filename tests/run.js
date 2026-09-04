@@ -979,6 +979,30 @@ await check('dia não publicado devolve Modo de Espera, não erro', async () => 
   assertEqual(buildDayState(payload).hasData, false);
 });
 
+await check('origem inalcançável vira erro nomeado, não Modo de Espera', async () => {
+  // "Ainda não publicaram hoje" e "não consegui alcançar a origem" davam a
+  // mesma tela. Quem olhasse não teria como saber se era cedo demais ou se
+  // algo estava quebrado — e o endereço do arquivo é o que diz qual dos dois.
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => { throw new TypeError('Failed to fetch'); };
+  const src = new PublishedFileSource({ pasta: 'https://exemplo.invalido/producao' });
+  const payload = await src.fetchDay(DATE);
+  globalThis.fetch = originalFetch;
+  assertEqual(payload.status, 'error');
+  assert(payload.message.includes('https://exemplo.invalido/producao'),
+    `a mensagem precisa nomear o endereço: ${payload.message}`);
+  assertEqual(payload.records.length, 0);
+});
+
+await check('a mensagem da origem chega ao painel do gestor', async () => {
+  const day = buildDayState({
+    date: DATE, status: 'error', records: [], message: 'Não consegui alcançar a origem.',
+  });
+  const v = access.buildManagerView({ today: day, yesterday: null, atMinutes: AT, config });
+  assertEqual(v.status, 'error');
+  assertEqual(v.sourceMessage, 'Não consegui alcançar a origem.');
+});
+
 await check('dia publicado é lido e vira placar', async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response(JSON.stringify({
