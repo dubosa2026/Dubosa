@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T18:37:06.372Z",
+  "publicadoEm": "2026-09-04T18:47:08.999Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 15:28",
-    "geradoEm": "2026-09-04T18:33:15.293Z"
+    "ultimaNota": "04/09/2026 15:39",
+    "geradoEm": "2026-09-04T18:43:17.602Z"
   },
   "equipe": [
     {
@@ -148,6 +148,11 @@
       "time": "15:37",
       "orders": 92,
       "revenue": 1780732.91
+    },
+    {
+      "time": "15:47",
+      "orders": 95,
+      "revenue": 1843767.1
     }
   ],
   "records": [
@@ -269,6 +274,14 @@
       "date": "2026-09-04",
       "time": "15:37",
       "orders": 5,
+      "revenue": 0
+    },
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-09-04",
+      "time": "15:47",
+      "orders": 7,
       "revenue": 0
     },
     {
@@ -597,6 +610,14 @@
       "date": "2026-09-04",
       "time": "15:37",
       "orders": 8,
+      "revenue": 0
+    },
+    {
+      "sellerId": "paulo-roberto-da-silva-filho",
+      "sellerName": "PAULO ROBERTO DA SILVA FILHO",
+      "date": "2026-09-04",
+      "time": "15:47",
+      "orders": 9,
       "revenue": 0
     },
     {
