@@ -977,6 +977,23 @@ await check('o PowerShell executado comeca no lugar certo', () => {
   assert(ps.startsWith('$ErrorActionPreference'), `o script comecaria em: ${ps.slice(0, 40)}`);
 });
 
+await check('o .bat sai com fim de linha do Windows', () => {
+  // Um .bat gravado com as quebras do Unix nao executa: o Windows abre e
+  // fecha sem fazer nada e sem mensagem. Este projeto e escrito em Linux e o
+  // navegador grava o texto exatamente como ele esta, entao o arquivo chegava
+  // quebrado do outro lado -- e nenhum teste olhava para isso.
+  const bat = inst.instaladorWindows({ link: LINK_TESTE, nome: 'Alisson' });
+  const linhas = bat.split('\n');
+  const semCR = linhas.slice(0, -1).filter((l) => !l.endsWith('\r'));
+  assertEqual(semCR.length, 0, `${semCR.length} linha(s) sem CR, a primeira: ${semCR[0]}`);
+});
+
+await check('falha do instalador vira mensagem na tela, nao janela que some', () => {
+  const bat = inst.instaladorWindows({ link: LINK_TESTE, nome: 'Alisson' });
+  assert(bat.includes('try {') && bat.includes('catch {'), 'sem try/catch o erro nao aparece');
+  assert(bat.includes('Read-Host'), 'sem pausa a janela preta fecha antes de alguem ler');
+});
+
 await check('o instalador leva o link da pessoa e a janela pedida', () => {
   const bat = inst.instaladorWindows({ link: LINK_TESTE, nome: 'Alisson' });
   assert(bat.includes(LINK_TESTE), 'o link da pessoa precisa estar dentro');
