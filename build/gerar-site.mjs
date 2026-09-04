@@ -73,8 +73,9 @@ const config = JSON.parse(readFileSync(join(saida, 'config/app.config.json'), 'u
 config.dataSource = { adapter: 'arquivo', options: { pasta: PASTA_DE_DADOS } };
 writeFileSync(join(saida, 'config/app.config.json'), `${JSON.stringify(config, null, 2)}\n`, 'utf8');
 
-// O service worker guarda a casca por caminho relativo; conferir aqui evita
-// descobrir um arquivo faltando só quando o aplicativo abrir offline.
+// O service worker não tem mais lista de arquivos para pré-carregar — ele
+// guarda o que for pedido, conforme for pedido. O que resta conferir é que os
+// poucos caminhos citados nele existem de fato.
 let sw = readFileSync(join(saida, 'sw.js'), 'utf8');
 const casca = [...sw.matchAll(/'\.\/([^']+)'/g)].map((m) => m[1]).filter(Boolean);
 const faltando = casca.filter((c) => !existsSync(join(saida, c)));
@@ -120,5 +121,5 @@ writeFileSync(join(saida, 'index.html'), indice, 'utf8');
 
 console.log(`${saida}`);
 console.log(`  versão ${versao}`);
-console.log(`  ${casca.length} arquivos na casca offline, todos presentes`);
+console.log(`  ${casca.length} caminho(s) citado(s) pelo service worker, todos presentes`);
 console.log(`  produção lida de: ${PASTA_DE_DADOS}/AAAA-MM-DD.json`);

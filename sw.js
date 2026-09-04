@@ -1,128 +1,76 @@
 /**
- * Service worker — casca do aplicativo offline.
+ * SERVICE WORKER — NÃO GUARDA O CÓDIGO DO APLICATIVO
+ * ==================================================
  *
- * Estratégia deliberada:
- *   - código e estilo: cache primeiro (a interface abre instantaneamente);
- *   - configuração, cadastro e QUALQUER dado de produção: rede primeiro, com
- *     cache apenas como último recurso. Placar velho servido como se fosse
- *     atual seria pior que placar nenhum.
+ * A versão anterior guardava a casca do aplicativo para abrir rápido e
+ * funcionar sem rede. O preço apareceu inteiro: uma falha de privacidade foi
+ * corrigida no servidor e continuou acontecendo nos aparelhos, porque o
+ * navegador seguia entregando o código guardado. E consertar isso exigia da
+ * pessoa uma sequência que ela não tem por que conhecer — recarregar duas
+ * vezes, fechar a aba, achar um botão em Configuração.
+ *
+ * Num placar de vendas, abrir alguns milissegundos mais rápido não vale nada
+ * perto de mostrar a tela errada para a pessoa errada. Então este arquivo
+ * deixou de guardar código: TUDO vem da rede, sempre. O que se publica é o que
+ * se vê, na abertura seguinte, em qualquer navegador — sem depender de o
+ * usuário saber de nada.
+ *
+ * O que sobra guardado é apenas a página inicial, e ela só é usada quando a
+ * rede falha, para o aplicativo não morrer numa tela de erro do navegador.
+ * Nunca para substituir uma versão que a rede poderia entregar.
+ *
+ * Ele continua existindo por um motivo: sem service worker, o Chrome e o Edge
+ * não oferecem "instalar aplicativo", e é dali que sai a janela própria, sem
+ * barra de endereços.
  */
 
-// Todo cache deste aplicativo começa com este prefixo. Não é enfeite: o
-// armazenamento de cache pertence à ORIGEM, não à pasta. Este app divide
-// dubosa2026.github.io com outros dois, e uma limpeza que apagasse "tudo que
-// não é meu" derrubaria o modo offline dos vizinhos — e o deles, o nosso.
 const PREFIXO = 'liga-';
-// A constante abaixo recebe, no build, um resumo do conteúdo publicado. Sem
-// isso o nome do cache nunca mudava, e como a casca é servida do cache
-// primeiro, um aparelho que já tinha aberto o aplicativo continuava rodando a
-// versão antiga para sempre — correção publicada que nunca chegava a ninguém.
+// Trocado no build por um resumo do conteúdo publicado.
 const VERSION = `${PREFIXO}@@VERSAO@@`;
-const SHELL = [
-  './',
-  './index.html',
-  './manifest.webmanifest',
-  './assets/css/app.css',
-  './assets/icons/favicon.svg',
-  './assets/icons/icon-192.png',
-  './assets/icons/icon-512.png',
-  './src/app.js',
-  './src/ui/dom.js',
-  './src/ui/views/seller.js',
-  './src/ui/views/manager.js',
-  './src/ui/views/login.js',
-  './src/ui/views/admin.js',
-  './src/ui/components/widgets.js',
-  './src/ui/components/waiting.js',
-  './src/ui/components/chart.js',
-  './src/core/format.js',
-  './src/core/clock.js',
-  './src/core/metrics.js',
-  './src/core/ranking.js',
-  './src/core/access.js',
-  './src/core/gamification.js',
-  './src/core/messages.js',
-  './src/core/identity.js',
-  './src/core/roster.js',
-  './src/core/settings.js',
-  './src/data/types.js',
-  './src/data/store.js',
-  './src/data/DataSource.js',
-  './src/data/sources/registry.js',
-  './src/data/sources/PendingSource.js',
-  './src/data/sources/DemoSource.js',
-];
+const RESERVA = './index.html';
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(VERSION)
-      // `cache: 'reload'` pula o cache HTTP do próprio navegador. Sem isso a
-      // busca podia devolver o arquivo velho: o GitHub Pages manda os arquivos
-      // com validade de alguns minutos, e o navegador honra essa validade antes
-      // mesmo de perguntar ao servidor — o cache novo nasceria com bytes
-      // antigos dentro.
-      .then((cache) => Promise.all(SHELL.map((caminho) => fetch(caminho, { cache: 'reload' })
-        .then((resposta) => (resposta.ok ? cache.put(caminho, resposta) : null))
-        .catch(() => null))))
-      .then(() => self.skipWaiting()),
-  );
+  event.waitUntil((async () => {
+    // Só a página inicial, e buscada da rede na hora — nunca do cache HTTP.
+    try {
+      const cache = await caches.open(VERSION);
+      const resposta = await fetch(RESERVA, { cache: 'reload' });
+      if (resposta.ok) await cache.put(RESERVA, resposta);
+    } catch { /* sem rede na instalação: a reserva fica para a próxima */ }
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(keys
-        .filter((k) => k.startsWith(PREFIXO) && k !== VERSION)
-        .map((k) => caches.delete(k))))
-      .then(() => self.clients.claim()),
-  );
+  event.waitUntil((async () => {
+    const nomes = await caches.keys();
+    // Só o que é deste aplicativo: a origem é dividida com outros dois.
+    const antigos = nomes.filter((n) => n.startsWith(PREFIXO) && n !== VERSION);
+    await Promise.all(antigos.map((n) => caches.delete(n)));
+    // `claim` dispara `controllerchange` nas janelas abertas, e a página já
+    // recarrega sozinha nesse evento. Mandar o recarregamento também daqui
+    // faria dois ao mesmo tempo — e num teste isso travou a página. Um dono
+    // por comportamento: quem recarrega é a página.
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
+  if (new URL(request.url).origin !== self.location.origin) return;
 
-  const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
-
-  // A PÁGINA vem pela rede primeiro. Ela carrega o aplicativo inteiro, então
-  // servi-la do cache faria uma correção levar dias para chegar ao aparelho.
-  // Sem rede, o cache assume na hora e o aplicativo abre igual.
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request, { cache: 'reload' })
-        .then((resposta) => {
-          const copia = resposta.clone();
-          caches.open(VERSION).then((cache) => cache.put(request, copia));
-          return resposta;
-        })
-        .catch(() => caches.match(request).then((achado) => achado ?? caches.match('./index.html'))),
-    );
-    return;
-  }
-
-  const isLiveData = url.pathname.includes('/config/') || url.searchParams.has('nocache');
-
-  if (isLiveData) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(VERSION).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(() => caches.match(request)),
-    );
-    return;
-  }
-
-  event.respondWith(
-    caches.match(request).then((cached) => cached ?? fetch(request).then((response) => {
-      if (response.ok) {
-        const copy = response.clone();
-        caches.open(VERSION).then((cache) => cache.put(request, copy));
+  event.respondWith((async () => {
+    try {
+      return await fetch(request);
+    } catch (erro) {
+      // Sem rede. Uma navegação recebe a página inicial guardada; o resto
+      // falha honestamente, em vez de reviver uma versão antiga.
+      if (request.mode === 'navigate') {
+        const reserva = await caches.match(RESERVA);
+        if (reserva) return reserva;
       }
-      return response;
-    })),
-  );
+      throw erro;
+    }
+  })());
 });
