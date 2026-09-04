@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T14:46:16.781Z",
+  "publicadoEm": "2026-09-04T15:06:20.238Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 11:39",
-    "geradoEm": "2026-09-04T14:43:16.585Z"
+    "ultimaNota": "04/09/2026 11:59",
+    "geradoEm": "2026-09-04T15:03:21.085Z"
   },
   "equipe": [
     {
@@ -58,6 +58,11 @@
       "time": "11:46",
       "orders": 50,
       "revenue": 1093712.85
+    },
+    {
+      "time": "12:06",
+      "orders": 52,
+      "revenue": 1148751.73
     }
   ],
   "records": [
@@ -118,6 +123,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-09-04",
+      "time": "12:06",
+      "orders": 3,
+      "revenue": 0
+    },
+    {
       "sellerId": "leonardo-costa-oliveira",
       "sellerName": "LEONARDO COSTA OLIVEIRA",
       "date": "2026-09-04",
@@ -147,6 +160,14 @@
       "date": "2026-09-04",
       "time": "10:46",
       "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "maria-elisabete-tonon",
+      "sellerName": "MARIA ELISABETE TONON",
+      "date": "2026-09-04",
+      "time": "12:06",
+      "orders": 1,
       "revenue": 0
     },
     {
