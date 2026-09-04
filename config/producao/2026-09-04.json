@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T15:06:20.238Z",
+  "publicadoEm": "2026-09-04T15:16:22.977Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 11:59",
-    "geradoEm": "2026-09-04T15:03:21.085Z"
+    "ultimaNota": "04/09/2026 12:09",
+    "geradoEm": "2026-09-04T15:13:16.605Z"
   },
   "equipe": [
     {
@@ -63,6 +63,11 @@
       "time": "12:06",
       "orders": 52,
       "revenue": 1148751.73
+    },
+    {
+      "time": "12:16",
+      "orders": 53,
+      "revenue": 1157593.31
     }
   ],
   "records": [
@@ -224,6 +229,14 @@
       "date": "2026-09-04",
       "time": "11:16",
       "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "murilo-bedani-rogerio",
+      "sellerName": "MURILO BEDANI ROGERIO",
+      "date": "2026-09-04",
+      "time": "12:16",
+      "orders": 1,
       "revenue": 0
     },
     {
