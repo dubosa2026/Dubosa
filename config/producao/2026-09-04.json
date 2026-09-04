@@ -1,0 +1,76 @@
+{
+  "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
+  "data": "2026-09-04",
+  "publicadoEm": "2026-09-04T11:48:34.228Z",
+  "semantics": "cumulative",
+  "faturamentoPorVendedor": false,
+  "origem": {
+    "ultimaNota": "04/09/2026 08:39",
+    "geradoEm": "2026-09-04T11:41:34.458Z"
+  },
+  "equipe": [
+    {
+      "time": "08:48",
+      "orders": 13,
+      "revenue": 515585.78
+    }
+  ],
+  "records": [
+    {
+      "sellerId": "elandia-camargo-rodrigues",
+      "sellerName": "ELANDIA CAMARGO RODRIGUES",
+      "date": "2026-09-04",
+      "time": "08:48",
+      "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "lucas-dos-reis-bernardes-da-silveira",
+      "sellerName": "LUCAS DOS REIS BERNARDES DA SILVEIRA",
+      "date": "2026-09-04",
+      "time": "08:48",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "sellerName": "MARIA PAULA BERTAGLIA NESTOR",
+      "date": "2026-09-04",
+      "time": "08:48",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-09-04",
+      "time": "08:48",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rafael-vanderlei-lopes",
+      "sellerName": "RAFAEL VANDERLEI LOPES",
+      "date": "2026-09-04",
+      "time": "08:48",
+      "orders": 5,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rosyrene-de-medeiros-celestino",
+      "sellerName": "ROSYRENE DE MEDEIROS CELESTINO",
+      "date": "2026-09-04",
+      "time": "08:48",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "victor-vinicius-renno",
+      "sellerName": "VICTOR VINICIUS RENNO",
+      "date": "2026-09-04",
+      "time": "08:48",
+      "orders": 2,
+      "revenue": 0
+    }
+  ]
+}
