@@ -13,7 +13,11 @@
 // dubosa2026.github.io com outros dois, e uma limpeza que apagasse "tudo que
 // não é meu" derrubaria o modo offline dos vizinhos — e o deles, o nosso.
 const PREFIXO = 'liga-';
-const VERSION = `${PREFIXO}v1`;
+// A constante abaixo recebe, no build, um resumo do conteúdo publicado. Sem
+// isso o nome do cache nunca mudava, e como a casca é servida do cache
+// primeiro, um aparelho que já tinha aberto o aplicativo continuava rodando a
+// versão antiga para sempre — correção publicada que nunca chegava a ninguém.
+const VERSION = `${PREFIXO}@@VERSAO@@`;
 const SHELL = [
   './',
   './index.html',
@@ -52,7 +56,14 @@ const SHELL = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(VERSION)
-      .then((cache) => cache.addAll(SHELL))
+      // `cache: 'reload'` pula o cache HTTP do próprio navegador. Sem isso a
+      // busca podia devolver o arquivo velho: o GitHub Pages manda os arquivos
+      // com validade de alguns minutos, e o navegador honra essa validade antes
+      // mesmo de perguntar ao servidor — o cache novo nasceria com bytes
+      // antigos dentro.
+      .then((cache) => Promise.all(SHELL.map((caminho) => fetch(caminho, { cache: 'reload' })
+        .then((resposta) => (resposta.ok ? cache.put(caminho, resposta) : null))
+        .catch(() => null))))
       .then(() => self.skipWaiting()),
   );
 });
@@ -73,6 +84,22 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  // A PÁGINA vem pela rede primeiro. Ela carrega o aplicativo inteiro, então
+  // servi-la do cache faria uma correção levar dias para chegar ao aparelho.
+  // Sem rede, o cache assume na hora e o aplicativo abre igual.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request, { cache: 'reload' })
+        .then((resposta) => {
+          const copia = resposta.clone();
+          caches.open(VERSION).then((cache) => cache.put(request, copia));
+          return resposta;
+        })
+        .catch(() => caches.match(request).then((achado) => achado ?? caches.match('./index.html'))),
+    );
+    return;
+  }
 
   const isLiveData = url.pathname.includes('/config/') || url.searchParams.has('nocache');
 

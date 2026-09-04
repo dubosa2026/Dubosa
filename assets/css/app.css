@@ -933,3 +933,6 @@ body.is-compact .demo-banner span { display: none; }
 .preview-bar strong { color: var(--text-primary); }
 .preview-bar .btn { margin-left: auto; flex: none; }
 .title-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* Versão publicada, no rodapé: discreta, mas legível quando se procura. */
+.versao { opacity: .55; font-size: .85em; letter-spacing: .02em; }
