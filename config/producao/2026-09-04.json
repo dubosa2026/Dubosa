@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T18:47:08.999Z",
+  "publicadoEm": "2026-09-04T18:57:29.403Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 15:39",
-    "geradoEm": "2026-09-04T18:43:17.602Z"
+    "ultimaNota": "04/09/2026 15:49",
+    "geradoEm": "2026-09-04T18:53:17.702Z"
   },
   "equipe": [
     {
@@ -153,6 +153,11 @@
       "time": "15:47",
       "orders": 95,
       "revenue": 1843767.1
+    },
+    {
+      "time": "15:57",
+      "orders": 97,
+      "revenue": 1867153.77
     }
   ],
   "records": [
@@ -282,6 +287,14 @@
       "date": "2026-09-04",
       "time": "15:47",
       "orders": 7,
+      "revenue": 0
+    },
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-09-04",
+      "time": "15:57",
+      "orders": 8,
       "revenue": 0
     },
     {
@@ -762,6 +775,14 @@
       "date": "2026-09-04",
       "time": "15:37",
       "orders": 8,
+      "revenue": 0
+    },
+    {
+      "sellerId": "victor-vinicius-renno",
+      "sellerName": "VICTOR VINICIUS RENNO",
+      "date": "2026-09-04",
+      "time": "15:57",
+      "orders": 9,
       "revenue": 0
     }
   ]
