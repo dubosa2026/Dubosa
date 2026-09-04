@@ -26,7 +26,7 @@
 
 const PREFIXO = 'liga-';
 // Trocado no build por um resumo do conteúdo publicado.
-const VERSION = `${PREFIXO}c7f64963ae2a`;
+const VERSION = `${PREFIXO}4acb4ca1a599`;
 const RESERVA = './index.html';
 
 self.addEventListener('install', (event) => {
