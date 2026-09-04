@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T15:26:25.814Z",
+  "publicadoEm": "2026-09-04T15:56:30.053Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 12:19",
-    "geradoEm": "2026-09-04T15:23:04.975Z"
+    "ultimaNota": "04/09/2026 12:49",
+    "geradoEm": "2026-09-04T15:53:13.115Z"
   },
   "equipe": [
     {
@@ -73,6 +73,11 @@
       "time": "12:26",
       "orders": 54,
       "revenue": 1163357.17
+    },
+    {
+      "time": "12:56",
+      "orders": 57,
+      "revenue": 1218201.72
     }
   ],
   "records": [
@@ -154,6 +159,14 @@
       "date": "2026-09-04",
       "time": "12:26",
       "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "leonardo-costa-oliveira",
+      "sellerName": "LEONARDO COSTA OLIVEIRA",
+      "date": "2026-09-04",
+      "time": "12:56",
+      "orders": 4,
       "revenue": 0
     },
     {
@@ -386,6 +399,14 @@
       "date": "2026-09-04",
       "time": "11:16",
       "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "victor-vinicius-renno",
+      "sellerName": "VICTOR VINICIUS RENNO",
+      "date": "2026-09-04",
+      "time": "12:56",
+      "orders": 5,
       "revenue": 0
     }
   ]
