@@ -37,8 +37,28 @@
     window.ligaComercial = startApp(document.getElementById('app'));
 
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(() => { /* offline é opcional */ });
+      // Quando uma versão nova assume o comando, esta página já é a antiga:
+      // o código dela está carregado na memória desde antes. Recarregar aqui é
+      // o que faz a correção aparecer sem depender de ninguém saber que
+      // precisa recarregar — e sem isso a atualização fica esperando a próxima
+      // vez que a pessoa abrir o aplicativo, que pode ser dias.
+      let recarregando = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (recarregando) return;
+        recarregando = true;
+        location.reload();
+      });
+
+      window.addEventListener('load', async () => {
+        try {
+          const registro = await navigator.serviceWorker.register('sw.js');
+          // Um aplicativo aberto o dia inteiro nunca navegaria de novo, e é
+          // justamente nele que a correção precisa entrar durante o dia.
+          setInterval(() => registro.update().catch(() => {}), 15 * 60 * 1000);
+          document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) registro.update().catch(() => {});
+          });
+        } catch { /* offline é opcional */ }
       });
     }
   </script>

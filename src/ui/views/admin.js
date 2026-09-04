@@ -5,7 +5,7 @@ import { exportRoster } from '../../core/roster.js';
 import { exportTeam } from '../../core/team.js';
 import { money, number as fmtNumber } from '../../core/format.js';
 import { normalizeMoney } from '../../data/types.js';
-import { exportConfig } from '../../core/settings.js';
+import { exportConfig, versaoPublicada } from '../../core/settings.js';
 
 /**
  * ÁREA ADMINISTRATIVA — exclusiva do gestor.
@@ -32,6 +32,7 @@ export function adminView({ config, app, roster, rosterOrigin, team, teamOrigin,
     tab === 'acessos' ? accessPanel({ app, roster, rosterOrigin, team }) : null,
     tab === 'base' ? dataPanel({ app, config, connection, diagnostico, sourceHealth }) : null,
     tab === 'regras' ? rulesPanel({ app, config }) : null,
+    tab === 'instalar' ? atualizacaoPanel() : null,
     tab === 'instalar' ? installPanel({ app, roster }) : null);
 }
 
@@ -683,6 +684,49 @@ function rulesPanel({ app, config }) {
 }
 
 // ------------------------------------------------------------------ instalar
+/**
+ * Escotilha de emergência para versão presa.
+ *
+ * A casca do aplicativo fica em cache para abrir rápido e funcionar sem rede.
+ * O preço é que uma cópia local defeituosa — de uma versão anterior, de um
+ * arquivo baixado pela metade — deixa a pessoa sem saída dentro do navegador
+ * do celular, onde "limpar dados do site" não está à mão. Este botão é essa
+ * saída, e o número ao lado responde "a correção chegou?" sem adivinhação.
+ */
+function atualizacaoPanel() {
+  const versao = versaoPublicada();
+  const limpar = async (evento) => {
+    const botao = evento.currentTarget;
+    botao.textContent = 'Limpando…';
+    botao.disabled = true;
+    try {
+      if ('serviceWorker' in navigator) {
+        const registros = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registros.map((r) => r.unregister()));
+      }
+      if ('caches' in globalThis) {
+        // Só o que é deste aplicativo: a origem é dividida com outros dois.
+        const nomes = await caches.keys();
+        await Promise.all(nomes.filter((n) => n.startsWith('liga-')).map((n) => caches.delete(n)));
+      }
+    } finally {
+      globalThis.location.reload();
+    }
+  };
+
+  return h('section', { class: 'card' },
+    sectionTitle('Versão do aplicativo',
+      versao ? h('span', { class: 'section-hint', text: `v${versao}` }) : null),
+    h('p', { class: 'muted', text: versao
+      ? 'O aplicativo se atualiza sozinho quando uma versão nova é publicada. Este número é o que está rodando neste aparelho agora — serve para conferir se uma correção chegou.'
+      : 'Este aparelho está rodando uma versão sem carimbo, anterior ao controle de versões. Use o botão abaixo para buscar a atual.' }),
+    h('div', { class: 'button-row' },
+      h('button', { class: 'btn btn-primary', onclick: limpar, text: 'Buscar a versão mais recente' })),
+    h('p', { class: 'privacy-note' },
+      h('span', { 'aria-hidden': 'true', text: '↻' }),
+      'Isso apaga só a cópia local do aplicativo e o recarrega. Nenhum dado da equipe, acesso ou configuração é perdido.'));
+}
+
 function installPanel({ app, roster }) {
   const base = app.baseUrl;
   return h('section', { class: 'card' },
