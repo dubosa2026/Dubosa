@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T15:16:22.977Z",
+  "publicadoEm": "2026-09-04T15:26:25.814Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 12:09",
-    "geradoEm": "2026-09-04T15:13:16.605Z"
+    "ultimaNota": "04/09/2026 12:19",
+    "geradoEm": "2026-09-04T15:23:04.975Z"
   },
   "equipe": [
     {
@@ -68,6 +68,11 @@
       "time": "12:16",
       "orders": 53,
       "revenue": 1157593.31
+    },
+    {
+      "time": "12:26",
+      "orders": 54,
+      "revenue": 1163357.17
     }
   ],
   "records": [
@@ -141,6 +146,14 @@
       "date": "2026-09-04",
       "time": "10:04",
       "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "leonardo-costa-oliveira",
+      "sellerName": "LEONARDO COSTA OLIVEIRA",
+      "date": "2026-09-04",
+      "time": "12:26",
+      "orders": 3,
       "revenue": 0
     },
     {
