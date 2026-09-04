@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T21:18:04.501Z",
+  "publicadoEm": "2026-09-04T21:28:06.780Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 18:07",
-    "geradoEm": "2026-09-04T21:13:11.230Z"
+    "ultimaNota": "04/09/2026 18:18",
+    "geradoEm": "2026-09-04T21:23:04.833Z"
   },
   "equipe": [
     {
@@ -223,6 +223,11 @@
       "time": "18:18",
       "orders": 168,
       "revenue": 2946015.17
+    },
+    {
+      "time": "18:28",
+      "orders": 170,
+      "revenue": 3004712.97
     }
   ],
   "records": [
@@ -771,6 +776,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "sellerName": "MARIA PAULA BERTAGLIA NESTOR",
+      "date": "2026-09-04",
+      "time": "18:28",
+      "orders": 17,
+      "revenue": 0
+    },
+    {
       "sellerId": "matheus-souza-de-barros",
       "sellerName": "MATHEUS SOUZA DE BARROS",
       "date": "2026-09-04",
@@ -856,6 +869,14 @@
       "date": "2026-09-04",
       "time": "16:37",
       "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "munari-angela-mariano",
+      "sellerName": "MUNARI ANGELA MARIANO",
+      "date": "2026-09-04",
+      "time": "18:28",
+      "orders": 3,
       "revenue": 0
     },
     {
