@@ -27,10 +27,16 @@ name: Coletar produção
 
 on:
   schedule:
-    # A cada 10 minutos, das 8h às 21h de Brasília (11h–00h UTC), de segunda a
-    # sexta. É o mesmo ritmo em que o próprio sistema de pedidos se atualiza:
-    # coletar mais vezes não traria número novo.
-    - cron: '*/10 11-23 * * 1-5'
+    # A cada 15 minutos, das 8h às 21h de Brasília (11h–00h UTC), de segunda a
+    # sexta.
+    #
+    # OS MINUTOS QUEBRADOS SÃO DE PROPÓSITO. O agendamento do GitHub é servido
+    # por ordem de fila e não tem hora marcada: a documentação avisa que ele
+    # atrasa nos períodos de carga alta, e o pico é o começo de cada hora. Com
+    # `*/10` a primeira coleta do dia caía exatamente em :00, junto com o mundo
+    # inteiro — e num dia inteiro de sexta nenhuma execução agendada disparou,
+    # só as manuais. Fora do minuto cheio a fila é curta.
+    - cron: '4,19,34,49 11-23 * * 1-5'
   workflow_dispatch:        # permite rodar à mão pelo botão "Run workflow"
 
 permissions:
