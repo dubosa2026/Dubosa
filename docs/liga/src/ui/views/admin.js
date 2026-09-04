@@ -6,6 +6,7 @@ import { exportTeam } from '../../core/team.js';
 import { money, number as fmtNumber } from '../../core/format.js';
 import { normalizeMoney } from '../../data/types.js';
 import { exportConfig, versaoPublicada } from '../../core/settings.js';
+import { instaladorWindows, nomeDeArquivo, JANELA } from '../../core/instalador.js';
 
 /**
  * ÁREA ADMINISTRATIVA — exclusiva do gestor.
@@ -328,6 +329,17 @@ function accessPanel({ app, roster, rosterOrigin, team }) {
               h('td', { class: 'actions-cell' },
                 link
                   ? h('button', { class: 'btn btn-sm', onclick: (e) => copyLink(e, link), text: 'Copiar' })
+                  : null,
+                // O link sozinho abre no navegador, em aba comum. Este arquivo
+                // entrega o que foi pedido no começo: janela pequena, atalho na
+                // área de trabalho e abertura junto com o Windows.
+                link
+                  ? h('button', {
+                    class: 'btn btn-sm',
+                    title: 'Baixa um instalador com o link desta pessoa já dentro',
+                    onclick: () => downloadFile(nomeDeArquivo(s.name), instaladorWindows({ link, nome: s.name })),
+                    text: '⬇ Instalador',
+                  })
                   : null,
                 h('button', { class: 'btn btn-sm', onclick: () => app.regenerateSeller(s.sellerId, s.name), text: 'Novo link' }),
                 h('button', { class: 'btn btn-sm btn-danger', onclick: () => app.removeSeller(s.sellerId), text: 'Remover' })));
@@ -727,6 +739,44 @@ function atualizacaoPanel() {
       'Isso apaga só a cópia local do aplicativo e o recarrega. Nenhum dado da equipe, acesso ou configuração é perdido.'));
 }
 
+/**
+ * Instalador a partir de um link que já existe.
+ *
+ * O botão da aba Acessos só aparece para links gerados naquela sessão do
+ * navegador — o cadastro guarda só o resumo do código, nunca o código. Quem já
+ * distribuiu os links teria de gerar tudo de novo, invalidando o que a equipe
+ * já tem, só para conseguir o instalador. Aqui o link entra colado.
+ */
+function instaladorAvulso() {
+  const campo = h('input', {
+    class: 'input', type: 'text', 'aria-label': 'Link do vendedor',
+    placeholder: 'Cole aqui o link pessoal do vendedor',
+  });
+  const nome = h('input', {
+    class: 'input input-uf', type: 'text', 'aria-label': 'Nome de quem vai receber',
+    placeholder: 'Nome', style: 'max-width: 12rem',
+  });
+  const aviso = h('p', { class: 'muted', text: '' });
+
+  const gerar = () => {
+    try {
+      const link = campo.value.trim();
+      downloadFile(nomeDeArquivo(nome.value), instaladorWindows({ link, nome: nome.value.trim() }));
+      aviso.textContent = 'Arquivo baixado. Envie para essa pessoa.';
+    } catch (err) {
+      aviso.textContent = err.message;
+    }
+  };
+
+  return h('div', { class: 'alert alert-info' },
+    h('strong', { text: 'Já distribuiu os links? ' }),
+    'O botão da aba Acessos só aparece para links gerados naquela sessão — o cadastro guarda o resumo do código, '
+    + 'nunca o código em si. Para os que já estão com a equipe, cole o link aqui.',
+    h('div', { class: 'field-row' }, campo, nome,
+      h('button', { class: 'btn', onclick: gerar, text: '⬇ Gerar instalador' })),
+    aviso);
+}
+
 function installPanel({ app, roster }) {
   const base = app.baseUrl;
   return h('section', { class: 'card' },
@@ -734,11 +784,17 @@ function installPanel({ app, roster }) {
     h('p', { class: 'muted', text: 'O objetivo é um atalho na área de trabalho, abertura automática ao ligar o computador e uma janela pequena que fique de lado sem atrapalhar.' }),
 
     h('h3', { class: 'sub-title', text: 'Windows — atalho + inicialização automática' }),
+    h('div', { class: 'alert alert-info' },
+      h('strong', { text: 'Um arquivo por pessoa, na aba Acessos. ' }),
+      'Cada linha tem o botão ⬇ Instalador: ele baixa um arquivo com o link daquele vendedor já dentro. '
+      + 'Mande por WhatsApp ou e-mail — do outro lado são dois cliques, sem digitar nada.'),
     h('ol', { class: 'steps' },
-      h('li', { text: 'Baixe a pasta deploy/windows do repositório para a máquina do vendedor.' }),
-      h('li', { text: 'Dê dois cliques em Instalar-Dubosa.bat.' }),
-      h('li', { text: 'Cole o link pessoal do vendedor quando for pedido.' }),
-      h('li', { text: 'Pronto: atalho na área de trabalho, início junto com o Windows e janela pequena, já minimizada.' })),
+      h('li', { text: 'Aba Acessos → botão ⬇ Instalador na linha do vendedor.' }),
+      h('li', { text: 'Envie o arquivo para ele.' }),
+      h('li', { text: 'Ele dá dois cliques. Se o Windows avisar que veio da internet: Mais informações → Executar assim mesmo.' }),
+      h('li', { text: `Pronto: atalho na área de trabalho, abertura junto com o Windows já minimizada, e janela de ${JANELA.largura}×${JANELA.altura} — sem barra de endereços nem abas.` })),
+
+    instaladorAvulso(),
 
     h('h3', { class: 'sub-title', text: 'Sem instalar nada (qualquer sistema)' }),
     h('ol', { class: 'steps' },
