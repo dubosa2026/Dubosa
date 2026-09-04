@@ -14,7 +14,9 @@ import * as metrics from '../src/core/metrics.js';
 import * as ranking from '../src/core/ranking.js';
 import * as access from '../src/core/access.js';
 import * as gamification from '../src/core/gamification.js';
-import { buildDayState, emptyDayState, valueAt } from '../src/data/store.js';
+import {
+  buildDayState, emptyDayState, valueAt, teamAggregate, teamAggregateAt,
+} from '../src/data/store.js';
 import { toRecords, normalizeMoney } from '../src/data/types.js';
 import { indexTeam, resolveSeller, teamFromLines } from '../src/core/team.js';
 import { mergeTeam } from '../src/data/store.js';
@@ -783,6 +785,40 @@ await check('a origem que não informa faturamento é reconhecida', () => {
   assertEqual(SO_PEDIDOS.revenueAvailable, false);
 });
 
+await check('faturamento da carteira vira o total da equipe', () => {
+  // A origem nao reparte faturamento por vendedor, mas informa o total da
+  // carteira. Somar os vendedores daria zero; o numero informado e o de
+  // verdade e tem precedencia.
+  const dia = buildDayState({
+    status: 'ready', semantics: 'cumulative', date: DATE,
+    meta: {
+      faturamentoPorVendedor: false,
+      totaisDaEquipe: [{ time: '10:00', orders: 8, revenue: 120000 }, { time: '14:00', orders: 17, revenue: 370332 }],
+    },
+    records: [
+      { sellerId: 'ana-ferreira', sellerName: 'ANA FERREIRA', date: DATE, time: '14:00', orders: 6, revenue: 0 },
+      { sellerId: 'bruno-machado', sellerName: 'BRUNO MACHADO', date: DATE, time: '14:00', orders: 9, revenue: 0 },
+      { sellerId: 'carla-tavares', sellerName: 'CARLA TAVARES', date: DATE, time: '14:00', orders: 2, revenue: 0 },
+    ],
+  });
+  const total = teamAggregate(dia);
+  assertEqual(total.revenue, 370332, 'o total informado pela origem deveria valer:');
+  assertEqual(total.revenueInformadaPelaOrigem, true);
+  assertEqual(total.orders, 17, 'pedidos continuam vindo da soma dos vendedores:');
+
+  // avaliado num horario anterior, vale o ponto daquele momento
+  assertEqual(teamAggregateAt(dia, toMinutes('11:00')).revenue, 120000);
+  assertEqual(teamAggregateAt(dia, toMinutes('09:00')).revenue, 0,
+    'antes da primeira leitura nao ha faturamento a afirmar:');
+
+  // e a fatia individual continua impossivel de calcular
+  const v = access.buildSellerView({
+    today: dia, yesterday: null, sellerId: 'ana-ferreira', sellerName: 'Ana Ferreira', atMinutes: AT, config,
+  });
+  assertEqual(v.team.revenue, 370332);
+  assertEqual(v.team.myShareOfRevenue, null, 'sem faturamento por vendedor nao ha fatia:');
+});
+
 await check('base ligada e dia sem começar não vira "aguardando a base"', () => {
   // Duas telas com a mesma cara e soluções opostas: uma se resolve esperando
   // o expediente, a outra exige ligar a origem. Dizer "aguardando a base" com
@@ -947,6 +983,39 @@ await check('monta os registros com id próprio e faturamento ausente', () => {
   assertEqual(r[0].orders, 22);
   assertEqual(r[0].revenue, 0);
   assertEqual(r[0].time, '15:30');
+});
+
+await check('o faturamento da carteira e coletado, mesmo sem ser por vendedor', () => {
+  // A lista por vendedor traz so quantidade, mas a resposta informa o valor do
+  // dia da carteira. E faturamento de verdade: descartar seria perder o unico
+  // numero de dinheiro que a origem da.
+  const t = coletor.totaisDe({ ...RESPOSTA_REAL, hoje: 31, valorDia: 370332 }, { hora: '15:30' });
+  assertEqual(t.revenue, 370332);
+  assertEqual(t.orders, 31);
+  assertEqual(t.time, '15:30');
+
+  // sem `valorDia`, a soma das carteiras responde
+  const somando = coletor.totaisDe({ carteiras: [['A', 10, 5000], ['B', 7, 3000]] }, { hora: '09:00' });
+  assertEqual(somando.revenue, 8000);
+  assertEqual(somando.orders, 17);
+
+  // resposta sem nenhum total nao inventa zero
+  assertEqual(coletor.totaisDe({ vendedores: [] }, { hora: '09:00' }), null);
+});
+
+await check('a linha da equipe so ganha ponto quando o numero muda', () => {
+  const dez = coletor.totaisDe({ hoje: 8, valorDia: 120000 }, { hora: '10:00' });
+  const onze = coletor.totaisDe({ hoje: 8, valorDia: 120000 }, { hora: '11:00' });
+  const tarde = coletor.totaisDe({ hoje: 17, valorDia: 370332 }, { hora: '15:30' });
+
+  let linha = coletor.acumularTotais([], dez);
+  assertEqual(linha.length, 1);
+  linha = coletor.acumularTotais(linha, onze);
+  assertEqual(linha.length, 1, 'leitura igual a anterior nao vira vertice novo:');
+  linha = coletor.acumularTotais(linha, tarde);
+  assertEqual(linha.length, 2);
+  assertEqual(linha[1].revenue, 370332);
+  assertEqual(coletor.acumularTotais(linha, null).length, 2, 'origem sem total nao apaga a linha:');
 });
 
 await check('cada coleta vira um ponto da curva', () => {

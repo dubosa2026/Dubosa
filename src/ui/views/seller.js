@@ -368,8 +368,12 @@ function teamSection({ vm, awaiting }) {
         statTile({ label: 'Pedidos da equipe', value: number(vm.team.orders), icon: '📦' }),
         statTile({
           label: 'Faturamento da equipe', icon: '💰',
-          value: vm.revenueAvailable ? money(vm.team.revenue) : '—',
-          sub: vm.revenueAvailable ? null : h('span', { class: 'muted', text: 'não informado pela origem' }),
+          value: vm.revenueAvailable || vm.team.revenueInformadaPelaOrigem ? money(vm.team.revenue) : '—',
+          sub: vm.revenueAvailable
+            ? null
+            : h('span', { class: 'muted', text: vm.team.revenueInformadaPelaOrigem
+              ? 'total da carteira'
+              : 'não informado pela origem' }),
         }),
         statTile({ label: 'Vendedores ativos', value: `${number(vm.team.activeCount)} de ${number(vm.team.sellerCount)}`, icon: '👥' }),
         statTile({

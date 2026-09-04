@@ -321,7 +321,13 @@ export function buildSellerView({
       revenue: aggregate.revenue,
       avgOrders: aggregate.avgOrders,
       avgRevenue: aggregate.avgRevenue,
-      myShareOfRevenue: aggregate.revenue > 0 ? performance.revenue / aggregate.revenue : null,
+      revenueInformadaPelaOrigem: Boolean(aggregate.revenueInformadaPelaOrigem),
+      // A fatia individual precisa de faturamento POR VENDEDOR. Com o total
+      // vindo da carteira e o individual não existindo, a divisão não tem
+      // numerador — e um número aqui seria inventado.
+      myShareOfRevenue: aggregate.revenue > 0 && !aggregate.revenueInformadaPelaOrigem
+        ? performance.revenue / aggregate.revenue
+        : null,
       vsYesterdaySameTime: yAggregate
         ? { orders: aggregate.orders - yAggregate.orders, revenue: aggregate.revenue - yAggregate.revenue }
         : null,

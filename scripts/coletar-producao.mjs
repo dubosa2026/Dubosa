@@ -99,6 +99,36 @@ export function registrosDe(D, { data, hora }) {
 }
 
 /**
+ * Total da carteira na leitura atual — pedidos E faturamento.
+ *
+ * Este é o faturamento que a origem realmente informa. Ele não se reparte
+ * entre vendedores (a lista por vendedor traz só quantidade), mas jogá-lo fora
+ * também estava errado: é o resultado do dia da equipe, e o painel ficava com
+ * a linha de faturamento vazia tendo o número à mão.
+ */
+export function totaisDe(D, { hora }) {
+  const carteiras = Array.isArray(D?.carteiras) ? D.carteiras : [];
+  const somaCarteiras = carteiras.reduce((acc, c) => ({
+    orders: acc.orders + (Number(c?.[1]) || 0),
+    revenue: acc.revenue + (Number(c?.[2]) || 0),
+  }), { orders: 0, revenue: 0 });
+
+  const orders = Number(D?.hoje) || somaCarteiras.orders;
+  const revenue = Number(D?.valorDia) || somaCarteiras.revenue;
+  if (!orders && !revenue) return null;
+  return { time: hora, orders, revenue };
+}
+
+/** Mesma regra de acúmulo dos vendedores, aplicada à linha da equipe. */
+export function acumularTotais(anteriores, novo) {
+  if (!novo) return anteriores;
+  if (anteriores.some((t) => t.time === novo.time)) return anteriores;
+  const ultimo = anteriores.at(-1);
+  if (ultimo && ultimo.orders === novo.orders && ultimo.revenue === novo.revenue) return anteriores;
+  return [...anteriores, novo].sort((a, b) => a.time.localeCompare(b.time));
+}
+
+/**
  * Junta a leitura nova ao que já foi gravado hoje, formando a curva do dia.
  * Cada par (vendedor, horário) entra uma vez; leitura igual à anterior não
  * gera ponto novo — a curva só ganha vértice quando a produção muda.
@@ -144,12 +174,18 @@ async function principal() {
   mkdirSync(pasta, { recursive: true });
 
   let anteriores = [];
+  let totaisAnteriores = [];
   if (existsSync(arquivo)) {
-    try { anteriores = JSON.parse(readFileSync(arquivo, 'utf8')).records ?? []; } catch { anteriores = []; }
+    try {
+      const lido = JSON.parse(readFileSync(arquivo, 'utf8'));
+      anteriores = lido.records ?? [];
+      totaisAnteriores = lido.equipe ?? [];
+    } catch { anteriores = []; totaisAnteriores = []; }
   }
 
   const registros = acumular(anteriores, novos);
-  if (registros.length === anteriores.length) {
+  const totais = acumularTotais(totaisAnteriores, totaisDe(D, { hora }));
+  if (registros.length === anteriores.length && totais.length === totaisAnteriores.length) {
     console.log(`Nada mudou desde a última leitura (${anteriores.length} registros). Arquivo intacto.`);
     return;
   }
@@ -161,6 +197,9 @@ async function principal() {
     semantics: 'cumulative',
     faturamentoPorVendedor: false,
     origem: { ultimaNota: D?.ultimaNota ?? null, geradoEm: D?.geradoEm ?? null },
+    // Total da carteira ao longo do dia. É faturamento de verdade; só não se
+    // reparte entre vendedores.
+    equipe: totais,
     records: registros,
   }, null, 2)}\n`, 'utf8');
 

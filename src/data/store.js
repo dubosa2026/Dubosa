@@ -100,6 +100,10 @@ export function buildDayState(payload) {
     message: payload.message ?? null,
     sellers,
     hasData: sellers.some((s) => s.timeline.length > 0),
+    // Totais informados pela própria origem, quando ela os informa. Não são a
+    // soma dos vendedores: quando o faturamento só existe por carteira, esta é
+    // a ÚNICA fonte verdadeira do faturamento do dia.
+    teamTotals: Array.isArray(payload.meta?.totaisDaEquipe) ? payload.meta.totaisDaEquipe : null,
     // A origem pode dar pedidos por vendedor e faturamento só por carteira —
     // é o caso do sistema de pedidos da empresa. Quando há produção mas nenhum
     // faturamento, ele não é zero: ele não foi informado. A diferença muda o
@@ -264,12 +268,18 @@ export function teamAggregate(dayState) {
   const sellers = dayState?.sellers ?? [];
   const active = sellers.filter((s) => s.orders > 0 || s.revenue > 0);
   const orders = sellers.reduce((sum, s) => sum + s.orders, 0);
-  const revenue = sellers.reduce((sum, s) => sum + s.revenue, 0);
+  // Somar os vendedores dá zero quando a origem não reparte o faturamento.
+  // O total que ela informa é o número de verdade, e tem precedência.
+  const informado = dayState?.teamTotals?.at(-1)?.revenue;
+  const revenue = Number.isFinite(informado) && informado > 0
+    ? informado
+    : sellers.reduce((sum, s) => sum + s.revenue, 0);
   return {
     sellerCount: sellers.length,
     activeCount: active.length,
     orders,
     revenue,
+    revenueInformadaPelaOrigem: Number.isFinite(informado) && informado > 0,
     avgOrders: sellers.length ? orders / sellers.length : 0,
     avgRevenue: sellers.length ? revenue / sellers.length : 0,
   };
@@ -285,5 +295,24 @@ export function teamAggregateAt(dayState, minutes) {
     orders += v.orders;
     revenue += v.revenue;
   }
-  return { orders, revenue, sellerCount: sellers.length };
+  // Mesma precedência do agregado do dia, avaliada no horário pedido: a linha
+  // da equipe é uma curva acumulada, então vale o último ponto até `minutes`.
+  const informado = valorInformadoAte(dayState?.teamTotals, minutes);
+  return {
+    orders,
+    revenue: informado ?? revenue,
+    sellerCount: sellers.length,
+  };
+}
+
+/** Último faturamento informado pela origem até o minuto pedido. */
+function valorInformadoAte(totais, minutes) {
+  if (!Array.isArray(totais) || !totais.length) return null;
+  let achado = null;
+  for (const t of totais) {
+    const m = toMinutes(t.time);
+    if (m === null || m > minutes) continue;
+    achado = Number(t.revenue) || 0;
+  }
+  return achado;
 }
