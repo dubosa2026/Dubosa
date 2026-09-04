@@ -742,6 +742,30 @@ await check('contexto vindo da origem carrega só magnitude, nunca identidade', 
 console.log('\nENTRADA PELO LINK');
 const identidade = await import('../src/core/identity.js');
 
+console.log('\nENTRADA PELO LINK — O ENDERECO MANDA');
+
+await check('link no endereco nao cai no codigo guardado quando falha', () => {
+  // A falha real: o gestor mandou ao vendedor um link cujo codigo nao estava
+  // no cadastro publicado. No navegador do vendedor havia um codigo guardado
+  // -- e a corrente de tentativas seguiu para ele. Abriu o painel do gestor,
+  // com o ranking nominal da equipe inteira, para quem abriu um link de
+  // vendedor.
+  const so = identidade.candidatosDeEntrada({
+    tokenDoEndereco: 'AAAA-BBBB-CCCC', guardado: 'CODIGO-DO-GESTOR', inicial: 'DEMO',
+  });
+  assertEqual(so.length, 1, 'com codigo no endereco nao existe segunda tentativa:');
+  assertEqual(so[0], 'AAAA-BBBB-CCCC');
+});
+
+await check('sem codigo no endereco, o guardado continua valendo', () => {
+  // A corrente existe por outra razao boa: quem abre o aplicativo pelo atalho,
+  // sem codigo no endereco, nao pode ser obrigado a reencontrar o link.
+  const c = identidade.candidatosDeEntrada({ guardado: 'MEU-CODIGO', inicial: 'DEMO' });
+  assertEqual(c.join(','), 'MEU-CODIGO,DEMO');
+  assertEqual(identidade.candidatosDeEntrada({}).length, 0);
+});
+
+
 const ROSTER_TESTE = {
   manager: { name: 'Gestor', tokenHash: await identidade.sha256Hex('GEST-AAAA-BBBB') },
   sellers: [{ sellerId: 'ana', name: 'Ana', tokenHash: await identidade.sha256Hex('ANAA-1111-2222') }],

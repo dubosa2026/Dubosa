@@ -104,3 +104,24 @@ export function versaoPublicada() {
   if (typeof document === 'undefined') return null;
   return document.querySelector('meta[name="liga-versao"]')?.content ?? null;
 }
+
+/**
+ * O navegador está oferecendo instalar o aplicativo?
+ *
+ * Existe para trocar "abra o menu de três pontos e procure Instalar" por um
+ * botão na tela. A diferença não é de conforto: o passo a passo por menu é
+ * onde a instalação parava.
+ */
+export function convitePendente() {
+  return Boolean(globalThis.__ligaInstalar);
+}
+
+/** Aceita o convite. Devolve true se a pessoa confirmou. */
+export async function instalarAplicativo() {
+  const convite = globalThis.__ligaInstalar;
+  if (!convite) return false;
+  convite.prompt();
+  const { outcome } = await convite.userChoice;
+  globalThis.__ligaInstalar = null;
+  return outcome === 'accepted';
+}

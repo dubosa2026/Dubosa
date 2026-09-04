@@ -8,7 +8,7 @@ import { dayChart, dayChartTable } from '../components/chart.js';
 import {
   money, number, moneyDelta, numberDelta, percentDelta, ordinal, dateLongBR, timeFromMinutes, horaDaLeitura,
 } from '../../core/format.js';
-import { versaoPublicada } from '../../core/settings.js';
+import { versaoPublicada, convitePendente } from '../../core/settings.js';
 
 /**
  * PAINEL DO VENDEDOR
@@ -29,6 +29,7 @@ export function sellerView({ vm, config, app }) {
 
   return h('div', { class: 'view view-seller' },
     header({ vm, app }),
+    faixaDeInstalacao({ app }),
     heroSection({ vm, awaiting }),
     vm.messages.length ? h('section', { class: 'card card-messages' }, messageList(vm.messages)) : null,
     disputeSection({ vm, awaiting }),
@@ -51,6 +52,37 @@ export function sellerView({ vm, config, app }) {
 }
 
 // ---------------------------------------------------------------- cabeçalho
+/**
+ * Convite de instalação, na tela de quem vai instalar.
+ *
+ * O caminho anterior era um arquivo enviado por WhatsApp, baixado,
+ * descompactado e executado — quatro passos, cada um com sua chance de dar
+ * errado, e nenhum aviso quando dava. Aqui é um botão, na tela que a pessoa já
+ * abriu, e quem instala é o próprio navegador: janela própria, ícone na área
+ * de trabalho, sem barra de endereços.
+ *
+ * Só aparece quando o navegador oferece — e some sozinho depois de instalado.
+ */
+function faixaDeInstalacao({ app }) {
+  if (!convitePendente() || app.state.instalacaoDispensada) return null;
+  return h('div', { class: 'alert alert-info install-strip' },
+    h('span', { class: 'install-icon', 'aria-hidden': 'true', text: '📌' }),
+    h('div', { class: 'install-text' },
+      h('strong', { text: 'Deixe o placar sempre à mão. ' }),
+      'Vira um aplicativo com ícone próprio, numa janela pequena e sem barra de endereços.'),
+    h('div', { class: 'button-row' },
+      h('button', {
+        class: 'btn btn-primary btn-sm',
+        onclick: async (e) => { e.currentTarget.disabled = true; await app.instalar(); },
+        text: 'Instalar',
+      }),
+      h('button', {
+        class: 'btn btn-ghost btn-sm',
+        onclick: () => app.dispensarInstalacao(),
+        text: 'Agora não',
+      })));
+}
+
 function header({ vm, app }) {
   return h('header', { class: 'app-header' },
     h('div', { class: 'app-header-main' },

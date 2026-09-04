@@ -936,3 +936,9 @@ body.is-compact .demo-banner span { display: none; }
 
 /* Versão publicada, no rodapé: discreta, mas legível quando se procura. */
 .versao { opacity: .55; font-size: .85em; letter-spacing: .02em; }
+
+/* Convite de instalação: uma faixa, não um cartão — ela some depois de aceita. */
+.install-strip { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.install-icon { font-size: 1.35rem; }
+.install-text { flex: 1 1 14rem; min-width: 0; }
+.install-strip .button-row { margin: 0; }

@@ -143,6 +143,24 @@ export async function resolveFirstIdentity(candidatos, roster) {
   return null;
 }
 
+/**
+ * Quais códigos podem ser tentados nesta abertura.
+ *
+ * Regra única, e a razão dela é uma falha real: quem abriu o link de um
+ * vendedor num navegador onde o gestor já tinha entrado caiu no painel do
+ * gestor — o código do link não resolvia, a corrente seguia para o código
+ * guardado, e ele resolvia. O ranking nominal da equipe inteira apareceu para
+ * quem abriu um link de vendedor.
+ *
+ * Um código no ENDEREÇO é palavra final: ou ele vale, ou a porta fica fechada.
+ * A corrente de tentativas só existe para quem chega sem código no endereço —
+ * aí sim um código guardado que morreu não pode trancar ninguém.
+ */
+export function candidatosDeEntrada({ tokenDoEndereco = null, guardado = null, inicial = null } = {}) {
+  if (tokenDoEndereco) return [tokenDoEndereco];
+  return [guardado, inicial].filter(Boolean);
+}
+
 /** Comparação de tempo constante — não vaza o prefixo correto do hash. */
 function timingSafeEqual(a, b) {
   const x = String(a);

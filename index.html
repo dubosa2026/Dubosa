@@ -36,6 +36,20 @@
     import { startApp } from './src/app.js';
     window.ligaComercial = startApp(document.getElementById('app'));
 
+    // O navegador avisa UMA vez que a instalação é possível, e o aviso morre se
+    // ninguém o guardar. Guardado aqui, o aplicativo pode oferecer o botão na
+    // hora certa — em vez de mandar a pessoa procurar um item de menu.
+    window.__ligaInstalar = null;
+    window.addEventListener('beforeinstallprompt', (evento) => {
+      evento.preventDefault();
+      window.__ligaInstalar = evento;
+      window.dispatchEvent(new CustomEvent('liga:instalavel'));
+    });
+    window.addEventListener('appinstalled', () => {
+      window.__ligaInstalar = null;
+      window.dispatchEvent(new CustomEvent('liga:instalavel'));
+    });
+
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       // Quando uma versão nova assume o comando, esta página já é a antiga:
       // o código dela está carregado na memória desde antes. Recarregar aqui é
