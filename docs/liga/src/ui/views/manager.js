@@ -9,6 +9,7 @@ import {
   money, number, moneyDelta, numberDelta, percentDelta, ordinal, decimal,
   dateBR, dateLongBR, timeFromMinutes, moneyRate, orderRate,
 } from '../../core/format.js';
+import { versaoPublicada } from '../../core/settings.js';
 
 /**
  * PAINEL DO GESTOR
@@ -491,7 +492,9 @@ function reportTab({ vm, app, awaiting, config }) {
 
 function footer({ vm, app }) {
   return h('footer', { class: 'app-footer' },
-    h('span', { class: 'muted', text: `Atualizado às ${timeFromMinutes(vm.atMinutes)}` }),
+    h('span', { class: 'muted' },
+      `Atualizado às ${timeFromMinutes(vm.atMinutes)}`,
+      versaoPublicada() ? h('span', { class: 'versao', title: 'Versão publicada deste aplicativo', text: ` · v${versaoPublicada()}` }) : null),
     h('button', { class: 'btn btn-ghost btn-sm', onclick: () => app.refresh(), text: '↻ Atualizar' }),
     h('button', { class: 'btn btn-ghost btn-sm', onclick: () => app.logout(), text: 'Sair' }));
 }

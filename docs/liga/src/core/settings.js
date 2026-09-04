@@ -92,3 +92,15 @@ export function resetConfig() {
 export function exportConfig() {
   return JSON.stringify(getConfig(), null, 2);
 }
+
+/**
+ * Versão publicada, carimbada no build.
+ *
+ * Existe para responder "essa correção chegou no seu aparelho?" sem
+ * adivinhação. Aberto do disco, ou servido por um build que não carimbou,
+ * simplesmente não há versão — e a tela não inventa uma.
+ */
+export function versaoPublicada() {
+  if (typeof document === 'undefined') return null;
+  return document.querySelector('meta[name="liga-versao"]')?.content ?? null;
+}
