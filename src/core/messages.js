@@ -65,12 +65,27 @@ export function buildMessages(ctx) {
   const {
     performance, gaps, positions, tier, phase = 'aberto', config = {},
     others = [], identifyingTokens: tokens = new Set(), awaitingData = false,
-    temFaturamento = true,
+    temFaturamento = true, origemConectada = false, businessHours = null,
   } = ctx;
 
   // Sem base conectada não existe desempenho a comentar. Uma frase motivacional
   // aqui seria afirmação sobre um dado que não existe.
   if (awaitingData) {
+    // Com a base LIGADA, "aguardando a base de dados" é falso e assusta: o
+    // que falta é o dia começar, não a conexão. São dois problemas com cara
+    // igual e soluções opostas — um se resolve esperando, o outro não.
+    if (origemConectada) {
+      const abre = businessHours?.start ?? '08:00';
+      return [{
+        id: 'dia-nao-comecou',
+        tone: 'neutro',
+        icon: '⏳',
+        text: phase === 'antes'
+          ? `O expediente começa às ${abre}. Seu placar de hoje abre com o primeiro pedido.`
+          : 'Ainda não há produção registrada hoje. O placar abre com o primeiro pedido.',
+        priority: 100,
+      }];
+    }
     return [{
       id: 'aguardando-base',
       tone: 'neutro',

@@ -783,6 +783,28 @@ await check('a origem que não informa faturamento é reconhecida', () => {
   assertEqual(SO_PEDIDOS.revenueAvailable, false);
 });
 
+await check('base ligada e dia sem começar não vira "aguardando a base"', () => {
+  // Duas telas com a mesma cara e soluções opostas: uma se resolve esperando
+  // o expediente, a outra exige ligar a origem. Dizer "aguardando a base" com
+  // a base ligada manda quem olha procurar defeito onde não há.
+  const vazio = emptyDayState(DATE);
+  const ligada = access.buildSellerView({
+    today: vazio, yesterday: null, sellerId: 'ana-ferreira', sellerName: 'Ana Ferreira',
+    atMinutes: 0, config, origemConectada: true,
+  });
+  const texto = ligada.messages.map((m) => m.text).join(' ');
+  assert(!texto.includes('Aguardando a base'), `com a base ligada nao cabe: ${texto}`);
+  assert(texto.includes('expediente começa'), `deveria explicar a hora: ${texto}`);
+  assertEqual(ligada.origemConectada, true);
+
+  const desligada = access.buildSellerView({
+    today: vazio, yesterday: null, sellerId: 'ana-ferreira', sellerName: 'Ana Ferreira',
+    atMinutes: 0, config, origemConectada: false,
+  });
+  assert(desligada.messages[0].text.includes('Aguardando a base'),
+    'sem origem conectada a frase antiga continua sendo a certa');
+});
+
 await check('sem faturamento, o nível corre por pedidos', () => {
   // Todo nivel acima do BRONZE exige faturamento minimo. Com a origem
   // informando zero para todo mundo, quem fez treze pedidos ficava preso no
