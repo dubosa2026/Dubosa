@@ -66,10 +66,15 @@ export class PublishedFileSource extends DataSource {
       }
       json = await res.json();
     } catch (err) {
+      // Aqui NAO e "ainda nao publicaram": o pedido nem chegou a ter resposta.
+      // Sem rede, endereco errado ou origem fora do ar dao exatamente a mesma
+      // tela de "aguardando a base" que um dia que ainda nao comecou — e quem
+      // olha nao tem como saber qual dos dois e. Entao esta e a unica saida
+      // deste metodo que se declara erro.
       return emptyDay(date, {
-        status: 'awaiting_source',
-        message: 'Nenhuma produção publicada para este dia.',
-        meta: { awaiting: true, detalhe: err.message },
+        status: 'error',
+        message: `Não consegui alcançar ${this.pasta}. Verifique o endereço da origem e a conexão.`,
+        meta: { detalhe: err.message, origem: this.pasta },
       });
     }
 
