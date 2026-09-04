@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T13:04:38.512Z",
+  "publicadoEm": "2026-09-04T13:15:56.483Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 09:58",
-    "geradoEm": "2026-09-04T13:01:43.779Z"
+    "ultimaNota": "04/09/2026 10:08",
+    "geradoEm": "2026-09-04T13:11:35.013Z"
   },
   "equipe": [
     {
@@ -18,9 +18,22 @@
       "time": "10:04",
       "orders": 27,
       "revenue": 785626.79
+    },
+    {
+      "time": "10:15",
+      "orders": 31,
+      "revenue": 821336.03
     }
   ],
   "records": [
+    {
+      "sellerId": "alisson-dos-santos-ribeiro",
+      "sellerName": "ALISSON DOS SANTOS RIBEIRO",
+      "date": "2026-09-04",
+      "time": "10:15",
+      "orders": 1,
+      "revenue": 0
+    },
     {
       "sellerId": "diego-adan-ohnuma-angeli",
       "sellerName": "DIEGO ADAN OHNUMA ANGELI",
@@ -67,6 +80,14 @@
       "date": "2026-09-04",
       "time": "08:48",
       "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "lucas-dos-reis-bernardes-da-silveira",
+      "sellerName": "LUCAS DOS REIS BERNARDES DA SILVEIRA",
+      "date": "2026-09-04",
+      "time": "10:15",
+      "orders": 2,
       "revenue": 0
     },
     {
@@ -131,6 +152,14 @@
       "date": "2026-09-04",
       "time": "10:04",
       "orders": 9,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rafael-vanderlei-lopes",
+      "sellerName": "RAFAEL VANDERLEI LOPES",
+      "date": "2026-09-04",
+      "time": "10:15",
+      "orders": 11,
       "revenue": 0
     },
     {
