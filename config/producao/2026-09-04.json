@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T20:37:55.057Z",
+  "publicadoEm": "2026-09-04T20:47:57.592Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 17:27",
-    "geradoEm": "2026-09-04T20:33:16.719Z"
+    "ultimaNota": "04/09/2026 17:37",
+    "geradoEm": "2026-09-04T20:43:15.446Z"
   },
   "equipe": [
     {
@@ -208,6 +208,11 @@
       "time": "17:37",
       "orders": 161,
       "revenue": 2835175.49
+    },
+    {
+      "time": "17:47",
+      "orders": 164,
+      "revenue": 2874757.73
     }
   ],
   "records": [
@@ -249,6 +254,14 @@
       "date": "2026-09-04",
       "time": "17:27",
       "orders": 4,
+      "revenue": 0
+    },
+    {
+      "sellerId": "diego-adan-ohnuma-angeli",
+      "sellerName": "DIEGO ADAN OHNUMA ANGELI",
+      "date": "2026-09-04",
+      "time": "17:47",
+      "orders": 6,
       "revenue": 0
     },
     {
@@ -801,6 +814,14 @@
       "date": "2026-09-04",
       "time": "17:27",
       "orders": 9,
+      "revenue": 0
+    },
+    {
+      "sellerId": "matheus-souza-de-barros",
+      "sellerName": "MATHEUS SOUZA DE BARROS",
+      "date": "2026-09-04",
+      "time": "17:47",
+      "orders": 10,
       "revenue": 0
     },
     {
