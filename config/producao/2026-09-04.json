@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T16:16:35.078Z",
+  "publicadoEm": "2026-09-04T16:26:37.735Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 13:07",
-    "geradoEm": "2026-09-04T16:13:10.789Z"
+    "ultimaNota": "04/09/2026 13:19",
+    "geradoEm": "2026-09-04T16:23:12.678Z"
   },
   "equipe": [
     {
@@ -88,6 +88,11 @@
       "time": "13:16",
       "orders": 60,
       "revenue": 1281379.83
+    },
+    {
+      "time": "13:26",
+      "orders": 62,
+      "revenue": 1313249.55
     }
   ],
   "records": [
@@ -180,6 +185,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "leonardo-costa-oliveira",
+      "sellerName": "LEONARDO COSTA OLIVEIRA",
+      "date": "2026-09-04",
+      "time": "13:26",
+      "orders": 5,
+      "revenue": 0
+    },
+    {
       "sellerId": "lucas-dos-reis-bernardes-da-silveira",
       "sellerName": "LUCAS DOS REIS BERNARDES DA SILVEIRA",
       "date": "2026-09-04",
@@ -209,6 +222,14 @@
       "date": "2026-09-04",
       "time": "13:16",
       "orders": 4,
+      "revenue": 0
+    },
+    {
+      "sellerId": "lucas-dos-reis-bernardes-da-silveira",
+      "sellerName": "LUCAS DOS REIS BERNARDES DA SILVEIRA",
+      "date": "2026-09-04",
+      "time": "13:26",
+      "orders": 5,
       "revenue": 0
     },
     {
