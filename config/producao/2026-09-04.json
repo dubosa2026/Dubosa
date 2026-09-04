@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T17:56:58.000Z",
+  "publicadoEm": "2026-09-04T18:07:00.470Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 14:49",
-    "geradoEm": "2026-09-04T17:53:14.020Z"
+    "ultimaNota": "04/09/2026 14:59",
+    "geradoEm": "2026-09-04T18:03:12.043Z"
   },
   "equipe": [
     {
@@ -133,6 +133,11 @@
       "time": "14:56",
       "orders": 83,
       "revenue": 1680306.14
+    },
+    {
+      "time": "15:06",
+      "orders": 86,
+      "revenue": 1718850.46
     }
   ],
   "records": [
@@ -198,6 +203,14 @@
       "date": "2026-09-04",
       "time": "11:46",
       "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "erica-oliveira",
+      "sellerName": "ERICA OLIVEIRA",
+      "date": "2026-09-04",
+      "time": "15:06",
+      "orders": 2,
       "revenue": 0
     },
     {
@@ -270,6 +283,14 @@
       "date": "2026-09-04",
       "time": "13:56",
       "orders": 6,
+      "revenue": 0
+    },
+    {
+      "sellerId": "leonardo-costa-oliveira",
+      "sellerName": "LEONARDO COSTA OLIVEIRA",
+      "date": "2026-09-04",
+      "time": "15:06",
+      "orders": 7,
       "revenue": 0
     },
     {
@@ -390,6 +411,14 @@
       "date": "2026-09-04",
       "time": "13:56",
       "orders": 8,
+      "revenue": 0
+    },
+    {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "sellerName": "MARIA PAULA BERTAGLIA NESTOR",
+      "date": "2026-09-04",
+      "time": "15:06",
+      "orders": 9,
       "revenue": 0
     },
     {
