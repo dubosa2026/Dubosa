@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T14:16:11.062Z",
+  "publicadoEm": "2026-09-04T14:46:16.781Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 11:09",
-    "geradoEm": "2026-09-04T14:11:46.661Z"
+    "ultimaNota": "04/09/2026 11:39",
+    "geradoEm": "2026-09-04T14:43:16.585Z"
   },
   "equipe": [
     {
@@ -53,6 +53,11 @@
       "time": "11:16",
       "orders": 49,
       "revenue": 1079872.67
+    },
+    {
+      "time": "11:46",
+      "orders": 50,
+      "revenue": 1093712.85
     }
   ],
   "records": [
@@ -86,6 +91,14 @@
       "date": "2026-09-04",
       "time": "10:04",
       "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "erica-oliveira",
+      "sellerName": "ERICA OLIVEIRA",
+      "date": "2026-09-04",
+      "time": "11:46",
+      "orders": 1,
       "revenue": 0
     },
     {
