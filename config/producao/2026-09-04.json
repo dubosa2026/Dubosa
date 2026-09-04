@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T21:28:06.780Z",
+  "publicadoEm": "2026-09-04T21:48:10.566Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 18:18",
-    "geradoEm": "2026-09-04T21:23:04.833Z"
+    "ultimaNota": "04/09/2026 18:36",
+    "geradoEm": "2026-09-04T21:43:07.645Z"
   },
   "equipe": [
     {
@@ -228,6 +228,11 @@
       "time": "18:28",
       "orders": 170,
       "revenue": 3004712.97
+    },
+    {
+      "time": "18:48",
+      "orders": 171,
+      "revenue": 3017121.7
     }
   ],
   "records": [
@@ -1349,6 +1354,14 @@
       "date": "2026-09-04",
       "time": "18:18",
       "orders": 15,
+      "revenue": 0
+    },
+    {
+      "sellerId": "victor-vinicius-renno",
+      "sellerName": "VICTOR VINICIUS RENNO",
+      "date": "2026-09-04",
+      "time": "18:48",
+      "orders": 16,
       "revenue": 0
     }
   ]
