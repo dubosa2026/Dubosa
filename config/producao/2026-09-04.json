@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T16:56:43.608Z",
+  "publicadoEm": "2026-09-04T17:06:45.920Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 13:47",
-    "geradoEm": "2026-09-04T16:53:35.476Z"
+    "ultimaNota": "04/09/2026 13:59",
+    "geradoEm": "2026-09-04T17:03:11.581Z"
   },
   "equipe": [
     {
@@ -103,6 +103,11 @@
       "time": "13:56",
       "orders": 68,
       "revenue": 1414275.16
+    },
+    {
+      "time": "14:06",
+      "orders": 69,
+      "revenue": 1427919.04
     }
   ],
   "records": [
@@ -408,6 +413,14 @@
       "date": "2026-09-04",
       "time": "13:16",
       "orders": 5,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-09-04",
+      "time": "14:06",
+      "orders": 6,
       "revenue": 0
     },
     {
