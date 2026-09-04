@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-04",
-  "publicadoEm": "2026-09-04T19:07:32.252Z",
+  "publicadoEm": "2026-09-04T19:17:34.960Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "04/09/2026 16:00",
-    "geradoEm": "2026-09-04T19:03:19.605Z"
+    "ultimaNota": "04/09/2026 16:09",
+    "geradoEm": "2026-09-04T19:13:23.401Z"
   },
   "equipe": [
     {
@@ -163,6 +163,11 @@
       "time": "16:07",
       "orders": 104,
       "revenue": 1956805.55
+    },
+    {
+      "time": "16:17",
+      "orders": 107,
+      "revenue": 1993580.5
     }
   ],
   "records": [
@@ -236,6 +241,14 @@
       "date": "2026-09-04",
       "time": "16:07",
       "orders": 7,
+      "revenue": 0
+    },
+    {
+      "sellerId": "elandia-camargo-rodrigues",
+      "sellerName": "ELANDIA CAMARGO RODRIGUES",
+      "date": "2026-09-04",
+      "time": "16:17",
+      "orders": 8,
       "revenue": 0
     },
     {
@@ -511,6 +524,14 @@
       "revenue": 0
     },
     {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "sellerName": "MARIA PAULA BERTAGLIA NESTOR",
+      "date": "2026-09-04",
+      "time": "16:17",
+      "orders": 12,
+      "revenue": 0
+    },
+    {
       "sellerId": "matheus-souza-de-barros",
       "sellerName": "MATHEUS SOUZA DE BARROS",
       "date": "2026-09-04",
@@ -748,6 +769,14 @@
       "date": "2026-09-04",
       "time": "16:07",
       "orders": 19,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rafael-vanderlei-lopes",
+      "sellerName": "RAFAEL VANDERLEI LOPES",
+      "date": "2026-09-04",
+      "time": "16:17",
+      "orders": 20,
       "revenue": 0
     },
     {
