@@ -1,0 +1,28 @@
+{
+  "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
+  "data": "2026-09-07",
+  "publicadoEm": "2026-09-07T16:23:00.054Z",
+  "semantics": "cumulative",
+  "faturamentoPorVendedor": false,
+  "origem": {
+    "ultimaNota": "07/09/2026 12:55",
+    "geradoEm": "2026-09-07T16:13:02.490Z"
+  },
+  "equipe": [
+    {
+      "time": "13:22",
+      "orders": 1,
+      "revenue": 15911.08
+    }
+  ],
+  "records": [
+    {
+      "sellerId": "ricardo-carniato-rodrigues",
+      "sellerName": "RICARDO CARNIATO RODRIGUES",
+      "date": "2026-09-07",
+      "time": "13:22",
+      "orders": 1,
+      "revenue": 0
+    }
+  ]
+}
