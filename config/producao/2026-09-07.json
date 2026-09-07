@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-07",
-  "publicadoEm": "2026-09-07T23:23:55.853Z",
+  "publicadoEm": "2026-09-07T23:54:00.000Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "07/09/2026 20:18",
-    "geradoEm": "2026-09-07T23:23:03.251Z"
+    "ultimaNota": "07/09/2026 20:44",
+    "geradoEm": "2026-09-07T23:53:02.844Z"
   },
   "equipe": [
     {
@@ -28,9 +28,22 @@
       "time": "20:23",
       "orders": 4,
       "revenue": 41769.92
+    },
+    {
+      "time": "20:53",
+      "orders": 5,
+      "revenue": 70775.29
     }
   ],
   "records": [
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-09-07",
+      "time": "20:53",
+      "orders": 1,
+      "revenue": 0
+    },
     {
       "sellerId": "maria-elisabete-tonon",
       "sellerName": "MARIA ELISABETE TONON",
