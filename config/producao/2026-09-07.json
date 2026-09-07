@@ -1,21 +1,34 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-07",
-  "publicadoEm": "2026-09-07T16:23:00.054Z",
+  "publicadoEm": "2026-09-07T18:23:13.211Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "07/09/2026 12:55",
-    "geradoEm": "2026-09-07T16:13:02.490Z"
+    "ultimaNota": "07/09/2026 15:16",
+    "geradoEm": "2026-09-07T18:23:07.071Z"
   },
   "equipe": [
     {
       "time": "13:22",
       "orders": 1,
       "revenue": 15911.08
+    },
+    {
+      "time": "15:23",
+      "orders": 2,
+      "revenue": 24101.89
     }
   ],
   "records": [
+    {
+      "sellerId": "maria-elisabete-tonon",
+      "sellerName": "MARIA ELISABETE TONON",
+      "date": "2026-09-07",
+      "time": "15:23",
+      "orders": 1,
+      "revenue": 0
+    },
     {
       "sellerId": "ricardo-carniato-rodrigues",
       "sellerName": "RICARDO CARNIATO RODRIGUES",
