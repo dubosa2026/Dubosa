@@ -1,12 +1,12 @@
 {
   "_leia_me": "Coletado automaticamente do sistema de pedidos. Não editar à mão.",
   "data": "2026-09-07",
-  "publicadoEm": "2026-09-07T18:23:13.211Z",
+  "publicadoEm": "2026-09-07T19:23:19.577Z",
   "semantics": "cumulative",
   "faturamentoPorVendedor": false,
   "origem": {
-    "ultimaNota": "07/09/2026 15:16",
-    "geradoEm": "2026-09-07T18:23:07.071Z"
+    "ultimaNota": "07/09/2026 16:19",
+    "geradoEm": "2026-09-07T19:23:03.236Z"
   },
   "equipe": [
     {
@@ -18,6 +18,11 @@
       "time": "15:23",
       "orders": 2,
       "revenue": 24101.89
+    },
+    {
+      "time": "16:23",
+      "orders": 3,
+      "revenue": 36726.24
     }
   ],
   "records": [
@@ -34,6 +39,14 @@
       "sellerName": "RICARDO CARNIATO RODRIGUES",
       "date": "2026-09-07",
       "time": "13:22",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rosyrene-de-medeiros-celestino",
+      "sellerName": "ROSYRENE DE MEDEIROS CELESTINO",
+      "date": "2026-09-07",
+      "time": "16:23",
       "orders": 1,
       "revenue": 0
     }
