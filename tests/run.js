@@ -1310,6 +1310,292 @@ await check('fonte aplica o escopo: vendedor só recebe os próprios registros',
   assertEqual([...ids][0], 'joao-pedro-alves');
 });
 
+console.log('\nRÉGUA PESSOAL — VOCÊ CONTRA VOCÊ');
+const regua = await import('../src/core/regua.js');
+
+// Cinco quintas-feiras e algumas terças, para a escada de bases ser exercitada
+// de verdade. '2026-09-10' é uma quinta.
+const HOJE_QUINTA = '2026-09-10';
+function diaDe(date, pontos) {
+  return buildDayState({
+    status: 'ready', semantics: 'cumulative', date,
+    records: pontos.map(([time, orders]) => ({
+      sellerId: 'ana-ferreira', sellerName: 'ANA FERREIRA', date, time, orders, revenue: 0,
+    })),
+  });
+}
+
+// quintas: 03/09 e 27/08 ; terça 08/09 ; quarta 09/09
+const HISTORICO = [
+  diaDe('2026-09-09', [['09:00', 1], ['15:00', 9]]),
+  diaDe('2026-09-08', [['09:00', 0], ['15:00', 3]]),
+  diaDe('2026-09-03', [['09:00', 2], ['15:00', 6]]),
+  diaDe('2026-08-27', [['09:00', 4], ['15:00', 10]]),
+];
+
+await check('a régua usa as quintas quando há quintas suficientes', () => {
+  const r = regua.reguaDe({ sellerId: 'ana-ferreira', hoje: HOJE_QUINTA, dias: HISTORICO, businessHours: config.businessHours });
+  assertEqual(r.base, 'dia-da-semana');
+  assertEqual(r.amostras, 2, 'só 03/09 e 27/08 são quintas:');
+  assertEqual(r.nomeDoDia, 'quinta');
+  assertEqual(r.desde, '2026-08-27');
+  // Às 15:00 as duas quintas somam 6 e 10 -> média 8.
+  assertEqual(regua.reguaEm(r, toMinutes('15:00')).orders, 8);
+  // Às 09:00, 2 e 4 -> 3.
+  assertEqual(regua.reguaEm(r, toMinutes('09:00')).orders, 3);
+});
+
+await check('sem quintas suficientes, a régua desce para dias úteis e diz isso', () => {
+  const soUmaQuinta = HISTORICO.filter((d) => d.date !== '2026-08-27');
+  const r = regua.reguaDe({ sellerId: 'ana-ferreira', hoje: HOJE_QUINTA, dias: soUmaQuinta, businessHours: config.businessHours });
+  assertEqual(r.base, 'dias-uteis');
+  assertEqual(r.amostras, 3);
+});
+
+await check('com um único dia anterior, a régua não se chama média', () => {
+  const r = regua.reguaDe({ sellerId: 'ana-ferreira', hoje: HOJE_QUINTA, dias: [HISTORICO[0]], businessHours: config.businessHours });
+  assertEqual(r.base, 'ultimo-dia');
+  assertEqual(r.amostras, 1);
+});
+
+await check('sem histórico a régua não inventa base', () => {
+  const r = regua.reguaDe({ sellerId: 'ana-ferreira', hoje: HOJE_QUINTA, dias: [], businessHours: config.businessHours });
+  assertEqual(r.base, 'sem-historico');
+  assertEqual(r.amostras, 0);
+  const cmp = regua.compararComARegua({ regua: r, orders: 9, atMinutes: AT });
+  assertEqual(cmp.estado, 'sem-regua');
+  assertEqual(regua.comoChamarABase(cmp), null);
+});
+
+await check('leitura de madrugada não entra na régua', () => {
+  // Uma leitura às 01:12 carrega o fechamento do dia anterior. Contada, ela
+  // faria a régua começar às 08:00 já com os pedidos de ontem dentro.
+  const comMadrugada = [
+    diaDe('2026-09-03', [['01:12', 7]]),
+    diaDe('2026-08-27', [['09:00', 4], ['15:00', 10]]),
+  ];
+  const r = regua.reguaDe({ sellerId: 'ana-ferreira', hoje: HOJE_QUINTA, dias: comMadrugada, businessHours: config.businessHours });
+  assertEqual(r.amostras, 1, 'o dia só com leitura de madrugada não conta:');
+  assertEqual(regua.reguaEm(r, toMinutes('08:00')).orders, 0, 'a régua abre zerada:');
+});
+
+await check('a régua é uma função em degraus — nunca interpola', () => {
+  const r = regua.reguaDe({ sellerId: 'ana-ferreira', hoje: HOJE_QUINTA, dias: HISTORICO, businessHours: config.businessHours });
+  // Entre 09:00 (3) e 15:00 (8) o valor segue o último degrau medido, não a reta.
+  const meio = regua.reguaEm(r, toMinutes('12:00')).orders;
+  assertEqual(meio, 3, 'valor às 12:00 deve repetir o degrau das 09:00:');
+});
+
+await check('a comparação arredonda para pedidos inteiros', () => {
+  const r = regua.reguaDe({ sellerId: 'ana-ferreira', hoje: HOJE_QUINTA, dias: HISTORICO, businessHours: config.businessHours });
+  const cmp = regua.compararComARegua({ regua: r, orders: 11, atMinutes: toMinutes('15:00') });
+  assertEqual(cmp.estado, 'acima');
+  assertEqual(cmp.diferenca, 3, '11 contra a média 8:');
+  assertEqual(regua.comoChamarABase(cmp), 'sua média de quinta');
+  const abaixo = regua.compararComARegua({ regua: r, orders: 6, atMinutes: toMinutes('15:00') });
+  assertEqual(abaixo.estado, 'abaixo');
+  assertEqual(abaixo.diferenca, -2);
+});
+
+await check('a contagem coletiva só conta quem tem régua', () => {
+  const reguas = new Map([
+    ['ana-ferreira', { base: 'dia-da-semana', amostras: 2, nomeDoDia: 'quinta', pontos: [{ m: 0, orders: 5, revenue: 0 }], fechamento: { orders: 5, revenue: 0 } }],
+    ['bruno-machado', { base: 'dia-da-semana', amostras: 2, nomeDoDia: 'quinta', pontos: [{ m: 0, orders: 9, revenue: 0 }], fechamento: { orders: 9, revenue: 0 } }],
+    ['carla-tavares', { base: 'sem-historico', amostras: 0, pontos: [], fechamento: { orders: 0, revenue: 0 } }],
+  ]);
+  const c = regua.superaramAPropriaMarca({
+    sellers: [
+      { sellerId: 'ana-ferreira', orders: 7 },
+      { sellerId: 'bruno-machado', orders: 4 },
+      { sellerId: 'carla-tavares', orders: 30 },
+    ],
+    reguas, atMinutes: AT,
+  });
+  assertEqual(c.n, 1, 'só Ana passou da própria marca:');
+  assertEqual(c.de, 2, 'quem não tem régua não entra no denominador:');
+  assertEqual(c.semRegua, 1);
+});
+
+await check('o coletor grava a régua junto com o dia', async () => {
+  const { mkdtempSync, writeFileSync: escrever, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const coletor = await import('../scripts/coletar-producao.mjs');
+  const pasta = mkdtempSync(join(tmpdir(), 'liga-regua-'));
+  try {
+    // Quatro quintas anteriores, e uma quarta no meio para provar que ela não
+    // entra numa média de quinta.
+    const dias = {
+      '2026-09-03': 6, '2026-08-27': 10, '2026-08-20': 8, '2026-08-13': 4, '2026-09-09': 99,
+    };
+    for (const [data, pedidos] of Object.entries(dias)) {
+      escrever(join(pasta, `${data}.json`), JSON.stringify({
+        data, semantics: 'cumulative', faturamentoPorVendedor: false,
+        records: [{ sellerId: 'ana-ferreira', sellerName: 'ANA FERREIRA', date: data, time: '15:00', orders: pedidos, revenue: 0 }],
+      }));
+    }
+    const historico = coletor.historicoNaPasta(pasta, '2026-09-10', null);
+    assertEqual(historico.length, 5, 'todos os dias anteriores são lidos:');
+
+    const reguas = coletor.reguasDo(
+      { data: '2026-09-10', historico },
+      [{ sellerId: 'ana-ferreira', sellerName: 'ANA FERREIRA' }],
+      null,
+      config.businessHours,
+    );
+    const r = reguas['ana-ferreira'];
+    assertEqual(r.base, 'dia-da-semana');
+    assertEqual(r.amostras, 4, 'as quatro quintas — a quarta-feira fica de fora:');
+    assertEqual(r.fechamento.orders, 7, 'média de 6, 10, 8 e 4:');
+    // A curva vem enxuta, para não inchar o arquivo publicado.
+    assert(r.pontos.every((pt) => Number.isInteger(pt.m) && Math.abs(pt.orders * 100 - Math.round(pt.orders * 100)) < 1e-9),
+      'a curva deve vir arredondada');
+  } finally {
+    rmSync(pasta, { recursive: true, force: true });
+  }
+});
+
+console.log('\nMANCHETE DO VENDEDOR E BARRA COLETIVA');
+
+const DIA_REGUA = buildDayState({
+  status: 'ready', semantics: 'cumulative', date: HOJE_QUINTA,
+  records: [
+    { sellerId: 'ana-ferreira', sellerName: 'ANA FERREIRA', date: HOJE_QUINTA, time: '15:00', orders: 11, revenue: 0 },
+    { sellerId: 'bruno-machado', sellerName: 'BRUNO MACHADO', date: HOJE_QUINTA, time: '15:00', orders: 4, revenue: 0 },
+    { sellerId: 'carla-tavares', sellerName: 'CARLA TAVARES', date: HOJE_QUINTA, time: '15:00', orders: 7, revenue: 0 },
+  ],
+});
+const HISTORICO_TRIO = ['2026-09-03', '2026-08-27'].map((date) => buildDayState({
+  status: 'ready', semantics: 'cumulative', date,
+  records: [
+    { sellerId: 'ana-ferreira', sellerName: 'ANA FERREIRA', date, time: '15:00', orders: date === '2026-09-03' ? 6 : 10, revenue: 0 },
+    { sellerId: 'bruno-machado', sellerName: 'BRUNO MACHADO', date, time: '15:00', orders: 9, revenue: 0 },
+    { sellerId: 'carla-tavares', sellerName: 'CARLA TAVARES', date, time: '15:00', orders: 5, revenue: 0 },
+  ],
+}));
+
+function vistaDaAna(cfg = config) {
+  return access.buildSellerView({
+    today: DIA_REGUA, yesterday: null, sellerId: 'ana-ferreira', sellerName: 'Ana Ferreira',
+    atMinutes: toMinutes('15:00'), config: cfg, origemConectada: true, historyDays: HISTORICO_TRIO,
+  });
+}
+
+await check('o painel do vendedor traz a própria régua pronta', () => {
+  const v = vistaDaAna();
+  assertEqual(v.contraMim.estado, 'acima');
+  assertEqual(v.contraMim.diferenca, 3, '11 contra a média 8 de quinta:');
+  assertEqual(v.contraMim.base, 'dia-da-semana');
+});
+
+await check('a manchete do vendedor fala da régua antes de falar de posição', () => {
+  const v = vistaDaAna();
+  const primeira = v.messages[0];
+  assert(primeira.text.includes('acima da sua média de quinta'), `manchete inesperada: ${primeira.text}`);
+});
+
+await check('a barra coletiva é contagem — e não nomeia ninguém', () => {
+  const v = vistaDaAna();
+  assertEqual(v.coletivo.de, 3);
+  assertEqual(v.coletivo.n, 2, 'Ana (11 vs 8) e Carla (7 vs 5); Bruno (4 vs 9) não:');
+  // A terceira barreira já roda dentro de buildSellerView; aqui confirmamos que
+  // o objeto do coletivo não carrega nada além de número.
+  assertEqual(Object.keys(v.coletivo).sort().join(','), 'de,fracao,n,semRegua');
+});
+
+await check('a régua publicada pela origem tem precedência sobre a do navegador', () => {
+  const comReguaPronta = { ...DIA_REGUA, reguas: {
+    'ana-ferreira': { base: 'dia-da-semana', amostras: 4, desde: '2026-08-13', nomeDoDia: 'quinta',
+      pontos: [{ m: toMinutes('08:00'), orders: 0, revenue: 0 }, { m: toMinutes('15:00'), orders: 14, revenue: 0 }],
+      fechamento: { orders: 16, revenue: 0 } },
+  } };
+  const v = access.buildSellerView({
+    today: comReguaPronta, yesterday: null, sellerId: 'ana-ferreira', sellerName: 'Ana Ferreira',
+    atMinutes: toMinutes('15:00'), config, origemConectada: true, historyDays: HISTORICO_TRIO,
+  });
+  assertEqual(v.contraMim.amostras, 4, 'as quatro quintas do coletor, não as duas do navegador:');
+  assertEqual(v.contraMim.estado, 'abaixo');
+  assertEqual(v.contraMim.diferenca, -3, '11 contra 14:');
+});
+
+await check('nem a régua nem o coletivo vazam identidade de colega', () => {
+  const v = vistaDaAna();
+  // Se algo de terceiro tivesse entrado, buildSellerView já teria falhado.
+  // Esta verificação existe para o caso de a barreira ser afrouxada um dia.
+  const texto = JSON.stringify({ regua: v.regua, contraMim: v.contraMim, coletivo: v.coletivo, desafio: v.desafio });
+  for (const nome of ['BRUNO', 'Bruno', 'CARLA', 'Carla', 'bruno-machado', 'carla-tavares']) {
+    assert(!texto.includes(nome), `identidade de colega no bloco da régua: ${nome}`);
+  }
+});
+
+console.log('\nDESAFIOS DO GESTOR');
+const desafios = await import('../src/core/desafios.js');
+
+const DESAFIO = {
+  id: 'd1', titulo: 'Semana da superação', regra: 'media', alvo: 2,
+  de: '2026-09-07', ate: '2026-09-11',
+};
+
+await check('desafio sem prazo não vale', () => {
+  assertEqual(desafios.valeEm({ ...DESAFIO, ate: null }, HOJE_QUINTA), false);
+  assertEqual(desafios.valeEm(DESAFIO, HOJE_QUINTA), true);
+  assertEqual(desafios.valeEm(DESAFIO, '2026-09-14'), false, 'depois do prazo:');
+});
+
+await check('regra desconhecida é descartada, não exibida', () => {
+  assertEqual(desafios.normalizar({ ...DESAFIO, regra: 'quem-vender-mais' }), null);
+  assertEqual(desafios.desafioAtivo([{ ...DESAFIO, regra: 'quem-vender-mais' }], HOJE_QUINTA), null);
+});
+
+await check('havendo dois no prazo, vale o último escrito', () => {
+  const ativo = desafios.desafioAtivo([DESAFIO, { ...DESAFIO, id: 'd2', titulo: 'Outro' }], HOJE_QUINTA);
+  assertEqual(ativo.id, 'd2');
+});
+
+await check('a frase do desafio fala sempre do próprio histórico', () => {
+  assert(desafios.frase(DESAFIO).includes('sua própria média'), desafios.frase(DESAFIO));
+  assert(desafios.frase({ ...DESAFIO, regra: 'fechamento' }).includes('seu próprio fechamento médio'));
+  assert(desafios.frase({ ...DESAFIO, regra: 'sequencia', alvo: 3 }).includes('sua própria média'));
+});
+
+await check('o progresso do desafio sai do próprio desempenho', () => {
+  const cfg = { ...config, desafios: [DESAFIO] };
+  const v = vistaDaAna(cfg);
+  assertEqual(v.desafio.id, 'd1');
+  assertEqual(v.desafio.meu.alvo, 2);
+  assertEqual(v.desafio.meu.feito, 3, 'Ana está 3 pedidos acima da própria média:');
+  assertEqual(v.desafio.meu.cumprido, true);
+  assertEqual(v.desafio.diasRestantes, 2, 'de 10/09 até 11/09:');
+});
+
+await check('o resultado coletivo do desafio é contagem, sem lista', () => {
+  const cfg = { ...config, desafios: [DESAFIO] };
+  const v = vistaDaAna(cfg);
+  assertEqual(v.desafio.equipe.de, 3);
+  assertEqual(v.desafio.equipe.n, 2, 'Ana (+3) e Carla (+2) alcançam o alvo de 2; Bruno (-5) não:');
+  assertEqual(Object.keys(v.desafio.equipe).sort().join(','), 'de,fracao,meta,n');
+});
+
+await check('sem desafio no prazo, o painel do vendedor não inventa um', () => {
+  const v = vistaDaAna({ ...config, desafios: [{ ...DESAFIO, de: '2026-10-01', ate: '2026-10-05' }] });
+  assertEqual(v.desafio, null);
+});
+
+await check('o painel do gestor vê a mesma contagem e, além dela, quem é quem', () => {
+  const vm = access.buildManagerView({
+    today: DIA_REGUA, yesterday: null, atMinutes: toMinutes('15:00'),
+    config: { ...config, desafios: [DESAFIO] }, historyDays: HISTORICO_TRIO, origemConectada: true,
+  });
+  assertEqual(vm.coletivo.n, 2);
+  assertEqual(vm.coletivo.de, 3);
+  assertEqual(vm.desafio.equipe.n, 2);
+  const ana = vm.rows.find((r) => r.sellerId === 'ana-ferreira');
+  assertEqual(ana.contraMim.estado, 'acima');
+  assertEqual(ana.desafio.cumprido, true);
+  const bruno = vm.rows.find((r) => r.sellerId === 'bruno-machado');
+  assertEqual(bruno.contraMim.estado, 'abaixo');
+  assertEqual(bruno.desafio.cumprido, false);
+});
+
 // ------------------------------------------------------- integridade do código
 // Os módulos de interface não são exercitados pelos testes acima. Importar cada
 // um garante ao menos que nenhum arquivo do aplicativo está sintaticamente

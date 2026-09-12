@@ -111,6 +111,13 @@ export function buildDayState(payload) {
     revenueAvailable: payload.meta?.faturamentoPorVendedor === false
       ? false
       : sellers.some((s) => s.revenue > 0) || !sellers.some((s) => s.orders > 0),
+    // Réguas pessoais prontas, quando a origem as calcula. O coletor roda dentro
+    // do repositório e enxerga meses de histórico; o navegador, poucos dias.
+    // Vindo prontas, a comparação "você contra você" nasce completa no primeiro
+    // dia de uso em vez de levar semanas para ficar boa.
+    reguas: payload.meta?.reguas && typeof payload.meta.reguas === 'object'
+      ? payload.meta.reguas
+      : null,
     fetchedAt: payload.fetchedAt ?? null,
   });
 }

@@ -6,9 +6,11 @@ import {
 import { waitingBlock, waitingValue } from '../components/waiting.js';
 import { dayChart, dayChartTable } from '../components/chart.js';
 import {
-  money, number, moneyDelta, numberDelta, percentDelta, ordinal, dateLongBR, timeFromMinutes, horaDaLeitura,
+  money, number, moneyDelta, numberDelta, percentDelta, ordinal, dateBR, dateLongBR, timeFromMinutes, horaDaLeitura,
 } from '../../core/format.js';
 import { versaoPublicada, convitePendente } from '../../core/settings.js';
+import { comoChamarABase } from '../../core/regua.js';
+import { REGRAS } from '../../core/desafios.js';
 
 /**
  * PAINEL DO VENDEDOR
@@ -32,6 +34,7 @@ export function sellerView({ vm, config, app }) {
     faixaDeInstalacao({ app }),
     heroSection({ vm, awaiting }),
     vm.messages.length ? h('section', { class: 'card card-messages' }, messageList(vm.messages)) : null,
+    desafioSection({ vm, awaiting }),
     disputeSection({ vm, awaiting }),
     comparisonSection({ vm, awaiting }),
     projectionSection({ vm, awaiting, config }),
@@ -47,6 +50,7 @@ export function sellerView({ vm, config, app }) {
       awaiting
         ? waitingBlock({ compact: true, title: 'Conquistas aguardando', detail: 'As conquistas do dia dependem da base de dados.' })
         : achievementGrid(vm.achievements)),
+    coletivoSection({ vm, awaiting }),
     teamSection({ vm, awaiting }),
     footer({ vm, app }));
 }
@@ -104,26 +108,139 @@ function header({ vm, app }) {
 }
 
 // -------------------------------------------------------------------- herói
+/**
+ * A MANCHETE É "VOCÊ CONTRA VOCÊ".
+ *
+ * Até aqui a primeira frase da tela era a posição no ranking. Ela dizia a
+ * verdade e, ainda assim, era a frase errada para começar o dia: metade da
+ * equipe abria o aplicativo para ler que estava atrás, e a distância que separa
+ * o oitavo do sétimo não depende só do oitavo.
+ *
+ * A manchete passa a ser a régua pessoal — a única disputa que a pessoa ganha
+ * ou perde sozinha. A posição continua na tela, na linha de baixo, porque ela
+ * existe e esconder dado não é privacidade; mas deixa de ser a primeira coisa
+ * que alguém lê sobre o próprio dia.
+ */
+function manchete({ vm, awaiting }) {
+  if (awaiting) {
+    return { icone: '⏳', texto: 'Aguardando a base de dados.', apoio: 'Seu placar aparece assim que ela for conectada.', tom: 'neutro' };
+  }
+  const cmp = vm.contraMim;
+  const base = comoChamarABase(cmp);
+  const temFat = vm.revenueAvailable;
+  const quanto = (n) => (temFat
+    ? money(Math.abs(n))
+    : `${number(Math.abs(n))} ${Math.abs(n) === 1 ? 'pedido' : 'pedidos'}`);
+
+  if (!cmp || cmp.estado === 'sem-regua') {
+    return {
+      icone: '📐',
+      texto: vm.semProducao ? 'Seu placar de hoje começa aqui.' : 'Sua régua pessoal está se formando.',
+      apoio: 'A partir dos próximos dias, seu adversário passa a ser o seu próprio histórico — e mais ninguém.',
+      tom: 'neutro',
+    };
+  }
+  if (cmp.estado === 'acima') {
+    return {
+      icone: '📈',
+      texto: `Você está ${quanto(cmp.diferenca)} acima da ${base}.`,
+      apoio: 'Hoje você está melhor do que você. É isso que conta.',
+      tom: 'bom',
+    };
+  }
+  if (cmp.estado === 'igual') {
+    return {
+      icone: '📐',
+      texto: `Você está exatamente na ${base}.`,
+      apoio: 'O próximo pedido passa dela.',
+      tom: 'neutro',
+    };
+  }
+  const falta = Math.abs(cmp.diferenca);
+  return {
+    icone: '🎯',
+    texto: `${!temFat && falta === 1 ? 'Falta' : 'Faltam'} ${quanto(cmp.diferenca)} para alcançar a ${base}.`,
+    apoio: 'É a sua própria marca. Ela já foi alcançada antes.',
+    tom: 'alvo',
+  };
+}
+
+/**
+ * A RÉGUA, DESENHADA.
+ *
+ * Duas quantidades e uma barra: onde a própria média estava neste horário e
+ * onde a pessoa está agora. Nenhuma referência a terceiros — nem anônima.
+ */
+function reguaStrip({ vm, awaiting }) {
+  const cmp = vm.contraMim;
+  if (awaiting || !cmp || cmp.estado === 'sem-regua') return null;
+  const temFat = vm.revenueAvailable;
+  const marca = temFat ? cmp.marca.revenue : cmp.marca.orders;
+  const meu = temFat ? vm.performance.revenue : vm.performance.orders;
+  const fmt = (n) => (temFat ? money(n) : `${number(Math.round(n * 10) / 10)}`);
+  // Um quarto de folga no fim da barra. Sem ela, quem está um pedido à frente
+  // aparece com a barra cheia até a borda — a mesma imagem de quem fechou o dia.
+  const teto = Math.max(marca, meu, 1) * 1.25;
+
+  return h('div', { class: 'regua' },
+    h('div', { class: 'regua-track' },
+      h('div', { class: ['regua-fill', meu >= marca ? 'regua-acima' : 'regua-abaixo'], style: { width: `${Math.min(100, (meu / teto) * 100)}%` } }),
+      h('div', { class: 'regua-marca', style: { left: `${Math.min(100, (marca / teto) * 100)}%` }, title: 'sua própria marca neste horário' })),
+    h('div', { class: 'regua-legend' },
+      h('span', { class: 'regua-item' },
+        h('span', { class: 'regua-key', text: 'Você agora' }),
+        h('span', { class: 'regua-val strong', text: temFat ? fmt(meu) : `${fmt(meu)} ${meu === 1 ? 'pedido' : 'pedidos'}` })),
+      h('span', { class: 'regua-item' },
+        h('span', { class: 'regua-key', text: `${maiuscula(comoChamarABase(cmp))} às ${timeFromMinutes(vm.atMinutes)}` }),
+        h('span', { class: 'regua-val', text: temFat ? fmt(marca) : `${fmt(marca)} ${marca === 1 ? 'pedido' : 'pedidos'}` }))),
+    h('p', { class: 'regua-fonte', text: fonteDaRegua(cmp) }));
+}
+
+/** De onde a régua saiu — dito sempre, para o número não parecer oráculo. */
+function fonteDaRegua(cmp) {
+  switch (cmp.base) {
+    case 'dia-da-semana':
+      return `Média das suas últimas ${cmp.amostras} ${cmp.nomeDoDia}s, desde ${dateBR(cmp.desde)}.`;
+    case 'dias-uteis':
+      return `Média dos seus últimos ${cmp.amostras} dias de trabalho, desde ${dateBR(cmp.desde)}. Com mais semanas de histórico, ela passa a comparar ${cmp.nomeDoDia} com ${cmp.nomeDoDia}.`;
+    case 'ultimo-dia':
+      return `Ainda há um único dia anterior na base (${dateBR(cmp.desde)}). A média se forma nos próximos.`;
+    default:
+      return '';
+  }
+}
+
+function maiuscula(texto) {
+  return texto ? texto.charAt(0).toUpperCase() + texto.slice(1) : '';
+}
+
 function heroSection({ vm, awaiting }) {
   const delta = vm.positions.opening != null && vm.positions.current != null
     ? vm.positions.opening - vm.positions.current
     : 0;
+  const m = manchete({ vm, awaiting });
 
   return h('section', { class: 'card card-hero' },
-    h('div', { class: 'hero-position' },
+    h('div', { class: ['hero-head', `hero-${m.tom}`] },
+      h('span', { class: 'hero-icon', 'aria-hidden': 'true', text: m.icone }),
+      h('div', { class: 'hero-head-text' },
+        h('span', { class: 'hero-headline', text: m.texto }),
+        h('span', { class: 'hero-apoio', text: m.apoio }))),
+    reguaStrip({ vm, awaiting }),
+    // A posição continua aqui — em letra pequena, ao lado do que importa mais.
+    h('div', { class: 'hero-rank' },
       positionBadge(awaiting ? null : vm.gaps?.position, vm.gaps?.total, { delta }),
-      h('div', { class: 'hero-position-text' },
-        awaiting
-          ? h('span', { class: 'muted', text: 'Posição indisponível até a base ser conectada.' })
-          : h('span', {
-            class: 'hero-headline',
-            text: vm.gaps?.isLeader ? 'Você está na liderança.' : `Você está em ${ordinal(vm.gaps?.position)} lugar.`,
-          }),
-        delta !== 0 && !awaiting
-          ? h('span', { class: 'hero-move' },
-            deltaBadge(delta > 0 ? 'up' : 'down',
-              `${Math.abs(delta)} ${Math.abs(delta) === 1 ? 'posição' : 'posições'} ${delta > 0 ? 'ganhas' : 'perdidas'} hoje`))
-          : null)),
+      h('span', { class: 'hero-rank-text', text: awaiting
+        ? 'Posição indisponível até a base ser conectada.'
+        : vm.gaps?.isLeader
+          ? 'Na liderança da equipe hoje.'
+          : `${ordinal(vm.gaps?.position)} lugar${vm.gaps?.total ? ` entre ${number(vm.gaps.total)}` : ''} hoje.` }),
+      // Em texto discreto, não num selo vermelho: posição perdida de manhã é
+      // quase sempre agitação do começo do dia, e um alarme aqui roubaria a
+      // leitura da manchete, que é justamente o que esta tela quis mudar.
+      delta !== 0 && !awaiting
+        ? h('span', { class: 'hero-rank-move', text: `${delta > 0 ? '▲' : '▼'} ${Math.abs(delta)} ${Math.abs(delta) === 1 ? 'posição' : 'posições'} ${delta > 0 ? 'ganhas' : 'perdidas'} hoje` })
+        : null),
     h('div', { class: 'hero-stats' },
       statTile({
         label: 'Pedidos hoje',
@@ -205,6 +322,10 @@ function comparisonSection({ vm, awaiting }) {
   const o = vm.performance.vsYesterdaySameTime.orders;
   const r = vm.performance.vsYesterdaySameTime.revenue;
   const hasBaseline = !r.semBase && (r.baseline > 0 || o.baseline > 0);
+  // Sem faturamento por vendedor, esta linha imprimia "R$ 0" em hoje, em ontem
+  // e na diferença — três vezes a afirmação de que a pessoa não vendeu nada,
+  // quando o que houve é que a origem não informa o valor dela.
+  const temFaturamento = vm.revenueAvailable;
 
   return h('section', { class: 'card' },
     sectionTitle(`Comparação com ontem às ${timeFromMinutes(vm.atMinutes)}`),
@@ -229,13 +350,15 @@ function comparisonSection({ vm, awaiting }) {
                 h('td', { class: 'num' }, h('span', { class: 'comparison comparison-end' },
                   deltaBadge(o.direction, numberDelta(o.abs), { size: 'sm' }),
                   o.pct === null ? null : h('span', { class: 'comparison-pct', text: percentDelta(o.pct) })))),
-              h('tr', {},
-                h('td', { text: 'Faturamento' }),
-                h('td', { class: 'num strong', text: money(r.current) }),
-                h('td', { class: 'num', text: money(r.baseline) }),
-                h('td', { class: 'num' }, h('span', { class: 'comparison comparison-end' },
-                  deltaBadge(r.direction, moneyDelta(r.abs), { size: 'sm' }),
-                  r.pct === null ? null : h('span', { class: 'comparison-pct', text: percentDelta(r.pct) }))))))));
+              temFaturamento
+                ? h('tr', {},
+                  h('td', { text: 'Faturamento' }),
+                  h('td', { class: 'num strong', text: money(r.current) }),
+                  h('td', { class: 'num', text: money(r.baseline) }),
+                  h('td', { class: 'num' }, h('span', { class: 'comparison comparison-end' },
+                    deltaBadge(r.direction, moneyDelta(r.abs), { size: 'sm' }),
+                    r.pct === null ? null : h('span', { class: 'comparison-pct', text: percentDelta(r.pct) }))))
+                : null))));
 }
 
 // ---------------------------------------------------------------- projeção
@@ -390,6 +513,110 @@ function faltaParaONivel(t) {
   return `Faltam ${[reais, pedidos].filter(Boolean).join(' e ')}.`;
 }
 
+// --------------------------------------------------- desafio do gestor
+/**
+ * O DESAFIO — SEMPRE CONTRA O PRÓPRIO HISTÓRICO.
+ *
+ * Fica separado do quadro de conquistas de propósito: conquista é permanente e
+ * igual para todo mundo; desafio tem autor, prazo e acaba. Misturar os dois
+ * apagaria a diferença que faz o desafio funcionar — ele é o que está valendo
+ * AGORA.
+ *
+ * O resultado da equipe aparece como contagem. Nunca uma lista, nunca uma
+ * ordem: ninguém descobre aqui quem cumpriu e quem não cumpriu.
+ */
+function desafioSection({ vm, awaiting }) {
+  const d = vm.desafio;
+  if (!d) return null;
+
+  const meu = d.meu;
+  const prazo = d.diasRestantes;
+  const unidade = REGRAS[d.regra]?.unidade ?? 'pedidos';
+
+  return h('section', { class: ['card', 'card-desafio', meu?.cumprido && 'card-desafio-ok'] },
+    sectionTitle(`Desafio: ${d.titulo}`, h('span', {
+      class: 'section-hint',
+      text: prazo === null ? '' : prazo <= 0 ? 'último dia' : `${prazo} ${prazo === 1 ? 'dia' : 'dias'} restantes`,
+    })),
+    h('p', { class: 'desafio-regra' },
+      h('span', { 'aria-hidden': 'true', text: '🎯 ' }),
+      d.frase),
+    awaiting || !meu
+      ? waitingBlock({ compact: true, title: 'Desafio aguardando a base', detail: 'O progresso é medido sobre a produção do dia.' })
+      : meu.semRegua
+        ? h('p', { class: 'muted', text: meu.detalhe })
+        : h('div', {},
+          progressBar({
+            value: meu.progresso,
+            label: meu.cumprido ? 'Cumprido' : 'Seu progresso',
+            caption: meu.cumprido
+              ? `Você ${unidade === 'dias' ? 'já somou' : 'já está'} ${number(meu.feito)} ${unidade === 'dias' ? (meu.feito === 1 ? 'dia' : 'dias') : (meu.feito === 1 ? 'pedido acima' : 'pedidos acima')} — alvo de ${number(meu.alvo)}.`
+              : `${number(meu.feito)} de ${number(meu.alvo)} ${unidade}. ${meu.detalhe}`,
+            tone: meu.cumprido ? 'good' : 'accent',
+          })),
+    d.equipe && d.equipe.de > 0
+      ? h('p', { class: 'desafio-equipe' },
+        h('span', { 'aria-hidden': 'true', text: '👥 ' }),
+        `${number(d.equipe.n)} de ${number(d.equipe.de)} já cumpriram este desafio.`,
+        d.equipe.meta && d.equipe.meta !== d.equipe.de
+          ? h('span', { class: 'muted', text: ` Meta da equipe: ${number(d.equipe.meta)}.` })
+          : null)
+      : null,
+    h('p', { class: 'privacy-note' },
+      h('span', { 'aria-hidden': 'true', text: '🔒' }),
+      'Cada um disputa com o próprio histórico. A contagem da equipe não diz quem é quem.'));
+}
+
+// ------------------------------------------------- a equipe contra ela mesma
+/**
+ * "X DE N SUPERARAM A PRÓPRIA MARCA HOJE."
+ *
+ * A única frase sobre os colegas que esta tela produz — e ela é exatamente a
+ * mesma na tela de todos. Não há nome, não há posição, não há ordem; nem quem
+ * está dentro da contagem descobre quem mais está.
+ *
+ * O que ela acrescenta é o que faltava no desenho: sem alguma coisa coletiva, a
+ * régua pessoal deixaria vinte e duas pessoas correndo cada uma no seu quarto.
+ * Aqui todo mundo empurra o mesmo número, e ninguém precisa perder para o
+ * número subir.
+ */
+function coletivoSection({ vm, awaiting }) {
+  if (!vm.team.visible) return null;
+  const c = vm.coletivo;
+
+  if (awaiting) {
+    return h('section', { class: 'card' },
+      sectionTitle('A equipe contra ela mesma'),
+      waitingBlock({ compact: true, title: 'Contagem aguardando', detail: 'Ela depende da base de dados do dia.' }));
+  }
+  if (!c || c.de < 3) {
+    return h('section', { class: 'card card-muted' },
+      sectionTitle('A equipe contra ela mesma'),
+      h('p', { class: 'muted', text: 'A contagem aparece quando pelo menos três pessoas tiverem régua própria formada. '
+        + 'Com menos gente do que isso, uma contagem começaria a revelar resultado individual.' }));
+  }
+
+  return h('section', { class: 'card card-coletivo' },
+    sectionTitle('A equipe contra ela mesma', h('span', { class: 'section-hint', text: 'igual para todos' })),
+    progressBar({
+      value: c.fracao,
+      label: `${number(c.n)} de ${number(c.de)} superaram a própria marca hoje`,
+      caption: c.n === 0
+        ? 'Ninguém passou da própria marca ainda. O primeiro a passar move este número.'
+        : c.n === c.de
+          ? 'Todo mundo com régua formada está acima da própria marca hoje.'
+          : `Faltam ${number(c.de - c.n)} para que a equipe inteira esteja acima da própria marca.`,
+      tone: c.fracao >= 0.5 ? 'good' : 'accent',
+    }),
+    c.semRegua > 0
+      ? h('p', { class: 'muted', text: `${number(c.semRegua)} ${c.semRegua === 1 ? 'pessoa ainda não tem' : 'pessoas ainda não têm'} histórico suficiente para ter régua. `
+        + 'Elas entram na contagem assim que tiverem.' })
+      : null,
+    h('p', { class: 'privacy-note' },
+      h('span', { 'aria-hidden': 'true', text: '🔒' }),
+      'Uma contagem, e só. Quem está dentro dela não é dito a ninguém — nem a quem está dentro.'));
+}
+
 // ------------------------------------------------------------------ equipe
 function teamSection({ vm, awaiting }) {
   if (!vm.team.visible) {
@@ -417,11 +644,16 @@ function teamSection({ vm, awaiting }) {
               : 'não informado pela origem' }),
         }),
         statTile({ label: 'Vendedores ativos', value: `${number(vm.team.activeCount)} de ${number(vm.team.sellerCount)}`, icon: '👥' }),
-        statTile({
-          label: 'Sua fatia do faturamento',
-          value: vm.team.myShareOfRevenue === null ? '—' : `${Math.round(vm.team.myShareOfRevenue * 100)}%`,
-          icon: '🎯',
-        })),
+        // A fatia é faturamento individual em forma de porcentagem. Sem o
+        // numerador, o quadro ficava na tela com um traço dentro — ocupando
+        // espaço para não dizer nada.
+        vm.team.myShareOfRevenue === null
+          ? null
+          : statTile({
+            label: 'Sua fatia do faturamento',
+            value: `${Math.round(vm.team.myShareOfRevenue * 100)}%`,
+            icon: '🎯',
+          })),
       h('p', { class: 'privacy-note' },
         h('span', { 'aria-hidden': 'true', text: '🔒' }),
         'Apenas somas da equipe. Nenhum resultado individual de colega é exibido aqui.')));
@@ -454,20 +686,23 @@ function compactView({ vm, app, awaiting }) {
         class: 'btn btn-ghost btn-xs', title: 'Voltar ao painel completo',
         onclick: () => app.toggleCompact(), text: '⛶',
       })),
+    // Na janela pequena o espaço é do que a pessoa controla: a produção dela e
+    // a distância para a própria marca. A posição continua, uma linha abaixo.
     h('div', { class: 'compact-position' },
-      h('span', { class: 'compact-pos-value', text: awaiting ? '—' : ordinal(vm.gaps?.position) }),
-      h('span', { class: 'compact-pos-label', text: vm.gaps?.total ? `de ${number(vm.gaps.total)}` : 'lugar' })),
+      h('span', { class: 'compact-pos-value', text: awaiting ? '—' : number(vm.performance.orders) }),
+      h('span', { class: 'compact-pos-label', text: vm.performance.orders === 1 ? 'pedido hoje' : 'pedidos hoje' })),
+    compactRegua({ vm, awaiting }),
     h('div', { class: 'compact-stats' },
       h('div', { class: 'compact-stat' },
-        h('span', { class: 'compact-stat-label', text: 'Pedidos' }),
-        h('span', { class: 'compact-stat-value', text: awaiting ? '—' : number(vm.performance.orders) })),
+        h('span', { class: 'compact-stat-label', text: 'Posição' }),
+        h('span', { class: 'compact-stat-value', text: awaiting ? '—' : ordinal(vm.gaps?.position) })),
       vm.revenueAvailable
         ? h('div', { class: 'compact-stat' },
           h('span', { class: 'compact-stat-label', text: 'Faturamento' }),
           h('span', { class: 'compact-stat-value', text: awaiting ? '—' : money(vm.performance.revenue) }))
         : h('div', { class: 'compact-stat' },
-          h('span', { class: 'compact-stat-label', text: 'Posição' }),
-          h('span', { class: 'compact-stat-value', text: awaiting ? '—' : ordinal(vm.gaps?.position) }))),
+          h('span', { class: 'compact-stat-label', text: 'Nível' }),
+          h('span', { class: 'compact-stat-value', text: awaiting ? '—' : (vm.tier?.current?.name ?? '—') }))),
     !awaiting && next
       ? h('div', { class: 'compact-gap' },
         h('span', { 'aria-hidden': 'true', text: '⚔️' }),
@@ -483,4 +718,21 @@ function compactView({ vm, app, awaiting }) {
     h('div', { class: 'compact-footer' },
       h('span', { class: 'muted', text: timeFromMinutes(vm.atMinutes) }),
       h('button', { class: 'btn btn-ghost btn-xs', onclick: () => app.refresh(), text: '↻' })));
+}
+
+/** A régua, do tamanho de um cronômetro. */
+function compactRegua({ vm, awaiting }) {
+  const cmp = vm.contraMim;
+  if (awaiting || !cmp || cmp.estado === 'sem-regua') return null;
+  const temFat = vm.revenueAvailable;
+  const d = Math.abs(cmp.diferenca);
+  const quanto = temFat ? money(d) : `${number(d)} ${d === 1 ? 'pedido' : 'pedidos'}`;
+  const texto = cmp.estado === 'acima'
+    ? `${quanto} acima da sua marca`
+    : cmp.estado === 'igual'
+      ? 'na sua própria marca'
+      : `${quanto} para a sua marca`;
+  return h('div', { class: ['compact-regua', cmp.estado === 'abaixo' ? 'tone-warn' : 'tone-good'] },
+    h('span', { 'aria-hidden': 'true', text: cmp.estado === 'acima' ? '📈' : '🎯' }),
+    h('span', { text: texto }));
 }

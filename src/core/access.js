@@ -9,6 +9,8 @@ import {
   elapsedBusinessMinutes, dayPhase, toMinutes,
 } from './clock.js';
 import { identifyingTokens, textIdentifiesOther, normalizeForScan } from './nameScan.js';
+import { reguaDe, compararComARegua, superaramAPropriaMarca } from './regua.js';
+import { desafioAtivo, avaliarDesafio, desafioDaEquipe, diasRestantes, frase as fraseDoDesafio } from './desafios.js';
 
 /**
  * NÚCLEO DE PRIVACIDADE
@@ -205,6 +207,28 @@ function historyContextFor(sellerId, historyDays) {
 }
 
 /**
+ * As réguas pessoais de todo mundo — cruas, e só para virar contagem.
+ *
+ * Quando o coletor publica as réguas junto com o dia, elas vêm dele: ele roda
+ * no repositório e enxerga MESES de histórico, enquanto o navegador carrega
+ * poucos dias. É a mesma conta, feita onde há mais base. Sem isso, o cálculo
+ * acontece aqui com o que o navegador tem — e a régua diz, no próprio campo
+ * `base`, de qual dos dois mundos ela veio.
+ */
+function reguasPara({ today, historyDays, businessHours }) {
+  const publicadas = today?.reguas ?? null;
+  const hoje = today?.date ?? null;
+  const mapa = new Map();
+  for (const seller of today?.sellers ?? []) {
+    const pronta = publicadas?.[seller.sellerId];
+    mapa.set(seller.sellerId, pronta && pronta.amostras
+      ? pronta
+      : reguaDe({ sellerId: seller.sellerId, hoje, dias: historyDays, businessHours }));
+  }
+  return mapa;
+}
+
+/**
  * PAINEL DO VENDEDOR — só os próprios dados.
  *
  * @param {Object} args
@@ -314,11 +338,70 @@ export function buildSellerView({
     .map((s) => ({ sellerId: s.sellerId, sellerName: s.sellerName }));
   const identifying = identifyingTokens(today?.sellers ?? [], sellerId);
 
+  // --- VOCÊ CONTRA VOCÊ ---------------------------------------------------
+  // A régua pessoal e a barra coletiva nascem aqui, do mesmo lugar que tudo o
+  // mais: dados completos entram, número anônimo sai. O vendedor recebe a
+  // própria régua por inteiro e, da equipe, uma contagem — "11 de 19" — que é
+  // idêntica na tela de todos e não aponta para ninguém.
+  const temFaturamento = podeMostrarFaturamentoIndividual(today, config);
+  const reguas = reguasPara({ today, historyDays, businessHours });
+  const minhaRegua = reguas.get(sellerId)
+    ?? reguaDe({ sellerId, hoje: today?.date ?? null, dias: historyDays, businessHours });
+  const contraMim = compararComARegua({
+    regua: minhaRegua,
+    orders: performance.orders,
+    revenue: performance.revenue,
+    atMinutes,
+    temFaturamento,
+  });
+  const coletivo = awaitingData
+    ? { n: 0, de: 0, semRegua: 0, fracao: 0 }
+    : superaramAPropriaMarca({
+      sellers: today?.sellers ?? [], reguas, atMinutes, temFaturamento,
+    });
+
+  const emVigor = desafioAtivo(config.desafios, today?.date ?? null);
+  const desafio = emVigor
+    ? {
+      id: emVigor.id,
+      titulo: emVigor.titulo,
+      regra: emVigor.regra,
+      alvo: emVigor.alvo,
+      de: emVigor.de,
+      ate: emVigor.ate,
+      frase: fraseDoDesafio(emVigor),
+      diasRestantes: diasRestantes(emVigor, today?.date ?? null),
+      meu: avaliarDesafio({
+        desafio: emVigor,
+        regua: minhaRegua,
+        orders: performance.orders,
+        revenue: performance.revenue,
+        atMinutes,
+        temFaturamento,
+        sellerId,
+        hoje: today?.date ?? null,
+        dias: historyDays,
+        businessHours,
+      }),
+      equipe: awaitingData ? null : desafioDaEquipe({
+        desafio: emVigor,
+        sellers: today?.sellers ?? [],
+        reguas,
+        atMinutes,
+        temFaturamento,
+        hoje: today?.date ?? null,
+        dias: historyDays,
+        businessHours,
+      }),
+    }
+    : null;
+
   const messages = buildMessages({
     performance,
     gaps,
     positions,
     tier,
+    contraMim,
     phase: dayPhase(businessHours, atMinutes),
     temFaturamento: podeMostrarFaturamentoIndividual(today, config),
     origemConectada,
@@ -382,6 +465,10 @@ export function buildSellerView({
     performance,
     gaps,
     positions: { opening: positions.opening, current: positions.current, best: positions.best, series: positions.positions, marks: positions.minutes },
+    regua: minhaRegua,
+    contraMim,
+    coletivo,
+    desafio,
     tier,
     achievements,
     messages,
@@ -408,6 +495,9 @@ export function buildManagerView({
   // Mesma régua do painel do vendedor: sem duas medições não houve movimento.
   const medicoes = measurementMinutes(today).filter((m) => m <= atMinutes);
   const openingMark = medicoes.length >= 2 ? medicoes[0] : null;
+  const temFaturamento = podeMostrarFaturamentoIndividual(today, config);
+  const reguas = reguasPara({ today, historyDays, businessHours });
+  const emVigor = desafioAtivo(config.desafios, today?.date ?? null);
 
   const rows = ranked.map((entry) => {
     const seller = today.sellers.find((s) => s.sellerId === entry.sellerId);
@@ -435,10 +525,39 @@ export function buildManagerView({
     const tier = tierFor(entry.orders, entry.revenue, config.tiers,
       { temFaturamento: podeMostrarFaturamentoIndividual(today, config) });
 
+    // O gestor vê nome e número — é o painel dele. O que a régua acrescenta
+    // aqui é outra leitura da mesma equipe: quem está acima da PRÓPRIA marca.
+    // Um vendedor em décimo quinto lugar pode estar tendo o melhor dia dele, e
+    // até agora essa informação não existia em lugar nenhum.
+    const regua = reguas.get(entry.sellerId) ?? null;
+    const contraMim = compararComARegua({
+      regua,
+      orders: entry.orders,
+      revenue: entry.revenue,
+      atMinutes,
+      temFaturamento,
+    });
+
     return {
       sellerId: entry.sellerId,
       sellerName: entry.sellerName,
       uf: seller?.uf ?? null,
+      regua,
+      contraMim,
+      desafio: emVigor
+        ? avaliarDesafio({
+          desafio: emVigor,
+          regua,
+          orders: entry.orders,
+          revenue: entry.revenue,
+          atMinutes,
+          temFaturamento,
+          sellerId: entry.sellerId,
+          hoje: today?.date ?? null,
+          dias: historyDays,
+          businessHours,
+        })
+        : null,
       foraDoCadastro: Boolean(seller?.foraDoCadastro),
       semProducaoNaBase: Boolean(seller?.semProducaoNaBase),
       position: entry.position,
@@ -488,6 +607,31 @@ export function buildManagerView({
     faturamentoNaOrigem: today?.revenueAvailable !== false,
     elapsedMinutes: elapsedBusinessMinutes(businessHours, atMinutes),
     rows,
+    coletivo: superaramAPropriaMarca({
+      sellers: today?.sellers ?? [], reguas, atMinutes, temFaturamento,
+    }),
+    desafio: emVigor
+      ? {
+        id: emVigor.id,
+        titulo: emVigor.titulo,
+        regra: emVigor.regra,
+        alvo: emVigor.alvo,
+        de: emVigor.de,
+        ate: emVigor.ate,
+        frase: fraseDoDesafio(emVigor),
+        diasRestantes: diasRestantes(emVigor, today?.date ?? null),
+        equipe: desafioDaEquipe({
+          desafio: emVigor,
+          sellers: today?.sellers ?? [],
+          reguas,
+          atMinutes,
+          temFaturamento,
+          hoje: today?.date ?? null,
+          dias: historyDays,
+          businessHours,
+        }),
+      }
+      : null,
     foraDoCadastro: today?.foraDoCadastro ?? [],
     team: { ...aggregate, performance: teamPerformance, vsYesterdaySameTime: yAggregate },
     historyDays,

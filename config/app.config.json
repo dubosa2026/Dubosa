@@ -104,6 +104,7 @@
     "theme": "dark",
     "faturamentoIndividual": false
   },
+  "desafios": [],
   "dataSource": {
     "adapter": "arquivo",
     "options": {

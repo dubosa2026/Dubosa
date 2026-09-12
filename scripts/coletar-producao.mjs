@@ -26,10 +26,13 @@
  *   PEDIDOS_PIN   o PIN de acesso  (nos Secrets do repositório)
  */
 
-import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { slugifyName } from '../src/data/types.js';
+import { buildDayState, mergeTeam } from '../src/data/store.js';
+import { indexTeam, resolveSeller } from '../src/core/team.js';
+import { reguaDe } from '../src/core/regua.js';
 
 const raiz = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const BASE = (process.env.PEDIDOS_BASE ?? 'https://pedidos-belenergy-tega.netlify.app').replace(/\/$/, '');
@@ -154,6 +157,109 @@ export function acumular(anteriores, novos) {
     : a.sellerId.localeCompare(b.sellerId)));
 }
 
+/**
+ * A RÉGUA PESSOAL, CALCULADA AQUI — E NÃO NO NAVEGADOR
+ * ===================================================
+ *
+ * A régua de cada pessoa é a média do que ela mesma fez em dias anteriores. Uma
+ * média de quinta-feira precisa de várias quintas: quatro semanas de histórico
+ * para valer alguma coisa.
+ *
+ * O navegador do vendedor não tem como buscar isso. Cada dia é um arquivo, e
+ * carregar vinte arquivos a cada atualização de tela, vezes vinte e dois
+ * aplicativos abertos o dia inteiro, é tráfego demais para o lugar de onde eles
+ * vêm — sem contar que a comparação continuaria pobre nas primeiras semanas.
+ *
+ * Aqui, ao contrário, o histórico inteiro está no disco: esta coleta roda
+ * DENTRO do repositório. Então a régua é calculada uma vez, no mesmo lugar onde
+ * já se grava o dia, e viaja pronta dentro do arquivo. O aplicativo continua
+ * sabendo calculá-la sozinho — é a mesma função — e usa esse caminho quando o
+ * arquivo não traz a régua pronta.
+ *
+ * A IDENTIDADE É RESOLVIDA PELO CADASTRO, não pelo texto do nome. É o cadastro
+ * que decide quem é quem no aplicativo; uma régua guardada sob o nome cru da
+ * origem não encontraria o dono do outro lado.
+ */
+export function historicoNaPasta(pasta, ate, index, limite = 40) {
+  if (!existsSync(pasta)) return [];
+  const dias = [];
+  const arquivos = readdirSync(pasta)
+    .filter((n) => /^\d{4}-\d{2}-\d{2}\.json$/.test(n))
+    .sort()
+    .reverse();
+
+  for (const nome of arquivos) {
+    if (dias.length >= limite) break;
+    const data = nome.slice(0, 10);
+    if (data >= ate) continue;
+    try {
+      const json = JSON.parse(readFileSync(join(pasta, nome), 'utf8'));
+      const registros = json.records ?? json.registros ?? [];
+      if (!registros.length) continue;
+      const estado = buildDayState({
+        status: 'ready',
+        date: data,
+        semantics: json.semantics ?? 'cumulative',
+        records: registros.map((r) => ({ ...r, date: data })),
+      });
+      dias.push(index ? mergeTeam(estado, index, resolveSeller) : estado);
+    } catch {
+      // Um arquivo ilegível não pode derrubar a coleta do dia: a régua daquele
+      // dia simplesmente não entra na média.
+    }
+  }
+  return dias;
+}
+
+/** Arredonda a curva: centavos de pedido médio não informam nada e pesam. */
+function enxugar(regua) {
+  const r2 = (n) => Math.round(n * 100) / 100;
+  return {
+    base: regua.base,
+    amostras: regua.amostras,
+    desde: regua.desde,
+    nomeDoDia: regua.nomeDoDia,
+    pontos: regua.pontos.map((p) => ({ m: p.m, orders: r2(p.orders), revenue: r2(p.revenue) })),
+    fechamento: { orders: r2(regua.fechamento.orders), revenue: r2(regua.fechamento.revenue) },
+  };
+}
+
+export function reguasDo(dia, registros, index, businessHours) {
+  const dias = dia.historico;
+  const ids = new Set();
+  for (const r of registros) {
+    ids.add(index ? resolveSeller(r.sellerName, index).sellerId : r.sellerId);
+  }
+  // Quem está no cadastro e ainda não produziu hoje também tem régua: é
+  // justamente quem mais precisa saber qual é a própria marca.
+  for (const id of index?.byId?.keys() ?? []) ids.add(id);
+
+  const saida = {};
+  for (const sellerId of ids) {
+    const regua = reguaDe({ sellerId, hoje: dia.data, dias, businessHours });
+    if (regua.amostras) saida[sellerId] = enxugar(regua);
+  }
+  return saida;
+}
+
+function cadastro() {
+  const arquivo = join(raiz, 'config', 'vendedores.json');
+  if (!existsSync(arquivo)) return null;
+  try {
+    return indexTeam(JSON.parse(readFileSync(arquivo, 'utf8')));
+  } catch {
+    return null;
+  }
+}
+
+function horarioComercial() {
+  try {
+    return JSON.parse(readFileSync(join(raiz, 'config', 'app.config.json'), 'utf8')).businessHours ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function principal() {
   const { data, hora } = agoraEmSaoPaulo();
   const cookie = await entrar();
@@ -190,6 +296,11 @@ async function principal() {
     return;
   }
 
+  const index = cadastro();
+  const businessHours = horarioComercial();
+  const historico = historicoNaPasta(pasta, dataDoSistema, index);
+  const reguas = reguasDo({ data: dataDoSistema, historico }, registros, index, businessHours);
+
   writeFileSync(arquivo, `${JSON.stringify({
     _leia_me: 'Coletado automaticamente do sistema de pedidos. Não editar à mão.',
     data: dataDoSistema,
@@ -200,10 +311,14 @@ async function principal() {
     // Total da carteira ao longo do dia. É faturamento de verdade; só não se
     // reparte entre vendedores.
     equipe: totais,
+    // A régua de cada pessoa, calculada do histórico que está no disco. Sem
+    // isto, o navegador só conseguiria comparar com os poucos dias que carrega.
+    reguas,
     records: registros,
   }, null, 2)}\n`, 'utf8');
 
   console.log(`${arquivo}: ${registros.length} registros (${registros.length - anteriores.length} novos), leitura das ${hora}.`);
+  console.log(`  ${Object.keys(reguas).length} régua(s) pessoal(is) sobre ${historico.length} dia(s) de histórico.`);
 }
 
 if (process.argv[1] && process.argv[1].endsWith('coletar-producao.mjs')) {
