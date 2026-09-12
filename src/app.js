@@ -724,10 +724,15 @@ class App {
     }
 
     const isDemo = this.data.today?.isDemo || this.sellerVM?.isDemo;
-    // No arquivo único de demonstração não há o que desligar: a origem é o
-    // próprio build. Oferecer o botão só criaria um clique sem efeito.
+    // "Desligar" troca o adaptador para nenhum. Isso faz sentido quando a
+    // origem É o gerador de demonstração; num site de simulação, que lê
+    // arquivos publicados, o botão apagaria a tela inteira e não haveria como
+    // voltar. Então ele só aparece para quem ele resolve — e no arquivo único
+    // de demonstração, onde a origem é o próprio build, para ninguém.
+    const podeDesligar = this.source?.isDemo === true
+      && !globalThis.__LIGA_DADOS__?.forcarOrigem;
     const banner = isDemo
-      ? demoBanner(globalThis.__LIGA_DADOS__?.forcarOrigem ? null : () => this.setDemoMode(false))
+      ? demoBanner(podeDesligar ? () => this.setDemoMode(false) : null)
       : null;
 
     if (this.identity.role === 'manager' && this.state.screen === 'admin') {

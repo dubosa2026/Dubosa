@@ -1,0 +1,3959 @@
+{
+  "_leia_me": "SIMULAÇÃO. Números fictícios, gerados por scripts/simular-producao.mjs. Não é a produção real da equipe.",
+  "simulacao": true,
+  "data": "2026-08-28",
+  "publicadoEm": "2026-08-28T21:05:00.000Z",
+  "semantics": "cumulative",
+  "faturamentoPorVendedor": false,
+  "equipe": [
+    {
+      "time": "08:20",
+      "orders": 4,
+      "revenue": 130452
+    },
+    {
+      "time": "08:30",
+      "orders": 5,
+      "revenue": 135919
+    },
+    {
+      "time": "08:40",
+      "orders": 6,
+      "revenue": 173053
+    },
+    {
+      "time": "09:10",
+      "orders": 9,
+      "revenue": 251960
+    },
+    {
+      "time": "09:20",
+      "orders": 10,
+      "revenue": 267928
+    },
+    {
+      "time": "09:30",
+      "orders": 13,
+      "revenue": 325163
+    },
+    {
+      "time": "09:40",
+      "orders": 16,
+      "revenue": 411490
+    },
+    {
+      "time": "09:50",
+      "orders": 19,
+      "revenue": 454446
+    },
+    {
+      "time": "10:00",
+      "orders": 20,
+      "revenue": 490034
+    },
+    {
+      "time": "10:10",
+      "orders": 22,
+      "revenue": 545710
+    },
+    {
+      "time": "10:30",
+      "orders": 27,
+      "revenue": 683706
+    },
+    {
+      "time": "10:40",
+      "orders": 29,
+      "revenue": 732577
+    },
+    {
+      "time": "10:50",
+      "orders": 31,
+      "revenue": 765449
+    },
+    {
+      "time": "11:00",
+      "orders": 33,
+      "revenue": 816005
+    },
+    {
+      "time": "11:10",
+      "orders": 34,
+      "revenue": 820683
+    },
+    {
+      "time": "11:20",
+      "orders": 36,
+      "revenue": 847405
+    },
+    {
+      "time": "11:30",
+      "orders": 37,
+      "revenue": 874127
+    },
+    {
+      "time": "11:40",
+      "orders": 40,
+      "revenue": 916106
+    },
+    {
+      "time": "11:50",
+      "orders": 44,
+      "revenue": 1011115
+    },
+    {
+      "time": "12:00",
+      "orders": 46,
+      "revenue": 1058319
+    },
+    {
+      "time": "13:10",
+      "orders": 61,
+      "revenue": 1432161
+    },
+    {
+      "time": "13:20",
+      "orders": 64,
+      "revenue": 1502379
+    },
+    {
+      "time": "13:30",
+      "orders": 68,
+      "revenue": 1620059
+    },
+    {
+      "time": "13:40",
+      "orders": 70,
+      "revenue": 1682217
+    },
+    {
+      "time": "13:50",
+      "orders": 75,
+      "revenue": 1799182
+    },
+    {
+      "time": "14:00",
+      "orders": 79,
+      "revenue": 1901059
+    },
+    {
+      "time": "14:10",
+      "orders": 83,
+      "revenue": 1954273
+    },
+    {
+      "time": "14:20",
+      "orders": 84,
+      "revenue": 1960564
+    },
+    {
+      "time": "14:30",
+      "orders": 85,
+      "revenue": 2007016
+    },
+    {
+      "time": "14:40",
+      "orders": 90,
+      "revenue": 2107222
+    },
+    {
+      "time": "14:50",
+      "orders": 93,
+      "revenue": 2133021
+    },
+    {
+      "time": "15:00",
+      "orders": 95,
+      "revenue": 2214876
+    },
+    {
+      "time": "15:30",
+      "orders": 98,
+      "revenue": 2264725
+    },
+    {
+      "time": "15:40",
+      "orders": 100,
+      "revenue": 2306817
+    },
+    {
+      "time": "15:50",
+      "orders": 105,
+      "revenue": 2437437
+    },
+    {
+      "time": "16:00",
+      "orders": 106,
+      "revenue": 2454986
+    },
+    {
+      "time": "16:10",
+      "orders": 108,
+      "revenue": 2468667
+    },
+    {
+      "time": "16:20",
+      "orders": 109,
+      "revenue": 2478997
+    },
+    {
+      "time": "16:30",
+      "orders": 115,
+      "revenue": 2568704
+    },
+    {
+      "time": "16:40",
+      "orders": 117,
+      "revenue": 2582514
+    },
+    {
+      "time": "16:50",
+      "orders": 120,
+      "revenue": 2636213
+    },
+    {
+      "time": "17:00",
+      "orders": 128,
+      "revenue": 2798234
+    },
+    {
+      "time": "17:10",
+      "orders": 133,
+      "revenue": 2910796
+    },
+    {
+      "time": "17:20",
+      "orders": 134,
+      "revenue": 2946113
+    },
+    {
+      "time": "17:30",
+      "orders": 141,
+      "revenue": 3016379
+    },
+    {
+      "time": "17:50",
+      "orders": 146,
+      "revenue": 3163182
+    },
+    {
+      "time": "18:00",
+      "orders": 150,
+      "revenue": 3310458
+    }
+  ],
+  "records": [
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "08:10",
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "08:20",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "08:40",
+      "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "09:30",
+      "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "10:50",
+      "orders": 4,
+      "revenue": 0
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "11:20",
+      "orders": 5,
+      "revenue": 0
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "11:40",
+      "orders": 6,
+      "revenue": 0
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "12:00",
+      "orders": 7,
+      "revenue": 0
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "13:10",
+      "orders": 9,
+      "revenue": 0
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "13:50",
+      "orders": 10,
+      "revenue": 0
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "14:20",
+      "orders": 11,
+      "revenue": 0
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "14:50",
+      "orders": 13,
+      "revenue": 0
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "15:30",
+      "orders": 14,
+      "revenue": 0
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "15:50",
+      "orders": 15,
+      "revenue": 0
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "16:40",
+      "orders": 16,
+      "revenue": 0
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "16:50",
+      "orders": 17,
+      "revenue": 0
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "17:10",
+      "orders": 18,
+      "revenue": 0
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "17:20",
+      "orders": 19,
+      "revenue": 0
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "17:50",
+      "orders": 20,
+      "revenue": 0
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "sellerName": "CRISTIANE LUIS DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "18:00",
+      "orders": 21,
+      "revenue": 0
+    },
+    {
+      "sellerId": "diego-adan-ohnuma-angeli",
+      "sellerName": "DIEGO ADAN OHNUMA ANGELI",
+      "date": "2026-08-28",
+      "time": "08:10",
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "sellerId": "diego-adan-ohnuma-angeli",
+      "sellerName": "DIEGO ADAN OHNUMA ANGELI",
+      "date": "2026-08-28",
+      "time": "09:10",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "diego-adan-ohnuma-angeli",
+      "sellerName": "DIEGO ADAN OHNUMA ANGELI",
+      "date": "2026-08-28",
+      "time": "10:00",
+      "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "diego-adan-ohnuma-angeli",
+      "sellerName": "DIEGO ADAN OHNUMA ANGELI",
+      "date": "2026-08-28",
+      "time": "10:10",
+      "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "diego-adan-ohnuma-angeli",
+      "sellerName": "DIEGO ADAN OHNUMA ANGELI",
+      "date": "2026-08-28",
+      "time": "10:30",
+      "orders": 5,
+      "revenue": 0
+    },
+    {
+      "sellerId": "diego-adan-ohnuma-angeli",
+      "sellerName": "DIEGO ADAN OHNUMA ANGELI",
+      "date": "2026-08-28",
+      "time": "13:10",
+      "orders": 7,
+      "revenue": 0
+    },
+    {
+      "sellerId": "diego-adan-ohnuma-angeli",
+      "sellerName": "DIEGO ADAN OHNUMA ANGELI",
+      "date": "2026-08-28",
+      "time": "14:30",
+      "orders": 8,
+      "revenue": 0
+    },
+    {
+      "sellerId": "diego-adan-ohnuma-angeli",
+      "sellerName": "DIEGO ADAN OHNUMA ANGELI",
+      "date": "2026-08-28",
+      "time": "15:00",
+      "orders": 9,
+      "revenue": 0
+    },
+    {
+      "sellerId": "diego-adan-ohnuma-angeli",
+      "sellerName": "DIEGO ADAN OHNUMA ANGELI",
+      "date": "2026-08-28",
+      "time": "17:00",
+      "orders": 10,
+      "revenue": 0
+    },
+    {
+      "sellerId": "elandia-camargo-rodrigues",
+      "sellerName": "ELANDIA CAMARGO RODRIGUES",
+      "date": "2026-08-28",
+      "time": "08:10",
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "sellerId": "elandia-camargo-rodrigues",
+      "sellerName": "ELANDIA CAMARGO RODRIGUES",
+      "date": "2026-08-28",
+      "time": "10:40",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "elandia-camargo-rodrigues",
+      "sellerName": "ELANDIA CAMARGO RODRIGUES",
+      "date": "2026-08-28",
+      "time": "13:10",
+      "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "elandia-camargo-rodrigues",
+      "sellerName": "ELANDIA CAMARGO RODRIGUES",
+      "date": "2026-08-28",
+      "time": "14:00",
+      "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "elandia-camargo-rodrigues",
+      "sellerName": "ELANDIA CAMARGO RODRIGUES",
+      "date": "2026-08-28",
+      "time": "17:30",
+      "orders": 4,
+      "revenue": 0
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "sellerName": "GIOVANNA DO CARMO FUJIMOTO",
+      "date": "2026-08-28",
+      "time": "08:10",
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "sellerName": "GIOVANNA DO CARMO FUJIMOTO",
+      "date": "2026-08-28",
+      "time": "08:30",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "sellerName": "GIOVANNA DO CARMO FUJIMOTO",
+      "date": "2026-08-28",
+      "time": "09:10",
+      "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "sellerName": "GIOVANNA DO CARMO FUJIMOTO",
+      "date": "2026-08-28",
+      "time": "09:20",
+      "orders": 4,
+      "revenue": 0
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "sellerName": "GIOVANNA DO CARMO FUJIMOTO",
+      "date": "2026-08-28",
+      "time": "09:40",
+      "orders": 5,
+      "revenue": 0
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "sellerName": "GIOVANNA DO CARMO FUJIMOTO",
+      "date": "2026-08-28",
+      "time": "09:50",
+      "orders": 6,
+      "revenue": 0
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "sellerName": "GIOVANNA DO CARMO FUJIMOTO",
+      "date": "2026-08-28",
+      "time": "13:30",
+      "orders": 7,
+      "revenue": 0
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "sellerName": "GIOVANNA DO CARMO FUJIMOTO",
+      "date": "2026-08-28",
+      "time": "13:40",
+      "orders": 9,
+      "revenue": 0
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "sellerName": "GIOVANNA DO CARMO FUJIMOTO",
+      "date": "2026-08-28",
+      "time": "14:10",
+      "orders": 11,
+      "revenue": 0
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "sellerName": "GIOVANNA DO CARMO FUJIMOTO",
+      "date": "2026-08-28",
+      "time": "14:40",
+      "orders": 13,
+      "revenue": 0
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "sellerName": "GIOVANNA DO CARMO FUJIMOTO",
+      "date": "2026-08-28",
+      "time": "15:00",
+      "orders": 14,
+      "revenue": 0
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "sellerName": "GIOVANNA DO CARMO FUJIMOTO",
+      "date": "2026-08-28",
+      "time": "16:10",
+      "orders": 15,
+      "revenue": 0
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "sellerName": "GIOVANNA DO CARMO FUJIMOTO",
+      "date": "2026-08-28",
+      "time": "16:30",
+      "orders": 17,
+      "revenue": 0
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "sellerName": "GIOVANNA DO CARMO FUJIMOTO",
+      "date": "2026-08-28",
+      "time": "16:40",
+      "orders": 18,
+      "revenue": 0
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "sellerName": "GIOVANNA DO CARMO FUJIMOTO",
+      "date": "2026-08-28",
+      "time": "17:10",
+      "orders": 19,
+      "revenue": 0
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "sellerName": "GIOVANNA DO CARMO FUJIMOTO",
+      "date": "2026-08-28",
+      "time": "17:30",
+      "orders": 21,
+      "revenue": 0
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "sellerName": "GIOVANNA DO CARMO FUJIMOTO",
+      "date": "2026-08-28",
+      "time": "17:50",
+      "orders": 23,
+      "revenue": 0
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "sellerName": "GIOVANNA DO CARMO FUJIMOTO",
+      "date": "2026-08-28",
+      "time": "18:00",
+      "orders": 24,
+      "revenue": 0
+    },
+    {
+      "sellerId": "gleicy-kelly-toppan-de-oliveira",
+      "sellerName": "GLEICY KELLY TOPPAN DE OLIVEIRA",
+      "date": "2026-08-28",
+      "time": "08:10",
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "sellerId": "gleicy-kelly-toppan-de-oliveira",
+      "sellerName": "GLEICY KELLY TOPPAN DE OLIVEIRA",
+      "date": "2026-08-28",
+      "time": "11:00",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "gleicy-kelly-toppan-de-oliveira",
+      "sellerName": "GLEICY KELLY TOPPAN DE OLIVEIRA",
+      "date": "2026-08-28",
+      "time": "13:50",
+      "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "gleicy-kelly-toppan-de-oliveira",
+      "sellerName": "GLEICY KELLY TOPPAN DE OLIVEIRA",
+      "date": "2026-08-28",
+      "time": "14:10",
+      "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "08:10",
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "09:30",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "10:30",
+      "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "11:20",
+      "orders": 4,
+      "revenue": 0
+    },
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "11:50",
+      "orders": 5,
+      "revenue": 0
+    },
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "13:10",
+      "orders": 8,
+      "revenue": 0
+    },
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "14:00",
+      "orders": 10,
+      "revenue": 0
+    },
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "15:40",
+      "orders": 11,
+      "revenue": 0
+    },
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "15:50",
+      "orders": 12,
+      "revenue": 0
+    },
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "16:00",
+      "orders": 13,
+      "revenue": 0
+    },
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "17:00",
+      "orders": 14,
+      "revenue": 0
+    },
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "sellerName": "ITALO CERQUEIA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "17:30",
+      "orders": 16,
+      "revenue": 0
+    },
+    {
+      "sellerId": "leonardo-costa-oliveira",
+      "sellerName": "LEONARDO COSTA OLIVEIRA",
+      "date": "2026-08-28",
+      "time": "08:10",
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "sellerId": "leonardo-costa-oliveira",
+      "sellerName": "LEONARDO COSTA OLIVEIRA",
+      "date": "2026-08-28",
+      "time": "17:00",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "leonardo-costa-oliveira",
+      "sellerName": "LEONARDO COSTA OLIVEIRA",
+      "date": "2026-08-28",
+      "time": "17:50",
+      "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "maria-elisabete-tonon",
+      "sellerName": "MARIA ELISABETE TONON",
+      "date": "2026-08-28",
+      "time": "08:10",
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "sellerId": "maria-elisabete-tonon",
+      "sellerName": "MARIA ELISABETE TONON",
+      "date": "2026-08-28",
+      "time": "11:40",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "maria-elisabete-tonon",
+      "sellerName": "MARIA ELISABETE TONON",
+      "date": "2026-08-28",
+      "time": "11:50",
+      "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "maria-elisabete-tonon",
+      "sellerName": "MARIA ELISABETE TONON",
+      "date": "2026-08-28",
+      "time": "13:30",
+      "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "maria-elisabete-tonon",
+      "sellerName": "MARIA ELISABETE TONON",
+      "date": "2026-08-28",
+      "time": "13:50",
+      "orders": 4,
+      "revenue": 0
+    },
+    {
+      "sellerId": "maria-elisabete-tonon",
+      "sellerName": "MARIA ELISABETE TONON",
+      "date": "2026-08-28",
+      "time": "16:30",
+      "orders": 5,
+      "revenue": 0
+    },
+    {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "sellerName": "MARIA PAULA BERTAGLIA NESTOR",
+      "date": "2026-08-28",
+      "time": "08:10",
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "sellerName": "MARIA PAULA BERTAGLIA NESTOR",
+      "date": "2026-08-28",
+      "time": "11:40",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "sellerName": "MARIA PAULA BERTAGLIA NESTOR",
+      "date": "2026-08-28",
+      "time": "13:20",
+      "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "sellerName": "MARIA PAULA BERTAGLIA NESTOR",
+      "date": "2026-08-28",
+      "time": "17:00",
+      "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "sellerName": "MARIA PAULA BERTAGLIA NESTOR",
+      "date": "2026-08-28",
+      "time": "17:10",
+      "orders": 4,
+      "revenue": 0
+    },
+    {
+      "sellerId": "munari-angela-mariano",
+      "sellerName": "MUNARI ANGELA MARIANO",
+      "date": "2026-08-28",
+      "time": "08:10",
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "sellerId": "munari-angela-mariano",
+      "sellerName": "MUNARI ANGELA MARIANO",
+      "date": "2026-08-28",
+      "time": "10:40",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "munari-angela-mariano",
+      "sellerName": "MUNARI ANGELA MARIANO",
+      "date": "2026-08-28",
+      "time": "11:00",
+      "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "munari-angela-mariano",
+      "sellerName": "MUNARI ANGELA MARIANO",
+      "date": "2026-08-28",
+      "time": "11:30",
+      "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "munari-angela-mariano",
+      "sellerName": "MUNARI ANGELA MARIANO",
+      "date": "2026-08-28",
+      "time": "11:50",
+      "orders": 4,
+      "revenue": 0
+    },
+    {
+      "sellerId": "munari-angela-mariano",
+      "sellerName": "MUNARI ANGELA MARIANO",
+      "date": "2026-08-28",
+      "time": "13:10",
+      "orders": 5,
+      "revenue": 0
+    },
+    {
+      "sellerId": "munari-angela-mariano",
+      "sellerName": "MUNARI ANGELA MARIANO",
+      "date": "2026-08-28",
+      "time": "14:40",
+      "orders": 6,
+      "revenue": 0
+    },
+    {
+      "sellerId": "munari-angela-mariano",
+      "sellerName": "MUNARI ANGELA MARIANO",
+      "date": "2026-08-28",
+      "time": "15:50",
+      "orders": 7,
+      "revenue": 0
+    },
+    {
+      "sellerId": "murilo-bedani-rogerio",
+      "sellerName": "MURILO BEDANI ROGERIO",
+      "date": "2026-08-28",
+      "time": "08:10",
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "sellerId": "murilo-bedani-rogerio",
+      "sellerName": "MURILO BEDANI ROGERIO",
+      "date": "2026-08-28",
+      "time": "08:20",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "murilo-bedani-rogerio",
+      "sellerName": "MURILO BEDANI ROGERIO",
+      "date": "2026-08-28",
+      "time": "13:10",
+      "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-08-28",
+      "time": "08:10",
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-08-28",
+      "time": "09:40",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-08-28",
+      "time": "10:10",
+      "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-08-28",
+      "time": "11:50",
+      "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-08-28",
+      "time": "13:10",
+      "orders": 4,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-08-28",
+      "time": "13:20",
+      "orders": 5,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-08-28",
+      "time": "13:50",
+      "orders": 6,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-08-28",
+      "time": "14:00",
+      "orders": 7,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-08-28",
+      "time": "15:30",
+      "orders": 8,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-08-28",
+      "time": "15:40",
+      "orders": 9,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-08-28",
+      "time": "15:50",
+      "orders": 10,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-08-28",
+      "time": "16:30",
+      "orders": 12,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-08-28",
+      "time": "16:50",
+      "orders": 14,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-08-28",
+      "time": "17:00",
+      "orders": 16,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-08-28",
+      "time": "17:10",
+      "orders": 17,
+      "revenue": 0
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "sellerName": "NILTON RENATO VICENTE JUNIOR",
+      "date": "2026-08-28",
+      "time": "17:30",
+      "orders": 18,
+      "revenue": 0
+    },
+    {
+      "sellerId": "paulo-roberto-da-silva-filho",
+      "sellerName": "PAULO ROBERTO DA SILVA FILHO",
+      "date": "2026-08-28",
+      "time": "08:10",
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "sellerId": "paulo-roberto-da-silva-filho",
+      "sellerName": "PAULO ROBERTO DA SILVA FILHO",
+      "date": "2026-08-28",
+      "time": "10:30",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "paulo-roberto-da-silva-filho",
+      "sellerName": "PAULO ROBERTO DA SILVA FILHO",
+      "date": "2026-08-28",
+      "time": "13:10",
+      "orders": 4,
+      "revenue": 0
+    },
+    {
+      "sellerId": "paulo-roberto-da-silva-filho",
+      "sellerName": "PAULO ROBERTO DA SILVA FILHO",
+      "date": "2026-08-28",
+      "time": "13:20",
+      "orders": 5,
+      "revenue": 0
+    },
+    {
+      "sellerId": "paulo-roberto-da-silva-filho",
+      "sellerName": "PAULO ROBERTO DA SILVA FILHO",
+      "date": "2026-08-28",
+      "time": "14:50",
+      "orders": 6,
+      "revenue": 0
+    },
+    {
+      "sellerId": "paulo-roberto-da-silva-filho",
+      "sellerName": "PAULO ROBERTO DA SILVA FILHO",
+      "date": "2026-08-28",
+      "time": "16:10",
+      "orders": 7,
+      "revenue": 0
+    },
+    {
+      "sellerId": "paulo-roberto-da-silva-filho",
+      "sellerName": "PAULO ROBERTO DA SILVA FILHO",
+      "date": "2026-08-28",
+      "time": "16:20",
+      "orders": 8,
+      "revenue": 0
+    },
+    {
+      "sellerId": "paulo-roberto-da-silva-filho",
+      "sellerName": "PAULO ROBERTO DA SILVA FILHO",
+      "date": "2026-08-28",
+      "time": "18:00",
+      "orders": 10,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rafael-vanderlei-lopes",
+      "sellerName": "RAFAEL VANDERLEI LOPES",
+      "date": "2026-08-28",
+      "time": "08:10",
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rafael-vanderlei-lopes",
+      "sellerName": "RAFAEL VANDERLEI LOPES",
+      "date": "2026-08-28",
+      "time": "09:50",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rafael-vanderlei-lopes",
+      "sellerName": "RAFAEL VANDERLEI LOPES",
+      "date": "2026-08-28",
+      "time": "10:50",
+      "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rafael-vanderlei-lopes",
+      "sellerName": "RAFAEL VANDERLEI LOPES",
+      "date": "2026-08-28",
+      "time": "17:00",
+      "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rafael-vanderlei-lopes",
+      "sellerName": "RAFAEL VANDERLEI LOPES",
+      "date": "2026-08-28",
+      "time": "17:10",
+      "orders": 4,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rayane-almeida-dos-santos",
+      "sellerName": "RAYANE ALMEIDA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "08:10",
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rayane-almeida-dos-santos",
+      "sellerName": "RAYANE ALMEIDA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "08:20",
+      "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rayane-almeida-dos-santos",
+      "sellerName": "RAYANE ALMEIDA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "09:40",
+      "orders": 3,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rayane-almeida-dos-santos",
+      "sellerName": "RAYANE ALMEIDA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "11:10",
+      "orders": 4,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rayane-almeida-dos-santos",
+      "sellerName": "RAYANE ALMEIDA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "12:00",
+      "orders": 5,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rayane-almeida-dos-santos",
+      "sellerName": "RAYANE ALMEIDA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "13:10",
+      "orders": 6,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rayane-almeida-dos-santos",
+      "sellerName": "RAYANE ALMEIDA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "13:30",
+      "orders": 8,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rayane-almeida-dos-santos",
+      "sellerName": "RAYANE ALMEIDA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "13:50",
+      "orders": 9,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rayane-almeida-dos-santos",
+      "sellerName": "RAYANE ALMEIDA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "14:10",
+      "orders": 10,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rayane-almeida-dos-santos",
+      "sellerName": "RAYANE ALMEIDA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "14:40",
+      "orders": 12,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rayane-almeida-dos-santos",
+      "sellerName": "RAYANE ALMEIDA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "15:30",
+      "orders": 13,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rayane-almeida-dos-santos",
+      "sellerName": "RAYANE ALMEIDA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "15:50",
+      "orders": 14,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rayane-almeida-dos-santos",
+      "sellerName": "RAYANE ALMEIDA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "17:00",
+      "orders": 15,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rayane-almeida-dos-santos",
+      "sellerName": "RAYANE ALMEIDA DOS SANTOS",
+      "date": "2026-08-28",
+      "time": "17:50",
+      "orders": 16,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rosyrene-de-medeiros-celestino",
+      "sellerName": "ROSYRENE DE MEDEIROS CELESTINO",
+      "date": "2026-08-28",
+      "time": "08:10",
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rosyrene-de-medeiros-celestino",
+      "sellerName": "ROSYRENE DE MEDEIROS CELESTINO",
+      "date": "2026-08-28",
+      "time": "09:30",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "rosyrene-de-medeiros-celestino",
+      "sellerName": "ROSYRENE DE MEDEIROS CELESTINO",
+      "date": "2026-08-28",
+      "time": "17:30",
+      "orders": 2,
+      "revenue": 0
+    },
+    {
+      "sellerId": "victor-vinicius-renno",
+      "sellerName": "VICTOR VINICIUS RENNO",
+      "date": "2026-08-28",
+      "time": "08:10",
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "sellerId": "victor-vinicius-renno",
+      "sellerName": "VICTOR VINICIUS RENNO",
+      "date": "2026-08-28",
+      "time": "09:50",
+      "orders": 1,
+      "revenue": 0
+    },
+    {
+      "sellerId": "victor-vinicius-renno",
+      "sellerName": "VICTOR VINICIUS RENNO",
+      "date": "2026-08-28",
+      "time": "16:30",
+      "orders": 2,
+      "revenue": 0
+    }
+  ],
+  "reguas": {
+    "cristiane-luis-dos-santos": {
+      "base": "ultimo-dia",
+      "amostras": 1,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 3,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 3,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 3,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 4,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 5,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 5,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 8,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 9,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 9,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 12,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 13,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 13,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 13,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 13,
+        "revenue": 0
+      }
+    },
+    "diego-adan-ohnuma-angeli": {
+      "base": "dia-da-semana",
+      "amostras": 3,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 1.33,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 2.33,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 5.33,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 6.67,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 7,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 7.67,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 8,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 8.67,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 9.33,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 9.33,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 10.33,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 11,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 11,
+        "revenue": 0
+      }
+    },
+    "elandia-camargo-rodrigues": {
+      "base": "dia-da-semana",
+      "amostras": 3,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 2.33,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 2.33,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 2.67,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 3,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 3.33,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 3.67,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 3.67,
+        "revenue": 0
+      }
+    },
+    "giovanna-do-carmo-fujimoto": {
+      "base": "dia-da-semana",
+      "amostras": 3,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 5.33,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 7,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 8,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 9,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 9,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 9.67,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 10,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 11.33,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 12.33,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 13,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 13,
+        "revenue": 0
+      }
+    },
+    "gleicy-kelly-toppan-de-oliveira": {
+      "base": "dia-da-semana",
+      "amostras": 3,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 1.33,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 1.33,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 1.33,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 1.33,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 2.33,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 2.33,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 2.33,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 3,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 3.33,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 3.33,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 3.33,
+        "revenue": 0
+      }
+    },
+    "italo-cerqueia-dos-santos": {
+      "base": "ultimo-dia",
+      "amostras": 1,
+      "desde": "2026-08-14",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 3,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 4,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 4,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 4,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 8,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 8,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 8,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 8,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 11,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 11,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 12,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 12,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 12,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 12,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 12,
+        "revenue": 0
+      }
+    },
+    "leonardo-costa-oliveira": {
+      "base": "dia-da-semana",
+      "amostras": 3,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 2.33,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 3,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 3.67,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 3.67,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 3.67,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 3.67,
+        "revenue": 0
+      }
+    },
+    "maria-elisabete-tonon": {
+      "base": "dia-da-semana",
+      "amostras": 3,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 1.33,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 1.33,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 2.67,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 3.33,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 3.67,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 4,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 4,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 4,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 4.33,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 4.33,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 4.33,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 4.33,
+        "revenue": 0
+      }
+    },
+    "maria-paula-bertaglia-nestor": {
+      "base": "dia-da-semana",
+      "amostras": 3,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 1.33,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 2.67,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 2.67,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 3.33,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 3.33,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 3.67,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 4.33,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 4.67,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 4.67,
+        "revenue": 0
+      }
+    },
+    "munari-angela-mariano": {
+      "base": "dia-da-semana",
+      "amostras": 3,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 3.33,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 4.67,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 5,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 6.67,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 7.67,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 8.33,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 8.33,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 8.67,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 8.67,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 8.67,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 8.67,
+        "revenue": 0
+      }
+    },
+    "murilo-bedani-rogerio": {
+      "base": "dia-da-semana",
+      "amostras": 3,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 2.33,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 2.33,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 2.67,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 3,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 3,
+        "revenue": 0
+      }
+    },
+    "nilton-renato-vicente-junior": {
+      "base": "dia-da-semana",
+      "amostras": 3,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 2.67,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 3.33,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 3.67,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 3.67,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 3.67,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 7.33,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 8,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 8.67,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 10.67,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 12.33,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 13.33,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 14.33,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 14.67,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 15,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 16,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 16,
+        "revenue": 0
+      }
+    },
+    "paulo-roberto-da-silva-filho": {
+      "base": "dia-da-semana",
+      "amostras": 3,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 1.33,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 4.33,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 5,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 5,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 5.67,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 7,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 8.33,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 9.67,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 10.33,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 10.33,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 10.33,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 10.33,
+        "revenue": 0
+      }
+    },
+    "rafael-vanderlei-lopes": {
+      "base": "dia-da-semana",
+      "amostras": 3,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 2.67,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 3,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 3,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 3.67,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 3.67,
+        "revenue": 0
+      }
+    },
+    "rayane-almeida-dos-santos": {
+      "base": "dia-da-semana",
+      "amostras": 3,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 3.67,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 3.67,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 5,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 5,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 5,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 7,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 8,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 9.33,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 10.33,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 11.33,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 12,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 12.67,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 13,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 14,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 14,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 14,
+        "revenue": 0
+      }
+    },
+    "rosyrene-de-medeiros-celestino": {
+      "base": "dia-da-semana",
+      "amostras": 3,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 2,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 2,
+        "revenue": 0
+      }
+    },
+    "victor-vinicius-renno": {
+      "base": "dia-da-semana",
+      "amostras": 2,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 0.5,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 2.5,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 2.5,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 3,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 3,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 3,
+        "revenue": 0
+      }
+    },
+    "alisson-dos-santos-ribeiro": {
+      "base": "dia-da-semana",
+      "amostras": 3,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 2.33,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 2.67,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 2.67,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 3,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 3,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 3.67,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 3.67,
+        "revenue": 0
+      }
+    },
+    "matheus-souza-de-barros": {
+      "base": "dia-da-semana",
+      "amostras": 3,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 1.33,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 1.33,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 1.33,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 1.33,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 2.33,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 2.33,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 2.67,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 3,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 3,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 3.33,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 3.67,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 3.67,
+        "revenue": 0
+      }
+    },
+    "erica-oliveira": {
+      "base": "dia-da-semana",
+      "amostras": 3,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 3.33,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 4.67,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 5.67,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 6.33,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 6.33,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 6.33,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 9.33,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 11,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 11.67,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 12,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 13.33,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 15,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 15.33,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 17.33,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 19.33,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 20,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 20,
+        "revenue": 0
+      }
+    },
+    "lucas-dos-reis-bernardes-da-silveira": {
+      "base": "dia-da-semana",
+      "amostras": 3,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 2.33,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 2.67,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 3,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 3,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 3,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 3,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 6.33,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 7,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 7.33,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 8,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 8.33,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 8.67,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 10.67,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 10.67,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 12.33,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 13.67,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 13.67,
+        "revenue": 0
+      }
+    },
+    "ricardo-carniato-rodrigues": {
+      "base": "dia-da-semana",
+      "amostras": 3,
+      "desde": "2026-08-07",
+      "nomeDoDia": "sexta",
+      "pontos": [
+        {
+          "m": 480,
+          "orders": 0,
+          "revenue": 0
+        },
+        {
+          "m": 510,
+          "orders": 0.33,
+          "revenue": 0
+        },
+        {
+          "m": 540,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 570,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 600,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 630,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 660,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 690,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 720,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 750,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 780,
+          "orders": 0.67,
+          "revenue": 0
+        },
+        {
+          "m": 810,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 840,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 870,
+          "orders": 1,
+          "revenue": 0
+        },
+        {
+          "m": 900,
+          "orders": 1.33,
+          "revenue": 0
+        },
+        {
+          "m": 930,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 960,
+          "orders": 1.67,
+          "revenue": 0
+        },
+        {
+          "m": 990,
+          "orders": 2,
+          "revenue": 0
+        },
+        {
+          "m": 1020,
+          "orders": 2.33,
+          "revenue": 0
+        },
+        {
+          "m": 1050,
+          "orders": 2.67,
+          "revenue": 0
+        },
+        {
+          "m": 1080,
+          "orders": 3.33,
+          "revenue": 0
+        }
+      ],
+      "fechamento": {
+        "orders": 3.33,
+        "revenue": 0
+      }
+    }
+  }
+}

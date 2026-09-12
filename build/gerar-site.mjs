@@ -35,7 +35,27 @@ const saida = resolve(argumentos[0] ?? join(raiz, 'dist', 'site'));
 
 /** Onde o coletor grava os arquivos do dia. */
 const BRANCH_DE_DADOS = process.env.BRANCH_DE_DADOS ?? 'claude/sales-competition-app-t0sv4b';
-const PASTA_DE_DADOS = `https://raw.githubusercontent.com/dubosa2026/Dubosa/${BRANCH_DE_DADOS}/config/producao`;
+/**
+ * Qual pasta de dados este build lê: `producao` (a de verdade) ou `simulacao`.
+ *
+ * São dois sites publicados lado a lado, e é assim que tem de ser: número
+ * inventado não divide endereço com registro de produção. O de simulação lê
+ * arquivos que se declaram fictícios, e o aplicativo sobe a tarja sozinho.
+ */
+const SUBPASTA_DE_DADOS = process.env.SUBPASTA_DE_DADOS ?? 'producao';
+const PASTA_DE_DADOS = `https://raw.githubusercontent.com/dubosa2026/Dubosa/${BRANCH_DE_DADOS}/config/${SUBPASTA_DE_DADOS}`;
+
+/** Ajustes aplicados por cima da configuração publicada (um JSON no disco). */
+const SOBREPOSICAO = process.env.CONFIG_SOBREPOSICAO ?? null;
+
+/**
+ * Nome do cache do service worker.
+ *
+ * Cada variante precisa do seu. O `activate` apaga todo cache com o prefixo
+ * dele que não seja a versão corrente — dois sites com o mesmo prefixo na
+ * mesma origem ficariam apagando o cache um do outro a cada abertura.
+ */
+const PREFIXO_DO_CACHE = process.env.PREFIXO_DO_CACHE ?? 'liga-';
 
 /** Tudo que o aplicativo pede ao servidor em tempo de execução. */
 const ARQUIVOS = [
@@ -71,12 +91,26 @@ for (const item of CONFIGURACOES) {
 // A origem dos dados do site publicado não é a mesma do repositório de trabalho.
 const config = JSON.parse(readFileSync(join(saida, 'config/app.config.json'), 'utf8'));
 config.dataSource = { adapter: 'arquivo', options: { pasta: PASTA_DE_DADOS } };
+if (SOBREPOSICAO) {
+  if (!existsSync(SOBREPOSICAO)) throw new Error(`sobreposição não encontrada: ${SOBREPOSICAO}`);
+  const extra = JSON.parse(readFileSync(SOBREPOSICAO, 'utf8'));
+  for (const [chave, valor] of Object.entries(extra)) {
+    if (chave.startsWith('_')) continue;
+    config[chave] = valor && typeof valor === 'object' && !Array.isArray(valor)
+      ? { ...config[chave], ...valor }
+      : valor;
+  }
+}
 writeFileSync(join(saida, 'config/app.config.json'), `${JSON.stringify(config, null, 2)}\n`, 'utf8');
 
 // O service worker não tem mais lista de arquivos para pré-carregar — ele
 // guarda o que for pedido, conforme for pedido. O que resta conferir é que os
 // poucos caminhos citados nele existem de fato.
 let sw = readFileSync(join(saida, 'sw.js'), 'utf8');
+if (PREFIXO_DO_CACHE !== 'liga-') {
+  if (!sw.includes("const PREFIXO = 'liga-';")) throw new Error('o service worker mudou de forma: não achei o prefixo do cache');
+  sw = sw.replace("const PREFIXO = 'liga-';", `const PREFIXO = '${PREFIXO_DO_CACHE}';`);
+}
 const casca = [...sw.matchAll(/'\.\/([^']+)'/g)].map((m) => m[1]).filter(Boolean);
 const faltando = casca.filter((c) => !existsSync(join(saida, c)));
 if (faltando.length) throw new Error(`o service worker pede arquivos que não foram copiados: ${faltando.join(', ')}`);
@@ -122,4 +156,6 @@ writeFileSync(join(saida, 'index.html'), indice, 'utf8');
 console.log(`${saida}`);
 console.log(`  versão ${versao}`);
 console.log(`  ${casca.length} caminho(s) citado(s) pelo service worker, todos presentes`);
-console.log(`  produção lida de: ${PASTA_DE_DADOS}/AAAA-MM-DD.json`);
+console.log(`  dados lidos de: ${PASTA_DE_DADOS}/AAAA-MM-DD.json`);
+console.log(`  cache do service worker: ${PREFIXO_DO_CACHE}${versao}`);
+if (SOBREPOSICAO) console.log(`  sobreposição aplicada: ${SOBREPOSICAO}`);

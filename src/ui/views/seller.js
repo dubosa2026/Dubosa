@@ -199,8 +199,14 @@ function reguaStrip({ vm, awaiting }) {
 /** De onde a régua saiu — dito sempre, para o número não parecer oráculo. */
 function fonteDaRegua(cmp) {
   switch (cmp.base) {
-    case 'dia-da-semana':
-      return `Média das suas últimas ${cmp.amostras} ${cmp.nomeDoDia}s, desde ${dateBR(cmp.desde)}.`;
+    case 'dia-da-semana': {
+      // "das suas últimas 4 quintas", mas "dos seus últimos 4 sábados": os
+      // dias da semana são femininos e o fim de semana é masculino.
+      const masculino = cmp.nomeDoDia === 'sábado' || cmp.nomeDoDia === 'domingo';
+      return masculino
+        ? `Média dos seus últimos ${cmp.amostras} ${cmp.nomeDoDia}s, desde ${dateBR(cmp.desde)}.`
+        : `Média das suas últimas ${cmp.amostras} ${cmp.nomeDoDia}s, desde ${dateBR(cmp.desde)}.`;
+    }
     case 'dias-uteis':
       return `Média dos seus últimos ${cmp.amostras} dias de trabalho, desde ${dateBR(cmp.desde)}. Com mais semanas de histórico, ela passa a comparar ${cmp.nomeDoDia} com ${cmp.nomeDoDia}.`;
     case 'ultimo-dia':

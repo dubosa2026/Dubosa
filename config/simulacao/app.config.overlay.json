@@ -1,0 +1,13 @@
+{
+  "_leia_me": "Sobreposição aplicada ao publicar o site de simulação.",
+  "businessHours": {
+    "workdays": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  }
+}

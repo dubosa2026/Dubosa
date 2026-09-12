@@ -98,6 +98,9 @@ export class PublishedFileSource extends DataSource {
         publicado: true,
         publicadoEm: json?.publicadoEm ?? null,
         arquivo: this.caminhoDe(date),
+        // O arquivo diz se é simulação, e a tarja de dados fictícios sobe a
+        // partir daí. Depender de alguém lembrar de avisar é como não avisar.
+        isDemo: json?.simulacao === true,
         // O coletor declara se a origem tem faturamento por vendedor. Sem
         // repassar, o aplicativo leria zero como "não vendeu" em vez de
         // "não informado", e ranquearia todo mundo empatado em R$ 0.
