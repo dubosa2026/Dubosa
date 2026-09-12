@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "geradoEm": "2026-09-03",
+  "_leia_me": "Guarda apenas o hash do codigo pessoal. Quem le este arquivo nao consegue montar o link de ninguem.",
+  "manager": {
+    "name": "Eduardo",
+    "tokenHash": "9996f5ddbbd1da775cae04f79386c86c4fce8b7a1d51af37f7518428b5b466d8"
+  },
+  "sellers": [
+    {
+      "sellerId": "alisson-dos-santos-ribeiro",
+      "name": "Alisson dos Santos Ribeiro",
+      "tokenHash": "52395f3f8b1bc7fd3cfedc25d6d222a6680572263fc92620c3f62e894e22980a"
+    },
+    {
+      "sellerId": "elandia-camargo-rodrigues",
+      "name": "Elandia Camargo Rodrigues",
+      "tokenHash": "3e3d8144c966d77ffaca1e2eeba3b9d41c5704ba6ffe47e66abac398babc9c0d"
+    },
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "name": "Italo Cerqueia dos Santos",
+      "tokenHash": "f391e4f27cfef3bf6208a0f34b1c082ea4dfcb4789c1b016718b9a9d7f5b71b3"
+    },
+    {
+      "sellerId": "matheus-souza-de-barros",
+      "name": "Matheus Souza de Barros",
+      "tokenHash": "b6f3f7b44d5d3bf04ba30a8aa37ca3d1cd0a3db99943680f75421b2cdc980f02"
+    },
+    {
+      "sellerId": "diego-adan-ohnuma-angeli",
+      "name": "Diego Adan Ohnuma Angeli",
+      "tokenHash": "44efe260028455b29a176337078751abc66624fa47736ed3d5ad4e27dbdf850c"
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "name": "Giovanna do Carmo Fujimoto",
+      "tokenHash": "2df7be64357e076ab549e5fc045bae7362eb42ea3442db904e5f957f1f9bc6d1"
+    },
+    {
+      "sellerId": "munari-angela-mariano",
+      "name": "Munari Angela Mariano",
+      "tokenHash": "384d57c96922134fa9d2ab6705a4934096dde256be6c8cb4ccf22e81cebdd9ed"
+    },
+    {
+      "sellerId": "paulo-roberto-da-silva-filho",
+      "name": "Paulo Roberto da Silva Filho",
+      "tokenHash": "9484f02b36b440bf9941fc3e677b28e237d00637960d60459d967a144f65fc67"
+    },
+    {
+      "sellerId": "rayane-almeida-dos-santos",
+      "name": "Rayane Almeida dos Santos",
+      "tokenHash": "53e94be84cb34f4d58ca226b2a10ac6c2f82a6ec4481cf11763466e38acd0ace"
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "name": "Cristiane Luis dos Santos",
+      "tokenHash": "e40abd8e80b2ca2074ad0770c0194218b9523e97b72d592160e2476229536461"
+    },
+    {
+      "sellerId": "gleicy-kelly-toppan-de-oliveira",
+      "name": "Gleicy Kelly Toppan de Oliveira",
+      "tokenHash": "9e1df52f2bff65f9172779664840b0e5d2e24202bc4a018b0fa98d94f6b0b9e9"
+    },
+    {
+      "sellerId": "maria-elisabete-tonon",
+      "name": "Maria Elisabete Tonon",
+      "tokenHash": "e12bf3fbc662dcc8336a25ac01c8b60b38f8c0d9c34c3d17c64e3b35cf68e81b"
+    },
+    {
+      "sellerId": "rafael-vanderlei-lopes",
+      "name": "Rafael Vanderlei Lopes",
+      "tokenHash": "3b2abb372cdb07323cf5a54cfffb5b13c046b0d0512030d80668807bd790cdfc"
+    },
+    {
+      "sellerId": "rosyrene-de-medeiros-celestino",
+      "name": "Rosyrene de Medeiros Celestino",
+      "tokenHash": "d480695237b9e90e449a11c1bf7b7f38f32a213d243d0baff0d9b48dfe2f41e4"
+    },
+    {
+      "sellerId": "victor-vinicius-renno",
+      "name": "Victor Vinicius Renno",
+      "tokenHash": "3435bbed705f5420596c01c12dc70c513f2af3d38fdfcf9cb445bbb93ac7ab2e"
+    },
+    {
+      "sellerId": "leonardo-costa-oliveira",
+      "name": "Leonardo Costa Oliveira",
+      "tokenHash": "d582042da925c7d9df1a1a05df6feabeaf1cf40143519fc328600670146f9130"
+    },
+    {
+      "sellerId": "erica-oliveira",
+      "name": "Erica Oliveira",
+      "tokenHash": "dd612f679bc5b39190b629c95436d423b857b9757c0270e6d2f1b0d795416984"
+    },
+    {
+      "sellerId": "lucas-dos-reis-bernardes-da-silveira",
+      "name": "Lucas dos Reis Bernardes da Silveira",
+      "tokenHash": "71a4547b8f618aed5941335bd4fb98f9a88547b13f688e8c4201598f784e5527"
+    },
+    {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "name": "Maria Paula Bertaglia Nestor",
+      "tokenHash": "f021e5c4ed7c20c7bd1f145684aa3e8e31debfcc4e9d8abdaca3a247fc1111ca"
+    },
+    {
+      "sellerId": "murilo-bedani-rogerio",
+      "name": "Murilo Bedani Rogerio",
+      "tokenHash": "3bdfcdda3e38957c9edca17297c9785fb766bc412ca993c31110d16f8176fb4b"
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "name": "Nilton Renato Vicente Junior",
+      "tokenHash": "b361d97be3a8101ebc1b55756ce041ee4a3f503f7e48896a67bc98d83302ef45"
+    },
+    {
+      "sellerId": "ricardo-carniato-rodrigues",
+      "name": "Ricardo Carniato Rodrigues",
+      "tokenHash": "f33cbf05e9217031c913091f6b324a288a585510b9d3f65339c3c8d6aa4f4bb7"
+    }
+  ]
+}

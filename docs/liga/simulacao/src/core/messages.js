@@ -1,0 +1,260 @@
+import { money, moneyDelta, number, percent } from './format.js';
+import { textIdentifiesOther, identifyingTokens } from './nameScan.js';
+import { comoChamarABase } from './regua.js';
+
+/**
+ * MOTOR DE MENSAGENS
+ * ==================
+ *
+ * Gera as frases competitivas exibidas ao vendedor. Regras do tom:
+ *   - competitivas, enérgicas e provocativas;
+ *   - nunca humilhantes: cobram ação, não desqualificam a pessoa;
+ *   - NUNCA citam nome, número ou identidade de outro vendedor.
+ *
+ * A última regra não é confiada à disciplina de quem escreve as frases:
+ * `assertNoIdentityLeak` varre o texto gerado e derruba a mensagem se algum
+ * nome da equipe aparecer nela.
+ */
+
+const TONE = Object.freeze({
+  TRIUNFO: 'triunfo',
+  DISPUTA: 'disputa',
+  RITMO: 'ritmo',
+  ALERTA: 'alerta',
+  NEUTRO: 'neutro',
+});
+
+/**
+ * Barreira de privacidade do texto.
+ * Segue a mesma regra de `core/nameScan.js`: sobrenome compartilhado não
+ * identifica ninguém; nome completo, id ou termo exclusivo, sim.
+ *
+ * @param {string} text
+ * @param {{sellerId:string, sellerName:string}[]} others
+ * @param {Set<string>} tokens
+ * @returns {boolean} true se o texto está limpo
+ */
+export function assertNoIdentityLeak(text, others = [], tokens = null) {
+  const normalized = Array.isArray(others) && typeof others[0] === 'string'
+    ? others.map((name) => ({ sellerId: null, sellerName: name }))
+    : others;
+  // Sem o conjunto de termos pronto, derivamos aqui: chamar esta função com uma
+  // lista de nomes e nenhum contexto não pode resultar numa checagem fraca.
+  const effective = tokens && tokens.size
+    ? tokens
+    : identifyingTokens(normalized.map((o, i) => ({ sellerId: o.sellerId ?? `__${i}`, sellerName: o.sellerName })), null);
+  return textIdentifiesOther(text, normalized, effective) === null;
+}
+
+/**
+ * @param {Object} ctx
+ * @param {Object} ctx.performance  saída de metrics.buildPerformance
+ * @param {Object} ctx.gaps         saída de ranking.gapsFor (magnitudes apenas)
+ * @param {Object} ctx.positions    saída de ranking.positionHistory
+ * @param {Object} ctx.tier         saída de gamification.tierFor
+ * @param {string} ctx.phase        'antes' | 'aberto' | 'intervalo' | 'encerrado'
+ * @param {Object} ctx.config       bloco `messages`
+ * @param {Array} ctx.others  colegas, usados só pela barreira de privacidade
+ * @param {Set<string>} ctx.identifyingTokens termos que identificam um colega
+ * @param {boolean} ctx.awaitingData true quando a base ainda não foi conectada
+ * @param {boolean} ctx.temFaturamento false quando a origem informa faturamento
+ *   só por carteira. Sem isto, toda frase de dinheiro sai zerada e a disputa
+ *   fica muda justamente para quem está produzindo.
+ * @returns {Array<{id:string, tone:string, icon:string, text:string, priority:number}>}
+ */
+export function buildMessages(ctx) {
+  const {
+    performance, gaps, positions, tier, phase = 'aberto', config = {},
+    others = [], identifyingTokens: tokens = new Set(), awaitingData = false,
+    temFaturamento = true, origemConectada = false, businessHours = null,
+    contraMim = null,
+  } = ctx;
+
+  // Sem base conectada não existe desempenho a comentar. Uma frase motivacional
+  // aqui seria afirmação sobre um dado que não existe.
+  if (awaitingData) {
+    // Com a base LIGADA, "aguardando a base de dados" é falso e assusta: o
+    // que falta é o dia começar, não a conexão. São dois problemas com cara
+    // igual e soluções opostas — um se resolve esperando, o outro não.
+    if (origemConectada) {
+      const abre = businessHours?.start ?? '08:00';
+      return [{
+        id: 'dia-nao-comecou',
+        tone: 'neutro',
+        icon: '⏳',
+        text: phase === 'antes'
+          ? `O expediente começa às ${abre}. Seu placar de hoje abre com o primeiro pedido.`
+          : 'Ainda não há produção registrada hoje. O placar abre com o primeiro pedido.',
+        priority: 100,
+      }];
+    }
+    return [{
+      id: 'aguardando-base',
+      tone: 'neutro',
+      icon: '⏳',
+      text: 'Aguardando a base de dados. Assim que ela for conectada, seu placar e a disputa aparecem aqui.',
+      priority: 100,
+    }];
+  }
+
+  const out = [];
+  const push = (id, tone, icon, text, priority) => out.push({ id, tone, icon, text, priority });
+
+  const orders = performance?.orders ?? 0;
+  const revenue = performance?.revenue ?? 0;
+  const gapAlertRevenue = config.gapAlertRevenue ?? 10000;
+  const gapAlertOrders = config.gapAlertOrders ?? 2;
+
+  // --- VOCÊ CONTRA VOCÊ ---------------------------------------------------
+  // Vem antes de tudo o que fala em posição, e de propósito: esta é a disputa
+  // que a pessoa controla sozinha. A distância para o vizinho depende do que o
+  // vizinho fez; a distância para a própria média, não.
+  //
+  // Nunca se diz "você está abaixo". Diz-se o que falta — que é a mesma
+  // informação escrita como tarefa, e não como veredito.
+  if (contraMim && contraMim.estado !== 'sem-regua') {
+    const base = comoChamarABase(contraMim);
+    const d = Math.abs(contraMim.diferenca);
+    const quanto = contraMim.unidade === 'revenue'
+      ? money(d)
+      : `${number(d)} ${d === 1 ? 'pedido' : 'pedidos'}`;
+    if (contraMim.estado === 'acima') {
+      push('acima-da-regua', TONE.TRIUNFO, '📈', `Você está ${quanto} acima da ${base}.`, 99);
+    } else if (contraMim.estado === 'igual') {
+      push('na-regua', TONE.RITMO, '📐', `Você está exatamente na ${base}. O próximo pedido passa dela.`, 97);
+    } else {
+      const verbo = contraMim.unidade === 'revenue' || d !== 1 ? 'Faltam' : 'Falta';
+      push('abaixo-da-regua', TONE.DISPUTA, '🎯', `${verbo} ${quanto} para alcançar a ${base}.`, 98);
+    }
+  } else if (contraMim && !awaitingData) {
+    push('regua-em-formacao', TONE.NEUTRO, '📐',
+      'Sua régua pessoal ainda está se formando. A partir dos próximos dias, você passa a disputar com o seu próprio histórico.', 45);
+  }
+
+  // --- Liderança e movimento no ranking -----------------------------------
+  const gained = positions?.opening != null && positions?.current != null
+    ? positions.opening - positions.current
+    : 0;
+
+  const produziu = temFaturamento ? revenue > 0 : orders > 0;
+
+  // Abaixo da régua, e não acima: a liderança é notícia, mas é notícia sobre o
+  // que os outros fizeram. A primeira frase do dia continua sendo a única que
+  // depende só de quem está lendo.
+  if (gaps?.isLeader && produziu) {
+    push('lideranca', TONE.TRIUNFO, '🏆',
+      gained > 0 ? 'Você assumiu a liderança. Agora é segurar.' : 'Você está em 1º lugar. Ninguém passou.', 96);
+  }
+
+  if (gained > 0) {
+    push('subiu', TONE.TRIUNFO, '🔥',
+      `Você subiu ${gained === 1 ? 'uma posição' : `${number(gained)} posições`} hoje.`, 94);
+  } else if (gained < 0) {
+    // Também abaixo do ritmo e da régua. Posição perdida de manhã é quase
+    // sempre agitação do começo do dia — quinze lugares trocam de dono com dois
+    // pedidos —, e liderar a tela com isso é gritar barulho. Continua dito, uma
+    // linha depois do que a pessoa pode fazer a respeito.
+    push('caiu', TONE.ALERTA, '🚨',
+      `Você perdeu ${Math.abs(gained) === 1 ? 'uma posição' : `${number(Math.abs(gained))} posições`}. Hora de reagir.`, 83);
+  }
+
+  // --- Disputa com os vizinhos (magnitude, nunca identidade) --------------
+  if (gaps?.toNext) {
+    const { revenue: gapRev, orders: gapOrd } = gaps.toNext;
+    // Sem faturamento individual liberado, a disputa se conta em pedidos. Era
+    // por aqui que o valor voltava a aparecer quando a origem informava e a
+    // chave estava desligada.
+    if (temFaturamento && gapRev > 0 && gapRev <= gapAlertRevenue) {
+      push('quase-la', TONE.DISPUTA, '⚔️',
+        `A disputa está apertando. Faltam ${money(gapRev)} para avançar.`, 90);
+    } else if (temFaturamento && gapRev > 0) {
+      push('distancia-proxima', TONE.DISPUTA, '🚀',
+        `Você está a ${money(gapRev)} da próxima posição.`, 70);
+    }
+    if (gapOrd > 0 && gapOrd <= gapAlertOrders) {
+      push('pedidos-para-avancar', TONE.DISPUTA, '📦',
+        `Faltam ${number(gapOrd)} ${gapOrd === 1 ? 'pedido' : 'pedidos'} para avançar.`, 75);
+    } else if (!temFaturamento && gapOrd > 0) {
+      push('distancia-proxima', TONE.DISPUTA, '🚀',
+        `Você está a ${number(gapOrd)} ${gapOrd === 1 ? 'pedido' : 'pedidos'} da próxima posição.`, 70);
+    }
+  }
+
+  if (gaps?.toPrevious && produziu) {
+    const atras = temFaturamento ? gaps.toPrevious.revenue : gaps.toPrevious.orders;
+    const limite = temFaturamento ? gapAlertRevenue : gapAlertOrders;
+    if (atras >= 0 && atras <= limite) {
+      // Empate é empate: "estão a 0 pedidos de você" é uma frase que ninguém
+      // diria em voz alta, e era o que aparecia sempre que a distância fechava.
+      const empatado = atras === 0;
+      push('sendo-alcancado', TONE.ALERTA, '🛡️',
+        empatado
+          ? 'Empatado com quem vem atrás. O próximo pedido decide.'
+          : temFaturamento
+            ? `Estão a ${money(atras)} de você. Segure a posição.`
+            : `Estão a ${number(atras)} ${atras === 1 ? 'pedido' : 'pedidos'} de você. Segure a posição.`, 85);
+    }
+  }
+
+  // --- Comparação com o próprio desempenho de ontem ------------------------
+  const vsY = performance?.vsYesterdaySameTime;
+  const contraOntem = temFaturamento ? vsY?.revenue : vsY?.orders;
+  if (contraOntem && contraOntem.baseline > 0) {
+    if (contraOntem.abs > 0) {
+      const pct = contraOntem.pct != null ? ` (${percent(contraOntem.pct)} acima)` : '';
+      push('acima-de-ontem', TONE.RITMO, '🔥',
+        `Você está produzindo mais que ontem neste mesmo horário${pct}.`, 80);
+    } else if (contraOntem.abs < 0) {
+      const atras = temFaturamento
+        ? moneyDelta(contraOntem.abs).replace('−', '')
+        : `${number(Math.abs(contraOntem.abs))} ${Math.abs(contraOntem.abs) === 1 ? 'pedido' : 'pedidos'}`;
+      push('abaixo-de-ontem', TONE.ALERTA, '🚨',
+        `Atenção: seu ritmo caiu. Você está ${atras} atrás de ontem neste horário.`, 82);
+    }
+  }
+
+  // --- Ritmo em relação ao necessário -------------------------------------
+  const paceStatus = (temFaturamento
+    ? performance?.pace?.revenueStatus
+    : performance?.pace?.ordersStatus)?.status;
+  if (paceStatus === 'acima') {
+    push('ritmo-acima', TONE.RITMO, '🎯', 'Seu ritmo está acima do necessário. Mantenha.', 78);
+  } else if (paceStatus === 'no-ritmo') {
+    push('ritmo-ok', TONE.RITMO, '🎯', 'Você está no ritmo da meta. Não afrouxe.', 66);
+  } else if (paceStatus === 'abaixo') {
+    push('ritmo-abaixo', TONE.ALERTA, '⚡', 'Você precisa acelerar o ritmo para alcançar sua projeção.', 84);
+  } else if (paceStatus === 'meta-atingida') {
+    push('meta-batida', TONE.TRIUNFO, '✅', 'Meta do dia batida. Agora é ampliar a vantagem.', 88);
+  }
+
+  // --- Contexto de expediente ---------------------------------------------
+  if (phase === 'antes') {
+    push('pre-abertura', TONE.NEUTRO, '⏳', 'O expediente ainda não começou. Prepare o dia.', 40);
+  } else if (phase === 'encerrado') {
+    push('encerrado', TONE.NEUTRO, '🏁', 'Dia encerrado. O placar de amanhã começa zerado.', 40);
+  } else if (!produziu) {
+    push('sem-producao', TONE.ALERTA, '🚀', 'O dia começou e seu placar está zerado. Abra o marcador.', 92);
+  } else if ((performance?.remainingMinutes ?? 0) <= 120 && gaps?.toNext
+      && (temFaturamento ? gaps.toNext.revenue > 0 : gaps.toNext.orders > 0)) {
+    const falta = temFaturamento
+      ? money(gaps.toNext.revenue)
+      : `${number(gaps.toNext.orders)} ${gaps.toNext.orders === 1 ? 'pedido' : 'pedidos'}`;
+    push('reta-final', TONE.DISPUTA, '⚡',
+      `Reta final: ainda dá para virar o jogo. Faltam ${falta}.`, 87);
+  }
+
+  // --- Nível ---------------------------------------------------------------
+  if (tier?.next && (tier.missingRevenue > 0 || (!temFaturamento && tier.missingOrders > 0))) {
+    const falta = temFaturamento
+      ? money(tier.missingRevenue)
+      : `${number(tier.missingOrders)} ${tier.missingOrders === 1 ? 'pedido' : 'pedidos'}`;
+    push('proximo-nivel', TONE.RITMO, '🏅',
+      `Faltam ${falta} para o nível ${tier.next.name}.`, 64);
+  } else if (tier && !tier.next && produziu) {
+    push('nivel-maximo', TONE.TRIUNFO, '👑', `Nível ${tier.current.name} alcançado — o topo da escala.`, 76);
+  }
+
+  const clean = out.filter((msg) => assertNoIdentityLeak(msg.text, others, tokens));
+  clean.sort((a, b) => b.priority - a.priority);
+  return clean.slice(0, config.maxVisible ?? 4);
+}

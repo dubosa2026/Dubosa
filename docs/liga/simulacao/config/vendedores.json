@@ -1,0 +1,139 @@
+{
+  "version": 1,
+  "origem": "config/vendedores.csv do assistente de distribuição de carteira",
+  "observacao": "Esta é a lista da equipe. Ela define QUEM aparece no ranking — independente de a base de produção trazer ou não o vendedor no dia. Quem está zerado aparece nas últimas posições, nunca some.",
+  "vendedores": [
+    {
+      "sellerId": "alisson-dos-santos-ribeiro",
+      "name": "Alisson dos Santos Ribeiro",
+      "nomeOriginal": "ALISSON DOS SANTOS RIBEIRO",
+      "uf": "AC"
+    },
+    {
+      "sellerId": "elandia-camargo-rodrigues",
+      "name": "Elandia Camargo Rodrigues",
+      "nomeOriginal": "ELANDIA CAMARGO RODRIGUES",
+      "uf": "AC"
+    },
+    {
+      "sellerId": "italo-cerqueia-dos-santos",
+      "name": "Italo Cerqueia dos Santos",
+      "nomeOriginal": "ITALO CERQUEIA DOS SANTOS",
+      "uf": "AM"
+    },
+    {
+      "sellerId": "matheus-souza-de-barros",
+      "name": "Matheus Souza de Barros",
+      "nomeOriginal": "MATHEUS SOUZA DE BARROS",
+      "uf": "AM"
+    },
+    {
+      "sellerId": "diego-adan-ohnuma-angeli",
+      "name": "Diego Adan Ohnuma Angeli",
+      "nomeOriginal": "DIEGO ADAN OHNUMA ANGELI",
+      "uf": "AP"
+    },
+    {
+      "sellerId": "giovanna-do-carmo-fujimoto",
+      "name": "Giovanna do Carmo Fujimoto",
+      "nomeOriginal": "GIOVANNA DO CARMO FUJIMOTO",
+      "uf": "PA"
+    },
+    {
+      "sellerId": "munari-angela-mariano",
+      "name": "Munari Angela Mariano",
+      "nomeOriginal": "MUNARI ANGELA MARIANO",
+      "uf": "PA"
+    },
+    {
+      "sellerId": "paulo-roberto-da-silva-filho",
+      "name": "Paulo Roberto da Silva Filho",
+      "nomeOriginal": "PAULO ROBERTO DA SILVA FILHO",
+      "uf": "PA"
+    },
+    {
+      "sellerId": "rayane-almeida-dos-santos",
+      "name": "Rayane Almeida dos Santos",
+      "nomeOriginal": "RAYANE ALMEIDA DOS SANTOS",
+      "uf": "PA"
+    },
+    {
+      "sellerId": "cristiane-luis-dos-santos",
+      "name": "Cristiane Luis dos Santos",
+      "nomeOriginal": "CRISTIANE LUIS DOS SANTOS",
+      "uf": "RO"
+    },
+    {
+      "sellerId": "gleicy-kelly-toppan-de-oliveira",
+      "name": "Gleicy Kelly Toppan de Oliveira",
+      "nomeOriginal": "GLEICY KELLY TOPPAN DE OLIVEIRA",
+      "uf": "RO"
+    },
+    {
+      "sellerId": "maria-elisabete-tonon",
+      "name": "Maria Elisabete Tonon",
+      "nomeOriginal": "MARIA ELISABETE TONON",
+      "uf": "RO"
+    },
+    {
+      "sellerId": "rafael-vanderlei-lopes",
+      "name": "Rafael Vanderlei Lopes",
+      "nomeOriginal": "RAFAEL VANDERLEI LOPES",
+      "uf": "RO"
+    },
+    {
+      "sellerId": "rosyrene-de-medeiros-celestino",
+      "name": "Rosyrene de Medeiros Celestino",
+      "nomeOriginal": "ROSYRENE DE MEDEIROS CELESTINO",
+      "uf": "RO"
+    },
+    {
+      "sellerId": "victor-vinicius-renno",
+      "name": "Victor Vinicius Renno",
+      "nomeOriginal": "VICTOR VINICIUS RENNO",
+      "uf": "RO"
+    },
+    {
+      "sellerId": "leonardo-costa-oliveira",
+      "name": "Leonardo Costa Oliveira",
+      "nomeOriginal": "LEONARDO COSTA OLIVEIRA",
+      "uf": "RR"
+    },
+    {
+      "sellerId": "erica-oliveira",
+      "name": "Erica Oliveira",
+      "nomeOriginal": "ERICA OLIVEIRA",
+      "uf": "TO"
+    },
+    {
+      "sellerId": "lucas-dos-reis-bernardes-da-silveira",
+      "name": "Lucas dos Reis Bernardes da Silveira",
+      "nomeOriginal": "LUCAS DOS REIS BERNARDES DA SILVEIRA",
+      "uf": "TO"
+    },
+    {
+      "sellerId": "maria-paula-bertaglia-nestor",
+      "name": "Maria Paula Bertaglia Nestor",
+      "nomeOriginal": "MARIA PAULA BERTAGLIA NESTOR",
+      "uf": "TO"
+    },
+    {
+      "sellerId": "murilo-bedani-rogerio",
+      "name": "Murilo Bedani Rogerio",
+      "nomeOriginal": "MURILO BEDANI ROGERIO",
+      "uf": "TO"
+    },
+    {
+      "sellerId": "nilton-renato-vicente-junior",
+      "name": "Nilton Renato Vicente Junior",
+      "nomeOriginal": "NILTON RENATO VICENTE JUNIOR",
+      "uf": "TO"
+    },
+    {
+      "sellerId": "ricardo-carniato-rodrigues",
+      "name": "Ricardo Carniato Rodrigues",
+      "nomeOriginal": "RICARDO CARNIATO RODRIGUES",
+      "uf": "TO"
+    }
+  ]
+}

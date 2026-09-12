@@ -24,9 +24,9 @@
  * barra de endereços.
  */
 
-const PREFIXO = 'liga-';
+const PREFIXO = 'liga-sim-';
 // Trocado no build por um resumo do conteúdo publicado.
-const VERSION = `${PREFIXO}38eae385020e`;
+const VERSION = `${PREFIXO}f697a3a7e0ea`;
 const RESERVA = './index.html';
 
 self.addEventListener('install', (event) => {

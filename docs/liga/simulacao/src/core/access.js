@@ -1,0 +1,652 @@
+import { rankAt, gapsFor, positionHistory } from './ranking.js';
+import { buildPerformance } from './metrics.js';
+import { tierFor, evaluateAchievements } from './gamification.js';
+import { buildMessages } from './messages.js';
+import {
+  valueAt, teamAggregate, teamAggregateAt, measurementMinutes,
+} from '../data/store.js';
+import {
+  elapsedBusinessMinutes, dayPhase, toMinutes,
+} from './clock.js';
+import { identifyingTokens, textIdentifiesOther, normalizeForScan } from './nameScan.js';
+import { reguaDe, compararComARegua, superaramAPropriaMarca } from './regua.js';
+import { desafioAtivo, avaliarDesafio, desafioDaEquipe, diasRestantes, frase as fraseDoDesafio } from './desafios.js';
+
+/**
+ * NÚCLEO DE PRIVACIDADE
+ * =====================
+ *
+ * Esta é a regra estrutural do sistema, não uma recomendação de interface.
+ *
+ * Nenhuma tela recebe `dayState` (que contém a equipe inteira). Toda tela
+ * recebe um VIEW MODEL construído aqui. O view model do vendedor é montado
+ * campo a campo a partir apenas dos dados dele — os registros dos colegas nunca
+ * são copiados para dentro dele, nem em forma reduzida.
+ *
+ * Três barreiras, nesta ordem:
+ *
+ *   1ª  A FONTE. `DataSource.fetchDay(date, scope)` recebe o escopo. Um
+ *       adaptador com servidor deve filtrar no servidor — é a única barreira
+ *       que impede o dado de sair do backend. As duas seguintes protegem a
+ *       exibição, não o transporte.
+ *   2ª  ESTE MÓDULO. Constrói o view model do vendedor por composição, nunca
+ *       por remoção de campos de um objeto maior.
+ *   3ª  A VARREDURA. `assertSellerViewModelIsClean` percorre o objeto pronto
+ *       procurando nome ou id de terceiros. Se achar, a tela não é renderizada.
+ *
+ * O que o vendedor pode saber sobre os outros: SÓ MAGNITUDES ANÔNIMAS —
+ * "faltam R$ 8.500 para a próxima posição". Nunca quem, nunca quanto o outro fez.
+ */
+
+export const ROLE = Object.freeze({ SELLER: 'seller', MANAGER: 'manager' });
+
+export const CAPABILITY = Object.freeze({
+  VIEW_OWN: 'view:own',
+  VIEW_TEAM_AGGREGATE: 'view:team-aggregate',
+  VIEW_GAP_NEXT: 'view:gap-next',
+  VIEW_GAP_PREVIOUS: 'view:gap-previous',
+  VIEW_TEAM_ROSTER: 'view:team-roster',
+  VIEW_NOMINAL_RANKING: 'view:nominal-ranking',
+  VIEW_OTHER_SELLER: 'view:other-seller',
+  COMPARE_SELLERS: 'compare:sellers',
+  EXPORT_REPORTS: 'export:reports',
+  CONFIGURE_APP: 'configure:app',
+  MANAGE_ACCESS: 'manage:access',
+});
+
+/** Matriz de permissões. `true` = sempre; função = depende de configuração. */
+const MATRIX = {
+  [ROLE.MANAGER]: {
+    [CAPABILITY.VIEW_OWN]: true,
+    [CAPABILITY.VIEW_TEAM_AGGREGATE]: true,
+    [CAPABILITY.VIEW_GAP_NEXT]: true,
+    [CAPABILITY.VIEW_GAP_PREVIOUS]: true,
+    [CAPABILITY.VIEW_TEAM_ROSTER]: true,
+    [CAPABILITY.VIEW_NOMINAL_RANKING]: true,
+    [CAPABILITY.VIEW_OTHER_SELLER]: true,
+    [CAPABILITY.COMPARE_SELLERS]: true,
+    [CAPABILITY.EXPORT_REPORTS]: true,
+    [CAPABILITY.CONFIGURE_APP]: true,
+    [CAPABILITY.MANAGE_ACCESS]: true,
+  },
+  [ROLE.SELLER]: {
+    [CAPABILITY.VIEW_OWN]: true,
+    [CAPABILITY.VIEW_TEAM_AGGREGATE]: (cfg, ctx) => Boolean(cfg?.privacy?.sellerSeesTeamAggregate)
+      && (ctx?.activeCount ?? 0) >= (cfg?.privacy?.minTeamSizeForAggregate ?? 3),
+    [CAPABILITY.VIEW_GAP_NEXT]: (cfg) => cfg?.privacy?.sellerSeesGapToNext !== false,
+    [CAPABILITY.VIEW_GAP_PREVIOUS]: (cfg) => cfg?.privacy?.sellerSeesGapToPrevious !== false,
+    // Tudo abaixo é negado ao vendedor por definição de produto. Não há
+    // configuração que ligue: são as regras da seção 12 da especificação.
+    [CAPABILITY.VIEW_TEAM_ROSTER]: false,
+    [CAPABILITY.VIEW_NOMINAL_RANKING]: false,
+    [CAPABILITY.VIEW_OTHER_SELLER]: false,
+    [CAPABILITY.COMPARE_SELLERS]: false,
+    [CAPABILITY.EXPORT_REPORTS]: false,
+    [CAPABILITY.CONFIGURE_APP]: false,
+    [CAPABILITY.MANAGE_ACCESS]: false,
+  },
+};
+
+export function can(role, capability, config = {}, ctx = {}) {
+  const rule = MATRIX[role]?.[capability];
+  if (rule === true) return true;
+  if (typeof rule === 'function') return Boolean(rule(config, ctx));
+  return false;
+}
+
+export function assertCan(role, capability, config = {}, ctx = {}) {
+  if (!can(role, capability, config, ctx)) {
+    throw new Error(`Acesso negado: perfil "${role}" não pode "${capability}".`);
+  }
+}
+
+/**
+ * Critério do ranking, ajustado ao que a origem realmente entrega.
+ *
+ * Quando o faturamento por vendedor não existe — o sistema de pedidos dá
+ * faturamento por carteira, não por pessoa — ranquear por faturamento daria
+ * empate zerado para a equipe inteira. Nesse caso o critério passa a ser
+ * pedidos, que é o dado que existe de verdade.
+ */
+/**
+ * O faturamento POR VENDEDOR pode ser mostrado?
+ *
+ * Duas condições, e as duas mandam:
+ *
+ *   - a origem informa faturamento por vendedor. O sistema de pedidos da
+ *     empresa informa por carteira, então hoje não;
+ *   - `ui.faturamentoIndividual` está ligado na configuração.
+ *
+ * A segunda existe porque a primeira pode mudar sozinha. Se um dia a origem
+ * passar a mandar valor por vendedor, ele apareceria na tela de todo mundo sem
+ * ninguém ter decidido isso — e faturamento individual é dado sensível numa
+ * competição. Fica desligado até alguém ligar.
+ *
+ * O total da equipe não passa por aqui: ele é resultado coletivo, vem da
+ * própria origem e continua visível.
+ */
+export function podeMostrarFaturamentoIndividual(dayState, config) {
+  return dayState?.revenueAvailable !== false && config?.ui?.faturamentoIndividual === true;
+}
+
+export function regrasDeRanking(dayState, config) {
+  const base = config?.ranking ?? {};
+  if (!podeMostrarFaturamentoIndividual(dayState, config)) {
+    return {
+      ...base,
+      primary: 'orders',
+      tiebreakers: ['revenue', 'firstToReach', 'name'],
+    };
+  }
+  return base;
+}
+
+/** Congelamento profundo — o view model do vendedor é imutável. */
+function deepFreeze(obj) {
+  if (obj && typeof obj === 'object' && !Object.isFrozen(obj)) {
+    Object.freeze(obj);
+    for (const value of Object.values(obj)) deepFreeze(value);
+  }
+  return obj;
+}
+
+/**
+ * TERCEIRA BARREIRA — varredura do objeto pronto.
+ *
+ * Procurar qualquer pedaço de nome alheio não funciona numa equipe real:
+ * sobrenomes se repetem. "Leonardo Costa Oliveira" e "Erica Oliveira" dividem
+ * "Oliveira"; bloquear o painel do primeiro porque a palavra aparece no
+ * próprio nome dele seria um alarme falso — e um alarme falso que derruba a
+ * tela é tão ruim quanto um vazamento.
+ *
+ * A varredura procura, então, apenas o que de fato IDENTIFICA alguém:
+ *
+ *   - o nome completo de um colega, literal;
+ *   - o id de um colega;
+ *   - um termo que pertença a UM único colega, não apareça no nome de mais
+ *     ninguém e nem no nome de quem está olhando.
+ *
+ * Um sobrenome compartilhado por duas ou mais pessoas não aponta para ninguém
+ * e, por isso, não é tratado como vazamento.
+ *
+ * @throws quando encontra identificação de terceiro no painel do vendedor.
+ */
+export function assertSellerViewModelIsClean(viewModel, ownSellerId, allSellers = []) {
+  const strangers = allSellers.filter((s) => s.sellerId !== ownSellerId);
+  if (!strangers.length) return viewModel;
+
+  const tokens = identifyingTokens(allSellers, ownSellerId);
+  const found = textIdentifiesOther(JSON.stringify(viewModel), strangers, tokens);
+  if (found) {
+    throw new Error(`Vazamento de privacidade: identificação de terceiro no painel do vendedor ("${found}").`);
+  }
+  return viewModel;
+}
+
+/** Estado de "nenhum movimento": a posição atual, sem histórico inventado. */
+function semMovimento(position) {
+  return {
+    minutes: [], positions: [], best: position, worst: position, opening: position, current: position,
+  };
+}
+
+function historyContextFor(sellerId, historyDays) {
+  let bestOrders = 0;
+  let bestRevenue = 0;
+  let streak = 0;
+  let streakBroken = false;
+  for (const day of historyDays ?? []) {
+    const seller = day.state?.sellers?.find((s) => s.sellerId === sellerId);
+    if (!seller) { streakBroken = true; continue; }
+    bestOrders = Math.max(bestOrders, seller.orders);
+    bestRevenue = Math.max(bestRevenue, seller.revenue);
+    if (!streakBroken && day.highPerformance?.has?.(sellerId)) streak += 1;
+    else streakBroken = true;
+  }
+  return { bestOrders, bestRevenue, highPerformanceStreak: streak };
+}
+
+/**
+ * As réguas pessoais de todo mundo — cruas, e só para virar contagem.
+ *
+ * Quando o coletor publica as réguas junto com o dia, elas vêm dele: ele roda
+ * no repositório e enxerga MESES de histórico, enquanto o navegador carrega
+ * poucos dias. É a mesma conta, feita onde há mais base. Sem isso, o cálculo
+ * acontece aqui com o que o navegador tem — e a régua diz, no próprio campo
+ * `base`, de qual dos dois mundos ela veio.
+ */
+function reguasPara({ today, historyDays, businessHours }) {
+  const publicadas = today?.reguas ?? null;
+  const hoje = today?.date ?? null;
+  const mapa = new Map();
+  for (const seller of today?.sellers ?? []) {
+    const pronta = publicadas?.[seller.sellerId];
+    mapa.set(seller.sellerId, pronta && pronta.amostras
+      ? pronta
+      : reguaDe({ sellerId: seller.sellerId, hoje, dias: historyDays, businessHours }));
+  }
+  return mapa;
+}
+
+/**
+ * PAINEL DO VENDEDOR — só os próprios dados.
+ *
+ * @param {Object} args
+ * @param {import('../data/store.js').DayState} args.today
+ * @param {import('../data/store.js').DayState|null} args.yesterday
+ * @param {string} args.sellerId
+ * @param {number} args.atMinutes
+ * @param {Object} args.config
+ * @param {Array} [args.historyDays]
+ */
+export function buildSellerView({
+  today, yesterday, sellerId, sellerName, atMinutes, config, historyDays = [],
+  competitive = null, teamFromSource = null, origemConectada = false,
+}) {
+  const businessHours = config.businessHours;
+  const me = today?.sellers?.find((s) => s.sellerId === sellerId) ?? null;
+  const meYesterday = yesterday?.sellers?.find((s) => s.sellerId === sellerId) ?? null;
+
+  // Dois estados diferentes, que antes estavam confundidos num só:
+  //   awaitingData  -> a BASE não está conectada. Nada pode ser afirmado.
+  //   semProducao   -> a base está conectada e o vendedor está zerado.
+  //                    Ele tem posição real, comparação real e disputa real —
+  //                    e é justamente quem mais precisa ver isso.
+  const awaitingData = today?.status !== 'ready';
+  const aggregate = teamFromSource ?? teamAggregate(today);
+  const permCtx = { activeCount: aggregate.activeCount };
+
+  const yAtSameTime = valueAt(meYesterday?.timeline, atMinutes);
+  const performance = buildPerformance({
+    orders: me?.orders ?? 0,
+    revenue: me?.revenue ?? 0,
+    ordersYesterdaySameTime: yAtSameTime.orders,
+    revenueYesterdaySameTime: yAtSameTime.revenue,
+    ordersYesterdayTotal: meYesterday?.orders ?? 0,
+    revenueYesterdayTotal: meYesterday?.revenue ?? 0,
+    atMinutes,
+    businessHours,
+    projectionConfig: config.projection,
+    goals: config.goals,
+    baselineAvailable: Boolean(meYesterday?.timeline?.length),
+  });
+
+  // Quando a ORIGEM já calculou a posição (adaptador com `scopedRanking`), o
+  // aplicativo usa o que veio pronto: ele não recebeu — e não precisa receber —
+  // os dados dos colegas para saber onde o vendedor está.
+  //
+  // Sem isso, o ranking nominal é calculado aqui, mas NUNCA sai desta função:
+  // dela saem apenas a posição do próprio vendedor e magnitudes anônimas.
+  const ranked = competitive ? [] : rankAt(today, atMinutes, regrasDeRanking(today, config));
+  const rawGaps = competitive ?? gapsFor(ranked, sellerId);
+  // Só falamos em movimento quando existe mais de uma medição no dia.
+  const medicoes = measurementMinutes(today).filter((m) => m <= atMinutes);
+  const marks = medicoes.length >= 2 ? medicoes : [];
+  const positions = competitive
+    ? { minutes: [], positions: [], best: competitive.position, worst: competitive.position, opening: competitive.position, current: competitive.position }
+    : marks.length
+      ? positionHistory(today, sellerId, marks, regrasDeRanking(today, config))
+      : semMovimento(rawGaps?.position ?? null);
+
+  const gaps = rawGaps
+    ? {
+      position: rawGaps.position,
+      total: config.privacy?.sellerSeesPositionOutOfTotal === false ? null : rawGaps.total,
+      isLeader: rawGaps.isLeader,
+      isLast: rawGaps.isLast,
+      toNext: can(ROLE.SELLER, CAPABILITY.VIEW_GAP_NEXT, config, permCtx) && rawGaps.toNext
+        ? { revenue: rawGaps.toNext.revenue, orders: rawGaps.toNext.orders }
+        : null,
+      toPrevious: can(ROLE.SELLER, CAPABILITY.VIEW_GAP_PREVIOUS, config, permCtx) && rawGaps.toPrevious
+        ? { revenue: rawGaps.toPrevious.revenue, orders: rawGaps.toPrevious.orders }
+        : null,
+      toLeader: rawGaps.toLeader
+        ? { revenue: rawGaps.toLeader.revenue, orders: rawGaps.toLeader.orders }
+        : null,
+    }
+    : null;
+
+  const tier = tierFor(performance.orders, performance.revenue, config.tiers,
+    { temFaturamento: podeMostrarFaturamentoIndividual(today, config) });
+
+  const teamFirstOrder = (today?.sellers ?? [])
+    .map((s) => s.firstOrderMinutes)
+    .filter((m) => m !== null && m !== undefined)
+    .sort((a, b) => a - b)[0] ?? null;
+
+  const history = historyContextFor(sellerId, historyDays);
+  const yBefore = valueAt(meYesterday?.timeline, Math.max(0, atMinutes - 120));
+  history.wasBehindYesterday = yBefore.revenue > 0
+    && valueAt(me?.timeline, Math.max(0, atMinutes - 120)).revenue < yBefore.revenue;
+
+  const achievements = evaluateAchievements({
+    sellerDay: me,
+    performance,
+    positions,
+    team: {
+      firstOrderMinutes: teamFirstOrder,
+      activeCount: aggregate.activeCount,
+      minTeamSize: config.privacy?.minTeamSizeForAggregate ?? 3,
+    },
+    history,
+    config: config.achievements,
+    goals: config.goals,
+  });
+
+  const others = (today?.sellers ?? [])
+    .filter((s) => s.sellerId !== sellerId)
+    .map((s) => ({ sellerId: s.sellerId, sellerName: s.sellerName }));
+  const identifying = identifyingTokens(today?.sellers ?? [], sellerId);
+
+  // --- VOCÊ CONTRA VOCÊ ---------------------------------------------------
+  // A régua pessoal e a barra coletiva nascem aqui, do mesmo lugar que tudo o
+  // mais: dados completos entram, número anônimo sai. O vendedor recebe a
+  // própria régua por inteiro e, da equipe, uma contagem — "11 de 19" — que é
+  // idêntica na tela de todos e não aponta para ninguém.
+  const temFaturamento = podeMostrarFaturamentoIndividual(today, config);
+  const reguas = reguasPara({ today, historyDays, businessHours });
+  const minhaRegua = reguas.get(sellerId)
+    ?? reguaDe({ sellerId, hoje: today?.date ?? null, dias: historyDays, businessHours });
+  const contraMim = compararComARegua({
+    regua: minhaRegua,
+    orders: performance.orders,
+    revenue: performance.revenue,
+    atMinutes,
+    temFaturamento,
+  });
+  const coletivo = awaitingData
+    ? { n: 0, de: 0, semRegua: 0, fracao: 0 }
+    : superaramAPropriaMarca({
+      sellers: today?.sellers ?? [], reguas, atMinutes, temFaturamento,
+    });
+
+  const emVigor = desafioAtivo(config.desafios, today?.date ?? null);
+  const desafio = emVigor
+    ? {
+      id: emVigor.id,
+      titulo: emVigor.titulo,
+      regra: emVigor.regra,
+      alvo: emVigor.alvo,
+      de: emVigor.de,
+      ate: emVigor.ate,
+      frase: fraseDoDesafio(emVigor),
+      diasRestantes: diasRestantes(emVigor, today?.date ?? null),
+      meu: avaliarDesafio({
+        desafio: emVigor,
+        regua: minhaRegua,
+        orders: performance.orders,
+        revenue: performance.revenue,
+        atMinutes,
+        temFaturamento,
+        sellerId,
+        hoje: today?.date ?? null,
+        dias: historyDays,
+        businessHours,
+      }),
+      equipe: awaitingData ? null : desafioDaEquipe({
+        desafio: emVigor,
+        sellers: today?.sellers ?? [],
+        reguas,
+        atMinutes,
+        temFaturamento,
+        hoje: today?.date ?? null,
+        dias: historyDays,
+        businessHours,
+      }),
+    }
+    : null;
+
+  const messages = buildMessages({
+    performance,
+    gaps,
+    positions,
+    tier,
+    contraMim,
+    phase: dayPhase(businessHours, atMinutes),
+    temFaturamento: podeMostrarFaturamentoIndividual(today, config),
+    origemConectada,
+    businessHours,
+    config: config.messages,
+    others,
+    identifyingTokens: identifying,
+    awaitingData,
+  });
+
+  // Agregado da equipe: apenas somas e médias, e somente quando a equipe é
+  // grande o bastante para que uma soma não revele o número de ninguém.
+  const canSeeAggregate = can(ROLE.SELLER, CAPABILITY.VIEW_TEAM_AGGREGATE, config, permCtx);
+  const yAggregate = yesterday ? teamAggregateAt(yesterday, atMinutes) : null;
+  const team = canSeeAggregate
+    ? {
+      visible: true,
+      sellerCount: aggregate.sellerCount,
+      activeCount: aggregate.activeCount,
+      orders: aggregate.orders,
+      revenue: aggregate.revenue,
+      avgOrders: aggregate.avgOrders,
+      avgRevenue: aggregate.avgRevenue,
+      revenueInformadaPelaOrigem: Boolean(aggregate.revenueInformadaPelaOrigem),
+      // A fatia individual precisa de faturamento POR VENDEDOR. Com o total
+      // vindo da carteira e o individual não existindo, a divisão não tem
+      // numerador — e um número aqui seria inventado.
+      myShareOfRevenue: aggregate.revenue > 0 && !aggregate.revenueInformadaPelaOrigem
+        && podeMostrarFaturamentoIndividual(today, config)
+        ? performance.revenue / aggregate.revenue
+        : null,
+      vsYesterdaySameTime: yAggregate
+        ? { orders: aggregate.orders - yAggregate.orders, revenue: aggregate.revenue - yAggregate.revenue }
+        : null,
+    }
+    : {
+      visible: false,
+      reason: awaitingData
+        ? 'aguardando-base'
+        : config.privacy?.sellerSeesTeamAggregate === false
+          ? 'desativado'
+          : 'equipe-pequena',
+    };
+
+  const viewModel = {
+    role: ROLE.SELLER,
+    identity: { sellerId, sellerName: sellerName ?? me?.sellerName ?? null },
+    date: today?.date ?? null,
+    atMinutes,
+    phase: dayPhase(businessHours, atMinutes),
+    status: today?.status ?? 'awaiting_source',
+    sourceMessage: today?.message ?? null,
+    origemConectada,
+    lidaEm: today?.fetchedAt ?? null,
+    isDemo: Boolean(today?.isDemo),
+    hasData: Boolean(me && me.timeline.length),
+    revenueAvailable: podeMostrarFaturamentoIndividual(today, config),
+    faturamentoNaOrigem: today?.revenueAvailable !== false,
+    awaitingData,
+    semProducao: !awaitingData && !(me && me.timeline.length),
+    performance,
+    gaps,
+    positions: { opening: positions.opening, current: positions.current, best: positions.best, series: positions.positions, marks: positions.minutes },
+    regua: minhaRegua,
+    contraMim,
+    coletivo,
+    desafio,
+    tier,
+    achievements,
+    messages,
+    team,
+    charts: {
+      mine: me?.timeline ?? [],
+      yesterday: meYesterday?.timeline ?? [],
+    },
+  };
+
+  assertSellerViewModelIsClean(viewModel, sellerId, today?.sellers ?? []);
+  return deepFreeze(viewModel);
+}
+
+/**
+ * PAINEL DO GESTOR — visão completa da operação.
+ * O gestor vê o ranking nominal, cada vendedor individualmente e os agregados.
+ */
+export function buildManagerView({
+  today, yesterday, atMinutes, config, historyDays = [], origemConectada = false,
+}) {
+  const businessHours = config.businessHours;
+  const ranked = rankAt(today, atMinutes, regrasDeRanking(today, config));
+  // Mesma régua do painel do vendedor: sem duas medições não houve movimento.
+  const medicoes = measurementMinutes(today).filter((m) => m <= atMinutes);
+  const openingMark = medicoes.length >= 2 ? medicoes[0] : null;
+  const temFaturamento = podeMostrarFaturamentoIndividual(today, config);
+  const reguas = reguasPara({ today, historyDays, businessHours });
+  const emVigor = desafioAtivo(config.desafios, today?.date ?? null);
+
+  const rows = ranked.map((entry) => {
+    const seller = today.sellers.find((s) => s.sellerId === entry.sellerId);
+    const sellerYesterday = yesterday?.sellers?.find((s) => s.sellerId === entry.sellerId) ?? null;
+    const yAt = valueAt(sellerYesterday?.timeline, atMinutes);
+
+    const performance = buildPerformance({
+      orders: entry.orders,
+      revenue: entry.revenue,
+      ordersYesterdaySameTime: yAt.orders,
+      revenueYesterdaySameTime: yAt.revenue,
+      ordersYesterdayTotal: sellerYesterday?.orders ?? 0,
+      revenueYesterdayTotal: sellerYesterday?.revenue ?? 0,
+      atMinutes,
+      businessHours,
+      projectionConfig: config.projection,
+      goals: config.goals,
+      baselineAvailable: Boolean(sellerYesterday?.timeline?.length),
+    });
+
+    const openingEntry = openingMark === null
+      ? null
+      : rankAt(today, openingMark, regrasDeRanking(today, config)).find((e) => e.sellerId === entry.sellerId);
+    const gaps = gapsFor(ranked, entry.sellerId);
+    const tier = tierFor(entry.orders, entry.revenue, config.tiers,
+      { temFaturamento: podeMostrarFaturamentoIndividual(today, config) });
+
+    // O gestor vê nome e número — é o painel dele. O que a régua acrescenta
+    // aqui é outra leitura da mesma equipe: quem está acima da PRÓPRIA marca.
+    // Um vendedor em décimo quinto lugar pode estar tendo o melhor dia dele, e
+    // até agora essa informação não existia em lugar nenhum.
+    const regua = reguas.get(entry.sellerId) ?? null;
+    const contraMim = compararComARegua({
+      regua,
+      orders: entry.orders,
+      revenue: entry.revenue,
+      atMinutes,
+      temFaturamento,
+    });
+
+    return {
+      sellerId: entry.sellerId,
+      sellerName: entry.sellerName,
+      uf: seller?.uf ?? null,
+      regua,
+      contraMim,
+      desafio: emVigor
+        ? avaliarDesafio({
+          desafio: emVigor,
+          regua,
+          orders: entry.orders,
+          revenue: entry.revenue,
+          atMinutes,
+          temFaturamento,
+          sellerId: entry.sellerId,
+          hoje: today?.date ?? null,
+          dias: historyDays,
+          businessHours,
+        })
+        : null,
+      foraDoCadastro: Boolean(seller?.foraDoCadastro),
+      semProducaoNaBase: Boolean(seller?.semProducaoNaBase),
+      position: entry.position,
+      positionOpening: openingEntry?.position ?? null,
+      positionDelta: openingEntry ? openingEntry.position - entry.position : 0,
+      semProducao: entry.semProducao,
+      performance,
+      gaps,
+      tier,
+      timeline: seller?.timeline ?? [],
+      yesterdayTimeline: sellerYesterday?.timeline ?? [],
+      lastMinutes: seller?.lastMinutes ?? null,
+    };
+  });
+
+  const aggregate = teamAggregate(today);
+  const yAggregate = yesterday ? teamAggregateAt(yesterday, atMinutes) : null;
+  const teamPerformance = buildPerformance({
+    orders: aggregate.orders,
+    revenue: aggregate.revenue,
+    ordersYesterdaySameTime: yAggregate?.orders ?? 0,
+    revenueYesterdaySameTime: yAggregate?.revenue ?? 0,
+    ordersYesterdayTotal: yesterday ? teamAggregate(yesterday).orders : 0,
+    revenueYesterdayTotal: yesterday ? teamAggregate(yesterday).revenue : 0,
+    atMinutes,
+    businessHours,
+    projectionConfig: config.projection,
+    goals: {
+      dailyOrders: (config.goals?.dailyOrders ?? 0) * aggregate.sellerCount,
+      dailyRevenue: (config.goals?.dailyRevenue ?? 0) * aggregate.sellerCount,
+    },
+    baselineAvailable: Boolean(yesterday?.hasData),
+  });
+
+  return {
+    role: ROLE.MANAGER,
+    date: today?.date ?? null,
+    atMinutes,
+    phase: dayPhase(businessHours, atMinutes),
+    status: today?.status ?? 'awaiting_source',
+    sourceMessage: today?.message ?? null,
+    origemConectada,
+    lidaEm: today?.fetchedAt ?? null,
+    isDemo: Boolean(today?.isDemo),
+    hasData: Boolean(today?.hasData),
+    revenueAvailable: podeMostrarFaturamentoIndividual(today, config),
+    faturamentoNaOrigem: today?.revenueAvailable !== false,
+    elapsedMinutes: elapsedBusinessMinutes(businessHours, atMinutes),
+    rows,
+    coletivo: superaramAPropriaMarca({
+      sellers: today?.sellers ?? [], reguas, atMinutes, temFaturamento,
+    }),
+    desafio: emVigor
+      ? {
+        id: emVigor.id,
+        titulo: emVigor.titulo,
+        regra: emVigor.regra,
+        alvo: emVigor.alvo,
+        de: emVigor.de,
+        ate: emVigor.ate,
+        frase: fraseDoDesafio(emVigor),
+        diasRestantes: diasRestantes(emVigor, today?.date ?? null),
+        equipe: desafioDaEquipe({
+          desafio: emVigor,
+          sellers: today?.sellers ?? [],
+          reguas,
+          atMinutes,
+          temFaturamento,
+          hoje: today?.date ?? null,
+          dias: historyDays,
+          businessHours,
+        }),
+      }
+      : null,
+    foraDoCadastro: today?.foraDoCadastro ?? [],
+    team: { ...aggregate, performance: teamPerformance, vsYesterdaySameTime: yAggregate },
+    historyDays,
+  };
+}
+
+/** Marca, por dia do histórico, quem esteve em alta performance (para a sequência). */
+export function markHighPerformance(dayState, config) {
+  const set = new Set();
+  const closing = toMinutes(config.businessHours?.end ?? '18:00');
+  for (const seller of dayState?.sellers ?? []) {
+    const goal = config.goals?.dailyRevenue ?? 0;
+    if (goal > 0 && seller.revenue >= goal * (config.achievements?.altaPerformancePaceRatio ?? 1.2)) {
+      set.add(seller.sellerId);
+    }
+  }
+  return { state: dayState, closing, highPerformance: set };
+}
