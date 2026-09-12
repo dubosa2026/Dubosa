@@ -81,6 +81,9 @@ class App {
       // aba Acessos possa mostrá-los sem o gestor precisar gerar um a um.
       issuedTokens: { ...(globalThis.__LIGA_DADOS__?.tokensDeTeste ?? {}) },
       managerToken: globalThis.__LIGA_DADOS__?.tokenGestor ?? null,
+      // Rascunho do desafio que o gestor está escrevendo. Vive na tela, não na
+      // configuração: só vira desafio quando ele mandar guardar.
+      desafioRascunho: null,
     };
   }
 
@@ -340,6 +343,30 @@ class App {
   setManagerTab(tab) { this.state.managerTab = tab; this.render(); }
 
   setAdminTab(tab) { this.state.adminTab = tab; this.render(); }
+
+  // ------------------------------------------------------------- desafios
+  /**
+   * O desafio só existe depois de guardado. Enquanto está sendo escrito, ele é
+   * rascunho — e um campo pela metade não pode aparecer na tela de ninguém.
+   */
+  setDesafioRascunho(patch, { rerender = true } = {}) {
+    this.state.desafioRascunho = { ...(this.state.desafioRascunho ?? {}), ...patch };
+    if (rerender) this.render();
+  }
+
+  guardarDesafio(desafio) {
+    const atuais = Array.isArray(this.config?.desafios) ? this.config.desafios : [];
+    const semEle = atuais.filter((d) => d?.id !== desafio.id);
+    this.updateConfigPath('desafios', [...semEle, desafio]);
+    this.state.desafioRascunho = null;
+    this.render();
+  }
+
+  removerDesafio(id) {
+    const atuais = Array.isArray(this.config?.desafios) ? this.config.desafios : [];
+    this.updateConfigPath('desafios', atuais.filter((d) => d?.id !== id));
+    this.render();
+  }
 
   /** Este aparelho já assumiu ser o do gestor alguma vez? */
   get gestorConfirmado() {

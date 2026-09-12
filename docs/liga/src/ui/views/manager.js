@@ -77,6 +77,7 @@ export function managerView({ vm, config, app, revendo = false }) {
         }))
       : null,
     teamKpis({ app, vm, awaiting, config }),
+    desafioDaEquipeSection({ vm, app }),
     h('nav', { class: 'tabs', role: 'tablist' },
       tabButton('ranking', 'Ranking', tab, app),
       tabButton('vendedor', 'Vendedor', tab, app),
@@ -211,6 +212,19 @@ function teamKpis({ app, vm, awaiting, config }) {
             }),
           })),
         h('div', { class: 'kpi-sub-grid' },
+          // A leitura que o ranking não dá: quantas pessoas estão melhores do
+          // que elas mesmas hoje. Uma equipe inteira pode subir sem que uma
+          // única posição mude de dono — e era exatamente isso que não
+          // aparecia em lugar nenhum deste painel.
+          statTile({
+            label: 'Acima da própria marca', icon: '📐',
+            value: vm.coletivo?.de ? `${number(vm.coletivo.n)} de ${number(vm.coletivo.de)}` : '—',
+            sub: h('span', { class: 'muted', text: vm.coletivo?.de
+              ? (vm.coletivo.semRegua
+                ? `${number(vm.coletivo.semRegua)} sem histórico suficiente`
+                : 'comparado ao próprio histórico')
+              : 'ainda sem histórico para comparar' }),
+          }),
           temFaturamento
             ? statTile({ label: 'Média por vendedor', value: money(vm.team.avgRevenue), icon: '👤' })
             : statTile({ label: 'Média por vendedor', value: decimal(vm.team.avgOrders), icon: '👤', sub: h('span', { class: 'muted', text: 'pedidos por vendedor' }) }),
@@ -230,6 +244,49 @@ function teamKpis({ app, vm, awaiting, config }) {
               icon: '🎯',
               sub: h('span', { class: 'muted', text: `alvo ${number((config.goals?.dailyOrders ?? 0) * vm.team.sellerCount)} pedidos` }),
             }))));
+}
+
+/**
+ * O DESAFIO EM VIGOR, DO LADO DE QUEM O ESCREVEU.
+ *
+ * O gestor vê a mesma contagem que a equipe vê — e, na tabela do ranking, quem
+ * está cumprindo. Essa assimetria é o desenho: ele precisa saber a quem
+ * cobrar e a quem reconhecer; ninguém mais precisa.
+ */
+function desafioDaEquipeSection({ vm, app }) {
+  const d = vm.desafio;
+  if (!d) {
+    return h('section', { class: 'card card-muted' },
+      sectionTitle('Desafio da equipe'),
+      h('p', { class: 'muted', text: 'Nenhum desafio em vigor hoje. Um desafio é sempre "cada um contra o próprio histórico" — ninguém disputa com ninguém — e o aplicativo mede sozinho.' }),
+      h('button', {
+        class: 'btn btn-sm',
+        onclick: () => { app.setAdminTab('desafios'); app.goAdmin(); },
+        text: 'Criar um desafio',
+      }));
+  }
+  const e = d.equipe;
+  return h('section', { class: 'card card-desafio' },
+    sectionTitle(`Desafio: ${d.titulo}`, h('span', {
+      class: 'section-hint',
+      text: d.diasRestantes === null ? '' : d.diasRestantes <= 0 ? 'último dia' : `${d.diasRestantes} ${d.diasRestantes === 1 ? 'dia' : 'dias'} restantes`,
+    })),
+    h('p', { class: 'desafio-regra' }, h('span', { 'aria-hidden': 'true', text: '🎯 ' }), d.frase),
+    e && e.de > 0
+      ? progressBar({
+        value: e.fracao,
+        label: `${number(e.n)} de ${number(e.de)} cumpriram`,
+        caption: e.meta && e.meta !== e.de
+          ? `Meta da equipe: ${number(e.meta)}. Faltam ${number(Math.max(0, e.meta - e.n))}.`
+          : `De ${dateBR(d.de)} a ${dateBR(d.ate)}.`,
+        tone: e.fracao >= 1 ? 'good' : 'accent',
+      })
+      : h('p', { class: 'muted', text: 'Ninguém tem histórico suficiente para este desafio ainda.' }),
+    h('button', {
+      class: 'btn btn-ghost btn-sm',
+      onclick: () => { app.setAdminTab('desafios'); app.goAdmin(); },
+      text: 'Editar desafios',
+    }));
 }
 
 // ------------------------------------------------------------------ ranking
@@ -277,6 +334,7 @@ function rankingTab({ vm, awaiting, app }) {
           h('th', { class: 'num', text: 'Ritmo' }),
           h('th', { class: 'num', text: 'Projeção' }),
           h('th', { class: 'num', text: 'Para a próxima' }),
+          h('th', { class: 'num', text: 'vs própria marca' }),
           h('th', { text: 'Nível' }),
           h('th', { text: 'Curva' }))),
         h('tbody', {}, vm.rows.map((row) => rankingRow(row, app, vm.revenueAvailable))))),
@@ -327,8 +385,19 @@ function rankingRow(row, app, temFaturamento = true) {
   h('td', { class: 'num' }, row.gaps?.toNext
     ? (temFaturamento ? money(row.gaps.toNext.revenue) : number(row.gaps.toNext.orders))
     : '—'),
+  h('td', { class: 'num' }, contraSiCell(row.contraMim, temFaturamento)),
   h('td', {}, tierBadge(row.tier, { size: 'sm' })),
   h('td', {}, sparkline(row.timeline, temFaturamento ? 'revenue' : 'orders')));
+}
+
+/** Onde a pessoa está em relação a ela mesma — a coluna que o ranking não tem. */
+function contraSiCell(cmp, temFaturamento) {
+  if (!cmp || cmp.estado === 'sem-regua') {
+    return h('span', { class: 'muted', title: 'Sem histórico suficiente para formar a régua', text: 'sem régua' });
+  }
+  if (cmp.estado === 'igual') return h('span', { class: 'muted', text: 'na marca' });
+  const texto = temFaturamento ? moneyDelta(cmp.diferenca) : numberDelta(cmp.diferenca);
+  return deltaBadge(cmp.estado === 'acima' ? 'up' : 'down', texto, { size: 'sm' });
 }
 
 // --------------------------------------------------------- vendedor (drill)

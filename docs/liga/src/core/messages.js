@@ -1,5 +1,6 @@
 import { money, moneyDelta, number, percent } from './format.js';
 import { textIdentifiesOther, identifyingTokens } from './nameScan.js';
+import { comoChamarABase } from './regua.js';
 
 /**
  * MOTOR DE MENSAGENS
@@ -66,6 +67,7 @@ export function buildMessages(ctx) {
     performance, gaps, positions, tier, phase = 'aberto', config = {},
     others = [], identifyingTokens: tokens = new Set(), awaitingData = false,
     temFaturamento = true, origemConectada = false, businessHours = null,
+    contraMim = null,
   } = ctx;
 
   // Sem base conectada não existe desempenho a comentar. Uma frase motivacional
@@ -103,6 +105,32 @@ export function buildMessages(ctx) {
   const gapAlertRevenue = config.gapAlertRevenue ?? 10000;
   const gapAlertOrders = config.gapAlertOrders ?? 2;
 
+  // --- VOCÊ CONTRA VOCÊ ---------------------------------------------------
+  // Vem antes de tudo o que fala em posição, e de propósito: esta é a disputa
+  // que a pessoa controla sozinha. A distância para o vizinho depende do que o
+  // vizinho fez; a distância para a própria média, não.
+  //
+  // Nunca se diz "você está abaixo". Diz-se o que falta — que é a mesma
+  // informação escrita como tarefa, e não como veredito.
+  if (contraMim && contraMim.estado !== 'sem-regua') {
+    const base = comoChamarABase(contraMim);
+    const d = Math.abs(contraMim.diferenca);
+    const quanto = contraMim.unidade === 'revenue'
+      ? money(d)
+      : `${number(d)} ${d === 1 ? 'pedido' : 'pedidos'}`;
+    if (contraMim.estado === 'acima') {
+      push('acima-da-regua', TONE.TRIUNFO, '📈', `Você está ${quanto} acima da ${base}.`, 99);
+    } else if (contraMim.estado === 'igual') {
+      push('na-regua', TONE.RITMO, '📐', `Você está exatamente na ${base}. O próximo pedido passa dela.`, 97);
+    } else {
+      const verbo = contraMim.unidade === 'revenue' || d !== 1 ? 'Faltam' : 'Falta';
+      push('abaixo-da-regua', TONE.DISPUTA, '🎯', `${verbo} ${quanto} para alcançar a ${base}.`, 98);
+    }
+  } else if (contraMim && !awaitingData) {
+    push('regua-em-formacao', TONE.NEUTRO, '📐',
+      'Sua régua pessoal ainda está se formando. A partir dos próximos dias, você passa a disputar com o seu próprio histórico.', 45);
+  }
+
   // --- Liderança e movimento no ranking -----------------------------------
   const gained = positions?.opening != null && positions?.current != null
     ? positions.opening - positions.current
@@ -110,17 +138,24 @@ export function buildMessages(ctx) {
 
   const produziu = temFaturamento ? revenue > 0 : orders > 0;
 
+  // Abaixo da régua, e não acima: a liderança é notícia, mas é notícia sobre o
+  // que os outros fizeram. A primeira frase do dia continua sendo a única que
+  // depende só de quem está lendo.
   if (gaps?.isLeader && produziu) {
     push('lideranca', TONE.TRIUNFO, '🏆',
-      gained > 0 ? 'Você assumiu a liderança. Agora é segurar.' : 'Você está em 1º lugar. Ninguém passou.', 100);
+      gained > 0 ? 'Você assumiu a liderança. Agora é segurar.' : 'Você está em 1º lugar. Ninguém passou.', 96);
   }
 
   if (gained > 0) {
     push('subiu', TONE.TRIUNFO, '🔥',
-      `Você subiu ${gained === 1 ? 'uma posição' : `${number(gained)} posições`} hoje.`, 95);
+      `Você subiu ${gained === 1 ? 'uma posição' : `${number(gained)} posições`} hoje.`, 94);
   } else if (gained < 0) {
+    // Também abaixo do ritmo e da régua. Posição perdida de manhã é quase
+    // sempre agitação do começo do dia — quinze lugares trocam de dono com dois
+    // pedidos —, e liderar a tela com isso é gritar barulho. Continua dito, uma
+    // linha depois do que a pessoa pode fazer a respeito.
     push('caiu', TONE.ALERTA, '🚨',
-      `Você perdeu ${Math.abs(gained) === 1 ? 'uma posição' : `${number(Math.abs(gained))} posições`}. Hora de reagir.`, 93);
+      `Você perdeu ${Math.abs(gained) === 1 ? 'uma posição' : `${number(Math.abs(gained))} posições`}. Hora de reagir.`, 83);
   }
 
   // --- Disputa com os vizinhos (magnitude, nunca identidade) --------------
@@ -149,10 +184,15 @@ export function buildMessages(ctx) {
     const atras = temFaturamento ? gaps.toPrevious.revenue : gaps.toPrevious.orders;
     const limite = temFaturamento ? gapAlertRevenue : gapAlertOrders;
     if (atras >= 0 && atras <= limite) {
+      // Empate é empate: "estão a 0 pedidos de você" é uma frase que ninguém
+      // diria em voz alta, e era o que aparecia sempre que a distância fechava.
+      const empatado = atras === 0;
       push('sendo-alcancado', TONE.ALERTA, '🛡️',
-        temFaturamento
-          ? `Estão a ${money(atras)} de você. Segure a posição.`
-          : `Estão a ${number(atras)} ${atras === 1 ? 'pedido' : 'pedidos'} de você. Segure a posição.`, 85);
+        empatado
+          ? 'Empatado com quem vem atrás. O próximo pedido decide.'
+          : temFaturamento
+            ? `Estão a ${money(atras)} de você. Segure a posição.`
+            : `Estão a ${number(atras)} ${atras === 1 ? 'pedido' : 'pedidos'} de você. Segure a posição.`, 85);
     }
   }
 

@@ -260,8 +260,67 @@ h1, h2, h3 { margin: 0; font-weight: 650; letter-spacing: -.01em; }
 
 .hero-position { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
 .hero-position-text { display: flex; flex-direction: column; gap: 5px; }
-.hero-headline { font-size: 17px; font-weight: 650; }
+.hero-headline { font-size: 19px; font-weight: 680; line-height: 1.3; }
 .hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* A manchete é a régua pessoal; a posição desceu para a linha de apoio. */
+.hero-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+.hero-icon { font-size: 26px; line-height: 1.1; }
+.hero-head-text { display: flex; flex-direction: column; gap: 4px; }
+.hero-apoio { font-size: 12.5px; color: var(--text-secondary); }
+.hero-bom .hero-headline { color: var(--good); }
+.hero-alvo .hero-headline { color: var(--accent-strong); }
+
+.hero-rank {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 12px 0 14px; padding-top: 12px; border-top: 1px solid var(--border);
+}
+.hero-rank-text { font-size: 12.5px; color: var(--text-secondary); }
+.hero-rank-move { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.hero-rank .position-badge { padding: 6px 10px; }
+.hero-rank .position-value { font-size: 20px; }
+
+/* ------------------------------------------------------------- a régua */
+.regua { margin: 4px 0 2px; }
+.regua-track {
+  position: relative; height: 12px; border-radius: 999px;
+  background: var(--surface-3); overflow: visible;
+}
+.regua-fill { height: 100%; border-radius: 999px; transition: width .4s ease; }
+.regua-acima { background: var(--good); }
+.regua-abaixo { background: var(--accent); }
+.regua-marca {
+  position: absolute; top: -4px; width: 3px; height: 20px; border-radius: 2px;
+  background: var(--text-primary); transform: translateX(-1px);
+}
+.regua-legend {
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  margin-top: 10px;
+}
+.regua-item { display: flex; flex-direction: column; gap: 2px; }
+.regua-key { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .03em; }
+.regua-val { font-size: 15px; font-variant-numeric: tabular-nums; }
+.regua-val.strong { font-weight: 700; }
+.regua-fonte { margin: 8px 0 0; font-size: 11.5px; color: var(--text-muted); line-height: 1.4; }
+
+/* --------------------------------------------------- desafio e coletivo */
+.card-desafio { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.card-desafio-ok { border-color: color-mix(in srgb, var(--good) 50%, var(--border)); }
+.desafio-regra { margin: 0 0 12px; font-size: 13.5px; font-weight: 550; }
+.desafio-equipe { margin: 12px 0 0; font-size: 12.5px; color: var(--text-secondary); }
+.desafio-previa {
+  margin: 14px 0; padding: 12px 14px; border-radius: var(--radius-sm);
+  border: 1px dashed var(--border-strong); background: var(--surface-2);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.desafio-previa-ok { border-style: solid; border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.desafio-previa .desafio-regra { margin: 6px 0 0; }
+.flag-ok {
+  display: inline-block; padding: 2px 7px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .03em;
+  color: var(--good); background: var(--good-soft);
+}
+.card-coletivo { border-color: color-mix(in srgb, var(--good) 35%, var(--border)); }
 
 .position-badge {
   display: flex;
@@ -429,6 +488,10 @@ h1, h2, h3 { margin: 0; font-weight: 650; letter-spacing: -.01em; }
 .progress-pct { font-variant-numeric: tabular-nums; font-weight: 650; color: var(--text-primary); }
 .progress-track { height: 8px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
 .progress-fill { height: 100%; border-radius: 999px; background: var(--accent); transition: width .4s ease; }
+/* Depois de `.progress-fill`, e não antes: mesma especificidade, quem vem
+   por último manda — declarado acima, o verde nunca apareceria. */
+.progress-good { background: var(--good); }
+.progress-warn { background: var(--warn); }
 .progress-alt { background: var(--series-2); }
 .progress-caption { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
 
@@ -838,6 +901,11 @@ body.is-compact .demo-banner span { display: none; }
 }
 
 .compact-gap { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+.compact-regua {
+  display: flex; align-items: center; gap: 6px; justify-content: center;
+  font-size: 12px; font-weight: 600; padding: 6px 8px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
 .compact-message { font-weight: 500; font-size: 11.5px; color: var(--text-secondary); line-height: 1.35; }
 .compact-waiting { border-style: dashed; color: var(--text-muted); }
 .compact-footer { display: flex; align-items: center; justify-content: space-between; font-size: 11px; }
@@ -846,6 +914,8 @@ body.is-compact .demo-banner span { display: none; }
 @media (max-width: 620px) {
   .hero-stats, .dispute-grid { grid-template-columns: 1fr; }
   .hero-position { flex-direction: column; align-items: flex-start; }
+  .hero-headline { font-size: 17px; }
+  .regua-legend { flex-direction: column; gap: 8px; }
   .view { padding: 10px 10px 26px; }
   .app-header { flex-direction: column; align-items: flex-start; }
   .stat-hero .stat-value { font-size: 24px; }

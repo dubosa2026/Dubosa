@@ -1,4 +1,5 @@
 import { h, copyText, downloadFile } from '../dom.js';
+import { REGRAS, normalizar as normalizarDesafio, frase as fraseDoDesafio, valeEm, diasRestantes } from '../../core/desafios.js';
 import { sectionTitle } from '../components/widgets.js';
 import { buildLink, generateToken } from '../../core/identity.js';
 import { exportRoster } from '../../core/roster.js';
@@ -28,12 +29,14 @@ export function adminView({ config, app, roster, rosterOrigin, team, teamOrigin,
       tabBtn('acessos', 'Acessos', tab, app),
       tabBtn('base', 'Base de dados', tab, app),
       tabBtn('regras', 'Regras', tab, app),
+      tabBtn('desafios', 'Desafios', tab, app),
       tabBtn('instalar', 'Instalar', tab, app)),
     tab === 'lancar' ? launchPanel({ app, team }) : null,
     tab === 'equipe' ? teamPanel({ app, team, teamOrigin, roster }) : null,
     tab === 'acessos' ? accessPanel({ app, roster, rosterOrigin, team }) : null,
     tab === 'base' ? dataPanel({ app, config, connection, diagnostico, sourceHealth }) : null,
     tab === 'regras' ? rulesPanel({ app, config }) : null,
+    tab === 'desafios' ? desafiosPanel({ app, config }) : null,
     tab === 'instalar' ? atualizacaoPanel() : null,
     tab === 'instalar' ? installPanel({ app, roster }) : null);
 }
@@ -788,6 +791,182 @@ function rulesPanel({ app, config }) {
       }),
       h('button', { class: 'btn btn-danger', onclick: () => app.resetConfig(), text: 'Restaurar padrão' })),
     h('p', { class: 'muted', text: 'As alterações valem neste navegador. Baixe o arquivo e substitua config/app.config.json no repositório para valerem para toda a equipe.' }));
+}
+
+// ------------------------------------------------------------------ desafios
+/**
+ * ONDE O GESTOR ESCREVE O DESAFIO
+ * ===============================
+ *
+ * A regra não é um campo de texto livre, e isso é a parte importante da tela.
+ * Um desafio escrito à mão acabaria, mais cedo ou mais tarde, virando "quem
+ * fizer mais pedidos esta semana" — que é exatamente a comparação entre pessoas
+ * que este aplicativo existe para não fazer. Aqui o gestor escolhe entre três
+ * regras, e as três medem a pessoa contra o histórico dela mesma.
+ *
+ * O que ele escreve é o TÍTULO e o PRAZO: a parte que dá sentido, e não a que
+ * define quem ganha.
+ *
+ * A frase final aparece antes de guardar. Ninguém publica um desafio sem ler o
+ * que a equipe vai ler.
+ */
+function desafiosPanel({ app, config }) {
+  const hoje = app.now?.date ?? null;
+  const lista = (Array.isArray(config.desafios) ? config.desafios : [])
+    .map(normalizarDesafio)
+    .filter(Boolean);
+  const ativos = lista.filter((d) => valeEm(d, hoje));
+
+  const r = app.state.desafioRascunho ?? {};
+  const rascunho = {
+    id: r.id ?? `d-${hoje ?? 'novo'}-${lista.length + 1}`,
+    titulo: r.titulo ?? '',
+    regra: r.regra ?? 'media',
+    alvo: r.alvo ?? REGRAS[r.regra ?? 'media'].alvoPadrao,
+    de: r.de ?? hoje ?? '',
+    ate: r.ate ?? '',
+    metaColetiva: r.metaColetiva ?? '',
+  };
+  const pronto = normalizarDesafio(rascunho);
+  const completo = Boolean(rascunho.titulo.trim() && rascunho.de && rascunho.ate && rascunho.ate >= rascunho.de);
+
+  return h('section', { class: 'card' },
+    sectionTitle('Desafios da equipe'),
+    h('div', { class: 'alert alert-info' },
+      h('strong', { text: 'Todo desafio é cada um contra o próprio histórico. ' }),
+      'Não há como escrever aqui um desafio que compare uma pessoa com outra — e é por isso que ele pode aparecer '
+      + 'na tela de todo mundo sem expor ninguém. O aplicativo mede sozinho: nada de mandar print para você.'),
+
+    ativos.length > 1
+      ? h('div', { class: 'alert alert-warn' },
+        h('strong', { text: 'Mais de um desafio no prazo. ' }),
+        `Vale o último da lista ("${ativos.at(-1).titulo}"). Dois alvos ao mesmo tempo não dobram o foco — encerre um deles ajustando a data final.`)
+      : null,
+
+    h('h3', { class: 'sub-title', text: 'Novo desafio' }),
+    h('label', { class: 'field' },
+      h('span', { class: 'field-label', text: 'Título — é o que a equipe lê primeiro' }),
+      h('input', {
+        class: 'input', type: 'text', value: rascunho.titulo,
+        placeholder: 'Semana da superação',
+        oninput: (e) => app.setDesafioRascunho({ titulo: e.target.value }, { rerender: false }),
+        onchange: (e) => app.setDesafioRascunho({ titulo: e.target.value }),
+      })),
+    h('label', { class: 'field' },
+      h('span', { class: 'field-label', text: 'Regra' }),
+      h('select', {
+        class: 'select',
+        onchange: (e) => app.setDesafioRascunho({ regra: e.target.value, alvo: REGRAS[e.target.value].alvoPadrao }),
+      }, Object.values(REGRAS).map((regra) => h('option', {
+        value: regra.id, selected: rascunho.regra === regra.id,
+      }, regra.nome)))),
+    h('p', { class: 'muted', text: REGRAS[rascunho.regra]?.ajuda ?? '' }),
+    h('div', { class: 'field-grid' },
+      h('label', { class: 'field' },
+        h('span', { class: 'field-label', text: `Alvo (${REGRAS[rascunho.regra]?.unidade ?? 'pedidos'})` }),
+        h('input', {
+          class: 'input', type: 'number', min: '1', step: '1', value: rascunho.alvo,
+          onchange: (e) => app.setDesafioRascunho({ alvo: Number(e.target.value) }),
+        })),
+      h('label', { class: 'field' },
+        h('span', { class: 'field-label', text: 'Meta da equipe (opcional)' }),
+        h('input', {
+          class: 'input', type: 'number', min: '1', step: '1', value: rascunho.metaColetiva,
+          placeholder: 'quantas pessoas devem cumprir',
+          onchange: (e) => app.setDesafioRascunho({ metaColetiva: e.target.value }),
+        }))),
+    h('div', { class: 'field-grid' },
+      h('label', { class: 'field' },
+        h('span', { class: 'field-label', text: 'Começa em' }),
+        h('input', {
+          class: 'input', type: 'date', value: rascunho.de,
+          onchange: (e) => app.setDesafioRascunho({ de: e.target.value }),
+        })),
+      h('label', { class: 'field' },
+        h('span', { class: 'field-label', text: 'Termina em' }),
+        h('input', {
+          class: 'input', type: 'date', value: rascunho.ate,
+          onchange: (e) => app.setDesafioRascunho({ ate: e.target.value }),
+        }))),
+
+    h('div', { class: ['desafio-previa', completo && 'desafio-previa-ok'] },
+      h('span', { class: 'field-label', text: 'O que a equipe vai ler' }),
+      h('strong', { text: rascunho.titulo.trim() || 'Sem título' }),
+      h('p', { class: 'desafio-regra', text: `🎯 ${fraseDoDesafio(pronto) ?? ''}` }),
+      h('p', { class: 'muted', text: completo
+        ? `Vale de ${dataBR(rascunho.de)} a ${dataBR(rascunho.ate)}.`
+        : 'Preencha título e as duas datas. Desafio sem prazo vira paisagem — e o final não pode ser antes do começo.' })),
+
+    h('div', { class: 'button-row' },
+      h('button', {
+        class: 'btn btn-primary',
+        disabled: !completo,
+        onclick: () => app.guardarDesafio({
+          id: rascunho.id,
+          titulo: rascunho.titulo.trim(),
+          regra: rascunho.regra,
+          alvo: Number(rascunho.alvo),
+          de: rascunho.de,
+          ate: rascunho.ate,
+          metaColetiva: rascunho.metaColetiva === '' ? null : Number(rascunho.metaColetiva),
+        }),
+        text: 'Guardar desafio',
+      }),
+      h('button', {
+        class: 'btn btn-ghost',
+        onclick: () => app.setDesafioRascunho({ titulo: '', ate: '', metaColetiva: '' }),
+        text: 'Limpar',
+      })),
+
+    h('div', { class: 'divider' }),
+    h('h3', { class: 'sub-title', text: 'Desafios guardados' }),
+    lista.length
+      ? h('div', { class: 'table-scroll' },
+        h('table', { class: 'data-table' },
+          h('thead', {}, h('tr', {},
+            h('th', { text: 'Título' }),
+            h('th', { text: 'Regra' }),
+            h('th', { class: 'num', text: 'Alvo' }),
+            h('th', { text: 'Prazo' }),
+            h('th', { text: 'Estado' }),
+            h('th', { text: '' }))),
+          h('tbody', {}, lista.map((d) => h('tr', { class: valeEm(d, hoje) && 'row-leader' },
+            h('td', { text: d.titulo }),
+            h('td', { text: REGRAS[d.regra].nome }),
+            h('td', { class: 'num', text: `${d.alvo} ${REGRAS[d.regra].unidade}` }),
+            h('td', { text: `${dataBR(d.de)} — ${dataBR(d.ate)}` }),
+            h('td', {}, estadoDoDesafio(d, hoje)),
+            h('td', {}, h('button', {
+              class: 'btn btn-ghost btn-sm',
+              onclick: () => app.removerDesafio(d.id),
+              text: 'Remover',
+            })))))))
+      : h('p', { class: 'muted', text: 'Nenhum desafio guardado ainda.' }),
+
+    h('div', { class: 'divider' }),
+    h('div', { class: 'button-row' },
+      h('button', {
+        class: 'btn btn-primary',
+        onclick: () => downloadFile('app.config.json', exportConfig(), 'application/json'),
+        text: '⬇ Baixar configuração',
+      })),
+    h('p', { class: 'muted', text: 'O desafio já vale no SEU navegador. Para a equipe vê-lo, baixe este arquivo e '
+      + 'substitua config/app.config.json no repositório — o mesmo caminho do cadastro e das regras.' }));
+}
+
+function estadoDoDesafio(d, hoje) {
+  if (!hoje) return h('span', { class: 'muted', text: '—' });
+  if (valeEm(d, hoje)) {
+    const faltam = diasRestantes(d, hoje);
+    return h('span', { class: 'flag-ok', text: faltam <= 1 ? 'em vigor — último dia' : `em vigor — ${faltam} dias` });
+  }
+  return h('span', { class: 'muted', text: d.ate < hoje ? 'encerrado' : 'programado' });
+}
+
+function dataBR(iso) {
+  if (!iso) return '—';
+  const [y, m, d] = String(iso).split('-');
+  return y && m && d ? `${d}/${m}/${y}` : String(iso);
 }
 
 // ------------------------------------------------------------------ instalar

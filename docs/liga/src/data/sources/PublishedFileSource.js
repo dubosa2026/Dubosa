@@ -106,6 +106,10 @@ export class PublishedFileSource extends DataSource {
         // faturamento por vendedor — é o resultado da equipe, e sem repassar
         // aqui o painel mostraria a linha vazia tendo o número à mão.
         totaisDaEquipe: Array.isArray(json?.equipe) ? json.equipe : null,
+        // Réguas pessoais já calculadas pelo coletor, sobre todo o histórico
+        // que existe no repositório. Sem repassar, o aplicativo refaria a conta
+        // com os poucos dias que o navegador carrega.
+        reguas: json?.reguas && typeof json.reguas === 'object' ? json.reguas : null,
       },
     };
   }
