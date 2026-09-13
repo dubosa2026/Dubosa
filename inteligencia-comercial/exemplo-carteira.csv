@@ -1,0 +1,15 @@
+﻿Código do Cliente;Nome/Razão Social;UF;Cidade;Vendedor;Data de Cadastro;Data da Primeira Compra;Data da Última Compra;Quantidade de Pedidos;Faturamento Total;Faturamento 30 dias;Faturamento 90 dias;Faturamento 180 dias;Ticket Médio;Frequência Média de Compra;Quantidade de Meses Comprando;Categorias Compradas;Produtos Comprados;Quantidade de SKUs;Status do Cliente;Histórico de Reativação;Descontos Concedidos (%);Informações de Concorrência
+CLI0001;SolarMax Distribuidora;PA;Belém;Ana Souza;10/01/2022;01/02/2022;20/08/2026;42;1850000;160000;470000;900000;;;55;Inversor,Módulo,Estrutura,Cabo,String Box,Bateria;;38;Ativo;;3;
+CLI0002;NovaEnergia Integradora;TO;Palmas;Bruno Lima;;;05/09/2026;9;210000;95000;130000;;;;7;Inversor,Módulo;;10;Ativo;;0;
+CLI0003;Engenho Solar Ltda;RO;Porto Velho;Ana Souza;;;25/08/2026;30;640000;8000;140000;300000;;;40;Inversor,Módulo,Estrutura;;20;Ativo;;5;
+CLI0004;Grupo Fotovix;AM;Manaus;Carla Dias;;;01/03/2026;25;480000;;;;;;30;Inversor,Módulo,Estrutura,Cabo;;22;Ativo;;4;
+CLI0005;ClientePequeno ME;PA;Marabá;Bruno Lima;;;01/06/2025;2;9000;;;;;;3;Cabo;;2;Ativo;;;
+CLI0006;Instaladora Rápida EIRELI;RR;Boa Vista;Carla Dias;;;01/08/2026;2;15000;;;;;;2;Cabo;;2;Ativo;;;
+CLI0007;Mega Usina Rural S.A.;PA;Santarém;Ana Souza;;;15/06/2026;4;640000;;;;160000;95;12;Inversor;;5;Ativo;;1;
+CLI0008;Construtora Desconto Fácil;AC;Rio Branco;Bruno Lima;;;01/07/2026;2;40000;;;;;;5;Módulo;;3;Ativo;;18;
+CLI0009;PowerHouse Energia;TO;Araguaína;Carla Dias;;;28/08/2026;20;520000;60000;170000;;;;24;Módulo;;6;Ativo;;2;
+CLI0010;Prospect Novo Ltda;PA;Belém;Ana Souza;01/09/2026;;;;;;;;;;;;;;;;;
+CLI0011;Aliança Energia Solar;RO;Ji-Paraná;Bruno Lima;;;10/08/2026;15;300000;20000;90000;;;;18;Inversor,Estrutura;;8;Ativo;;6;Cliente mencionou proposta de concorrente com prazo maior
+CLI0012;EcoSolar Cancelada ME;AP;Macapá;Carla Dias;;;01/12/2025;6;60000;;;;;;10;Cabo;;3;Cancelado;;3;
+CLI0013;Distribuidora Central de Energia;PA;Belém;Ana Souza;;;01/09/2026;33;700000;55000;165000;;;;42;Inversor,Módulo,Estrutura,Cabo,String Box;;25;Ativo;;1;
+CLI0014;Retomada Solar Ltda;TO;Gurupi;Bruno Lima;;;30/08/2026;10;130000;20000;35000;;;;20;Inversor,Módulo;;7;Ativo;Sim, retomou compras em agosto/2026;2;

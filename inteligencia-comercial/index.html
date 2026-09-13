@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inteligência Comercial — Belenergy</title>
+<style>
+  :root {
+    --bg: #f4f6f9;
+    --papel: #ffffff;
+    --borda: #dfe4ea;
+    --texto: #1f2937;
+    --texto-suave: #6b7280;
+    --azul: #2454a6;
+    --azul-claro: #eaf1fc;
+    --verde: #1f8a54;
+    --verde-claro: #e7f6ee;
+    --vermelho: #c73838;
+    --vermelho-claro: #fbeaea;
+    --amarelo: #b8860b;
+    --amarelo-claro: #fbf3e0;
+    --p1: #c73838;
+    --p2: #d9822b;
+    --p3: #b8960b;
+    --p4: #2454a6;
+    --p5: #6b7280;
+    --sombra: 0 1px 3px rgba(20, 30, 50, .08);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--texto);
+    font: 14px/1.45 -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  .envelope { max-width: 1180px; margin: 0 auto; padding: 20px 18px 60px; }
+  header.topo { padding: 22px 0 8px; }
+  header.topo h1 { margin: 0 0 4px; font-size: 22px; }
+  header.topo p { margin: 0; color: var(--texto-suave); }
+  .selo-privacidade {
+    display: inline-block; margin-top: 10px; padding: 5px 10px; border-radius: 6px;
+    background: var(--verde-claro); color: var(--verde); font-size: 12.5px; font-weight: 600;
+  }
+
+  .cartao {
+    background: var(--papel); border: 1px solid var(--borda); border-radius: 10px;
+    padding: 20px; margin-bottom: 16px; box-shadow: var(--sombra);
+  }
+
+  /* ---------- upload ---------- */
+  .zona-drop {
+    border: 2px dashed #b7c2d0; border-radius: 10px; padding: 40px 20px; text-align: center;
+    color: var(--texto-suave); cursor: pointer; transition: background .15s, border-color .15s;
+  }
+  .zona-drop.sobre { background: var(--azul-claro); border-color: var(--azul); }
+  .zona-drop strong { color: var(--texto); }
+  .separador-ou { text-align: center; color: var(--texto-suave); margin: 18px 0; font-size: 12.5px; }
+  textarea#texto-colado {
+    width: 100%; min-height: 110px; border: 1px solid var(--borda); border-radius: 8px;
+    padding: 10px; font: 12.5px/1.4 ui-monospace, Menlo, monospace; resize: vertical;
+  }
+  .linha-botoes { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+  button {
+    font: inherit; cursor: pointer; border-radius: 7px; border: 1px solid var(--borda);
+    background: var(--papel); color: var(--texto); padding: 9px 14px;
+  }
+  button:hover { background: #f0f2f5; }
+  button.primario { background: var(--azul); border-color: var(--azul); color: #fff; }
+  button.primario:hover { background: #1d4685; }
+  button.fantasma { border-color: transparent; color: var(--azul); background: transparent; padding: 9px 4px; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  #campos-reconhecidos { font-size: 12.5px; color: var(--texto-suave); margin-top: 14px; }
+  #campos-reconhecidos summary { cursor: pointer; color: var(--azul); }
+  #campos-reconhecidos ul { columns: 2; margin: 8px 0 0; padding-left: 18px; }
+
+  /* ---------- mapeamento ---------- */
+  table.mapa { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.mapa th, table.mapa td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--borda); }
+  table.mapa select { width: 100%; max-width: 260px; padding: 5px; border-radius: 6px; border: 1px solid var(--borda); }
+  table.mapa .amostra { color: var(--texto-suave); font-size: 12px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ---------- painel ---------- */
+  .barra-topo-painel { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .contadores { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr)); gap: 10px; margin: 14px 0; }
+  .contador { background: var(--papel); border: 1px solid var(--borda); border-radius: 9px; padding: 12px 14px; box-shadow: var(--sombra); }
+  .contador .n { font-size: 22px; font-weight: 700; }
+  .contador .rotulo { font-size: 12px; color: var(--texto-suave); }
+
+  .abas { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--borda); margin: 18px 0 0; }
+  .abas button { border: none; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; padding: 10px 14px; color: var(--texto-suave); }
+  .abas button.ativa { color: var(--azul); border-bottom-color: var(--azul); font-weight: 600; }
+
+  table.ranking { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+  table.ranking th { text-align: left; padding: 8px; color: var(--texto-suave); font-weight: 600; border-bottom: 1px solid var(--borda); cursor: pointer; white-space: nowrap; }
+  table.ranking td { padding: 8px; border-bottom: 1px solid #eef0f3; vertical-align: top; }
+  table.ranking tbody tr { cursor: pointer; }
+  table.ranking tbody tr:hover { background: #f7f9fc; }
+  .motivo { color: var(--texto-suave); font-size: 12px; }
+
+  .pilula { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11.5px; font-weight: 700; color: #fff; }
+  .pilula.p1 { background: var(--p1); } .pilula.p2 { background: var(--p2); }
+  .pilula.p3 { background: var(--p3); } .pilula.p4 { background: var(--p4); }
+  .pilula.p5 { background: var(--p5); }
+  .marcador { display: inline-block; padding: 1px 7px; border-radius: 5px; font-size: 11px; margin: 1px 3px 1px 0; background: #eef1f5; color: var(--texto-suave); }
+
+  .score { font-weight: 700; }
+  .score.alta { color: var(--verde); } .score.media { color: var(--amarelo); } .score.baixa { color: var(--texto-suave); }
+  .risco-score.alta { color: var(--vermelho); } .risco-score.media { color: var(--amarelo); } .risco-score.baixa { color: var(--verde); }
+
+  .filtros { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 0; }
+  .filtros select { padding: 6px 8px; border-radius: 6px; border: 1px solid var(--borda); font: inherit; }
+
+  .central-alertas { margin-top: 16px; }
+  .central-alertas ul { list-style: none; margin: 8px 0 0; padding: 0; max-height: 260px; overflow: auto; }
+  .central-alertas li { padding: 6px 4px; border-bottom: 1px solid #eef0f3; font-size: 13px; cursor: pointer; }
+  .central-alertas li:hover { background: #f7f9fc; }
+  .central-alertas .cliente-nome { font-weight: 600; }
+
+  /* ---------- modal de detalhe ---------- */
+  .fundo-modal {
+    position: fixed; inset: 0; background: rgba(20,25,35,.45); display: flex;
+    justify-content: flex-end; z-index: 50;
+  }
+  .modal {
+    background: var(--papel); width: min(560px, 100%); height: 100%; overflow-y: auto;
+    padding: 26px 24px 60px; box-shadow: -6px 0 24px rgba(0,0,0,.15);
+  }
+  .modal h2 { margin: 0 0 2px; font-size: 19px; }
+  .modal .sub { color: var(--texto-suave); margin: 0 0 16px; font-size: 13px; }
+  .modal .fechar { float: right; }
+  .bloco-modal { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid #eef0f3; }
+  .bloco-modal h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--texto-suave); }
+  .grade-scores { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; text-align: center; }
+  .grade-scores div { background: #f7f9fc; border-radius: 8px; padding: 10px 4px; }
+  .grade-scores .valor { font-size: 20px; font-weight: 700; }
+  .grade-scores .rot { font-size: 11px; color: var(--texto-suave); }
+  .orientacao { white-space: pre-line; background: var(--azul-claro); border-radius: 8px; padding: 12px 14px; font-size: 13px; }
+  .lista-alertas-modal { margin: 0; padding-left: 18px; font-size: 13px; }
+  .caixa-estrategia div { margin-bottom: 6px; font-size: 13px; }
+  .caixa-estrategia b { display: inline-block; min-width: 76px; }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px);
+    background: #23283a; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px;
+    opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 100;
+  }
+  #toast.mostrar { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  [hidden] { display: none !important; }
+  @media (max-width: 640px) {
+    .modal { width: 100%; }
+    table.ranking, table.mapa { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="envelope">
+
+  <header class="topo">
+    <h1>Motor de Inteligência Comercial — Belenergy</h1>
+    <p>Carregue a base de clientes e veja quem atacar hoje, quem está em risco e quem tem mais potencial de crescimento.</p>
+    <span class="selo-privacidade">🔒 Roda no seu navegador — nenhum dado sai do seu computador</span>
+  </header>
+
+  <!-- ===================== TELA 1: UPLOAD ===================== -->
+  <section id="tela-upload" class="cartao">
+    <div class="zona-drop" id="zona-drop">
+      <div><strong>Arraste a planilha aqui</strong> (.xlsx ou .csv) ou clique para escolher o arquivo</div>
+      <div style="margin-top:6px;font-size:12.5px;">Uma linha por cliente. As colunas podem ter os nomes que já vêm do seu BI.</div>
+      <input type="file" id="input-arquivo" accept=".xlsx,.xlsm,.csv,.txt" hidden>
+    </div>
+
+    <div class="separador-ou">— ou cole os dados de uma planilha já aberta —</div>
+    <textarea id="texto-colado" placeholder="Cole aqui (Ctrl+V) os dados copiados do Excel/Sheets, com a primeira linha de cabeçalho..."></textarea>
+
+    <div class="linha-botoes">
+      <button class="primario" id="btn-processar-texto">Processar dados colados</button>
+      <button id="btn-exemplo">Usar carteira de exemplo</button>
+      <span id="status-upload" style="color:var(--texto-suave);font-size:12.5px;"></span>
+    </div>
+
+    <details id="campos-reconhecidos">
+      <summary>Quais colunas o motor reconhece?</summary>
+      <ul id="lista-campos"></ul>
+    </details>
+  </section>
+
+  <!-- ===================== TELA 2: MAPEAMENTO ===================== -->
+  <section id="tela-mapeamento" class="cartao" hidden>
+    <h2 style="margin-top:0;">Confira as colunas identificadas</h2>
+    <p style="color:var(--texto-suave);margin-top:-6px;">
+      O motor tenta reconhecer cada coluna sozinho. Ajuste o que estiver errado antes de analisar —
+      sem a coluna certa, aquele dado vira "Dados insuficientes" em vez de um número inventado.
+    </p>
+    <div style="overflow-x:auto;">
+      <table class="mapa">
+        <thead><tr><th>Campo</th><th>Coluna na sua planilha</th><th>Amostra</th></tr></thead>
+        <tbody id="corpo-mapa"></tbody>
+      </table>
+    </div>
+    <div class="linha-botoes">
+      <button class="primario" id="btn-confirmar-mapa">Confirmar e analisar carteira</button>
+      <button id="btn-cancelar-mapa">Carregar outro arquivo</button>
+      <span id="contagem-linhas" style="color:var(--texto-suave);font-size:12.5px;"></span>
+    </div>
+  </section>
+
+  <!-- ===================== TELA 3: PAINEL ===================== -->
+  <section id="tela-painel" hidden>
+    <div class="cartao barra-topo-painel">
+      <div>
+        <strong id="nome-arquivo-atual">Carteira carregada</strong>
+        <div style="color:var(--texto-suave);font-size:12.5px;" id="descricao-carteira"></div>
+      </div>
+      <div class="linha-botoes" style="margin-top:0;">
+        <button id="btn-exportar-csv">Baixar tabela completa (.csv)</button>
+        <button id="btn-nova-base">Carregar outra base</button>
+      </div>
+    </div>
+
+    <div class="contadores" id="contadores"></div>
+
+    <div class="cartao central-alertas">
+      <strong>🔔 Alertas automáticos</strong>
+      <ul id="lista-alertas"></ul>
+      <div id="sem-alertas" style="color:var(--texto-suave);font-size:13px;" hidden>Nenhum alerta com evidência suficiente nesta carteira.</div>
+    </div>
+
+    <div class="cartao">
+      <div class="abas" id="abas">
+        <button data-aba="ataque" class="ativa">🎯 Top 10 — Ataque hoje</button>
+        <button data-aba="risco">🚨 Em risco</button>
+        <button data-aba="potencial">📈 Maior potencial</button>
+        <button data-aba="reativacao">🔄 Reativação</button>
+        <button data-aba="todos">📋 Todos os clientes</button>
+      </div>
+      <div id="filtros-todos" class="filtros" hidden>
+        <select id="filtro-vendedor"><option value="">Vendedor: todos</option></select>
+        <select id="filtro-estado"><option value="">Estado: todos</option></select>
+        <select id="filtro-prioridade"><option value="">Prioridade: todas</option></select>
+        <button class="fantasma" id="btn-copiar-lista">Copiar lista atual</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="ranking">
+          <thead id="cabecalho-ranking"></thead>
+          <tbody id="corpo-ranking"></tbody>
+        </table>
+      </div>
+      <div id="ranking-vazio" style="color:var(--texto-suave);padding:14px 4px;" hidden></div>
+    </div>
+  </section>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="motor.js"></script>
+<script src="leitor.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  function $(id) { return document.getElementById(id); }
+  function escapeHtml(s) {
+    return String(s === null || s === undefined ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  var toastTimer = null;
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.add('mostrar');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('mostrar'); }, 2600);
+  }
+  function download(blob, nome) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = nome;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+  function aspasCsv(v) { return '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"'; }
+
+  var ESTADO = { cabecalhos: [], linhas: [], resultado: null, abaAtiva: 'ataque', ordenacao: { campo: 'comercial', dir: -1 } };
+
+  /* ---------- lista de campos reconhecidos (tela 1) ---------- */
+  (function preencherCamposReconhecidos() {
+    var ul = $('lista-campos');
+    MotorIC.CAMPOS.forEach(function (c) {
+      var li = document.createElement('li');
+      li.textContent = c.rotulo;
+      ul.appendChild(li);
+    });
+  })();
+
+  /* ---------- upload: arquivo ---------- */
+  var zona = $('zona-drop'), inputArquivo = $('input-arquivo');
+  zona.addEventListener('click', function () { inputArquivo.click(); });
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    zona.addEventListener(ev, function (e) { e.preventDefault(); zona.classList.add('sobre'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    zona.addEventListener(ev, function (e) { e.preventDefault(); zona.classList.remove('sobre'); });
+  });
+  zona.addEventListener('drop', function (e) {
+    var f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) processarArquivo(f);
+  });
+  inputArquivo.addEventListener('change', function () {
+    if (inputArquivo.files[0]) processarArquivo(inputArquivo.files[0]);
+  });
+
+  async function processarArquivo(file) {
+    $('status-upload').textContent = 'Lendo ' + file.name + '…';
+    try {
+      var tabela = await LeitorIC.lerArquivo(file);
+      if (!tabela.cabecalhos.length) throw new Error('Não encontrei cabeçalho nesta planilha.');
+      $('status-upload').textContent = '';
+      irParaMapeamento(tabela.cabecalhos, tabela.linhas, file.name);
+    } catch (e) {
+      $('status-upload').textContent = '';
+      toast('Não consegui ler o arquivo: ' + e.message);
+    }
+  }
+
+  $('btn-processar-texto').addEventListener('click', function () {
+    var texto = $('texto-colado').value;
+    if (!texto.trim()) { toast('Cole os dados antes de processar.'); return; }
+    try {
+      var tabela = LeitorIC.textoParaTabela(texto);
+      if (!tabela.cabecalhos.length) throw new Error('Não reconheci nenhuma coluna no texto colado.');
+      irParaMapeamento(tabela.cabecalhos, tabela.linhas, 'dados colados');
+    } catch (e) {
+      toast('Não consegui interpretar o texto: ' + e.message);
+    }
+  });
+
+  $('btn-exemplo').addEventListener('click', function () {
+    irParaMapeamento(EXEMPLO_CABECALHOS, EXEMPLO_LINHAS, 'carteira de exemplo');
+  });
+
+  /* ---------- mapeamento de colunas ---------- */
+  var MAPA_ATUAL = {};
+
+  function irParaMapeamento(cabecalhos, linhas, origem) {
+    ESTADO.cabecalhos = cabecalhos;
+    ESTADO.linhas = linhas;
+    ESTADO.origem = origem;
+    var deteccao = MotorIC.detectarColunas(cabecalhos);
+
+    var corpo = $('corpo-mapa');
+    corpo.innerHTML = '';
+    MotorIC.CAMPOS.forEach(function (campo) {
+      var tr = document.createElement('tr');
+
+      var tdCampo = document.createElement('td');
+      tdCampo.textContent = campo.rotulo;
+      tr.appendChild(tdCampo);
+
+      var tdSelect = document.createElement('td');
+      var select = document.createElement('select');
+      select.dataset.chave = campo.chave;
+      var optVazia = document.createElement('option');
+      optVazia.value = ''; optVazia.textContent = '— não informado —';
+      select.appendChild(optVazia);
+      cabecalhos.forEach(function (h, i) {
+        var opt = document.createElement('option');
+        opt.value = String(i); opt.textContent = h;
+        if (deteccao[campo.chave] === i) opt.selected = true;
+        select.appendChild(opt);
+      });
+      select.addEventListener('change', function () { atualizarAmostra(tr, select); });
+      tdSelect.appendChild(select);
+      tr.appendChild(tdSelect);
+
+      var tdAmostra = document.createElement('td');
+      tdAmostra.className = 'amostra';
+      tr.appendChild(tdAmostra);
+
+      corpo.appendChild(tr);
+      atualizarAmostra(tr, select);
+    });
+
+    $('contagem-linhas').textContent = linhas.length + ' linha(s) encontradas em "' + origem + '".';
+    $('tela-upload').hidden = true;
+    $('tela-painel').hidden = true;
+    $('tela-mapeamento').hidden = false;
+  }
+
+  function atualizarAmostra(tr, select) {
+    var idx = select.value === '' ? null : parseInt(select.value, 10);
+    var amostra = '';
+    if (idx !== null) {
+      for (var i = 0; i < ESTADO.linhas.length; i++) {
+        var v = ESTADO.linhas[i][idx];
+        if (v !== undefined && String(v).trim() !== '') { amostra = String(v); break; }
+      }
+    }
+    tr.querySelector('.amostra').textContent = amostra;
+  }
+
+  $('btn-cancelar-mapa').addEventListener('click', function () {
+    $('tela-mapeamento').hidden = true;
+    $('tela-upload').hidden = false;
+  });
+
+  $('btn-confirmar-mapa').addEventListener('click', function () {
+    var mapa = {};
+    $('corpo-mapa').querySelectorAll('select').forEach(function (select) {
+      if (select.value !== '') mapa[select.dataset.chave] = parseInt(select.value, 10);
+    });
+    MAPA_ATUAL = mapa;
+    var resultado = MotorIC.processarPortfolio(ESTADO.cabecalhos, ESTADO.linhas, mapa, new Date());
+    ESTADO.resultado = resultado;
+    $('tela-mapeamento').hidden = true;
+    renderPainel();
+  });
+
+  /* ---------- painel ---------- */
+
+  function faixaScorePositivo(v) { return v === null ? '' : (v >= 65 ? 'alta' : v >= 40 ? 'media' : 'baixa'); }
+  function faixaScoreRisco(v) { return v === null ? '' : (v >= 65 ? 'alta' : v >= 40 ? 'media' : 'baixa'); }
+  function txt(v) { return v === null || v === undefined ? 'Dados insuficientes' : v; }
+
+  function renderPainel() {
+    var r = ESTADO.resultado;
+    $('nome-arquivo-atual').textContent = 'Carteira: ' + ESTADO.origem;
+    $('descricao-carteira').textContent = r.clientes.length + ' clientes analisados em ' +
+      r.dataRef.toLocaleDateString('pt-BR') + '.';
+
+    var comHistorico = r.clientes.filter(function (c) { return c.bruto.evolucao !== null; });
+    var contadores = [
+      { n: r.clientes.length, rot: 'Clientes na base' },
+      { n: 0, rot: 'P1 — ataque imediato' },
+      { n: r.rankings.emRisco.length, rot: 'Em risco de perda' },
+      { n: comHistorico.filter(function (c) { return c.scores.oportunidade !== null && c.scores.oportunidade >= 65; }).length, rot: 'Alto potencial' },
+      { n: r.rankings.reativacao.length, rot: 'Candidatos a reativação' }
+    ];
+    contadores[1].n = comHistorico.filter(function (c) { return c.resumo.prioridade === 'P1'; }).length;
+    $('contadores').innerHTML = contadores.map(function (c) {
+      return '<div class="contador"><div class="n">' + c.n + '</div><div class="rotulo">' + c.rot + '</div></div>';
+    }).join('');
+
+    renderAlertas(comHistorico);
+    renderFiltrosTodos(r.clientes);
+    renderAba();
+
+    $('tela-painel').hidden = false;
+  }
+
+  function renderAlertas(comHistorico) {
+    var itens = [];
+    comHistorico.forEach(function (c) {
+      c.resumo.alertas.forEach(function (a) { itens.push({ cliente: c.resumo.cliente, indice: c.bruto.linha, texto: a, prioridade: c.resumo.prioridade }); });
+    });
+    var ordem = { P1: 1, P2: 2, P3: 3, P4: 4, P5: 5 };
+    itens.sort(function (a, b) { return ordem[a.prioridade] - ordem[b.prioridade]; });
+    var ul = $('lista-alertas');
+    if (!itens.length) {
+      ul.innerHTML = ''; $('sem-alertas').hidden = false; return;
+    }
+    $('sem-alertas').hidden = true;
+    var LIMITE = 40;
+    ul.innerHTML = itens.slice(0, LIMITE).map(function (it) {
+      return '<li data-indice="' + it.indice + '"><span class="cliente-nome">' + escapeHtml(it.cliente) + '</span> — ' + escapeHtml(it.texto) + '</li>';
+    }).join('') + (itens.length > LIMITE ? '<li style="color:var(--texto-suave);cursor:default;">+ ' + (itens.length - LIMITE) + ' alerta(s) adicional(is)</li>' : '');
+    ul.querySelectorAll('li[data-indice]').forEach(function (li) {
+      li.addEventListener('click', function () { abrirDetalhe(parseInt(li.dataset.indice, 10)); });
+    });
+  }
+
+  function renderFiltrosTodos(todosClientes) {
+    function opcoes(select, valores, rotuloTodos) {
+      var atual = select.value;
+      select.innerHTML = '<option value="">' + rotuloTodos + '</option>' +
+        valores.map(function (v) { return '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + '</option>'; }).join('');
+      select.value = atual;
+    }
+    var vendedores = Array.from(new Set(todosClientes.map(function (c) { return c.bruto.vendedor; }).filter(Boolean))).sort();
+    var estados = Array.from(new Set(todosClientes.map(function (c) { return c.bruto.estado; }).filter(Boolean))).sort();
+    opcoes($('filtro-vendedor'), vendedores, 'Vendedor: todos');
+    opcoes($('filtro-estado'), estados, 'Estado: todos');
+  }
+
+  $('abas').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-aba]');
+    if (!btn) return;
+    $('abas').querySelectorAll('button').forEach(function (b) { b.classList.remove('ativa'); });
+    btn.classList.add('ativa');
+    ESTADO.abaAtiva = btn.dataset.aba;
+    renderAba();
+  });
+  ['filtro-vendedor', 'filtro-estado', 'filtro-prioridade'].forEach(function (id) {
+    $(id).addEventListener('change', renderAba);
+  });
+
+  function listaDaAba() {
+    var r = ESTADO.resultado;
+    switch (ESTADO.abaAtiva) {
+      case 'ataque': return r.rankings.topAtaque;
+      case 'risco': return r.rankings.emRisco;
+      case 'potencial': return r.rankings.maiorPotencial;
+      case 'reativacao': return r.rankings.reativacao;
+      default:
+        // "Todos" mostra literalmente todos, ate quem virou "Dados
+        // insuficientes" — sumir da lista seria pior que mostrar o motivo.
+        var lista = r.clientes.slice();
+        var v = $('filtro-vendedor').value, e = $('filtro-estado').value, p = $('filtro-prioridade').value;
+        if (v) lista = lista.filter(function (c) { return c.bruto.vendedor === v; });
+        if (e) lista = lista.filter(function (c) { return c.bruto.estado === e; });
+        if (p) lista = lista.filter(function (c) { return c.resumo.prioridade === p; });
+        var campo = ESTADO.ordenacao.campo, dir = ESTADO.ordenacao.dir;
+        lista = lista.slice().sort(function (a, b) {
+          var va = campo === 'nome' ? a.resumo.cliente : a.scores[campo];
+          var vb = campo === 'nome' ? b.resumo.cliente : b.scores[campo];
+          if (va === null && vb === null) return 0;
+          if (va === null) return 1;
+          if (vb === null) return -1;
+          return dir * (va < vb ? -1 : va > vb ? 1 : 0);
+        });
+        return lista;
+    }
+  }
+
+  function renderAba() {
+    $('filtros-todos').hidden = ESTADO.abaAtiva !== 'todos';
+    var lista = listaDaAba();
+    var thead = $('cabecalho-ranking'), tbody = $('corpo-ranking');
+
+    var colunasMotivo = { ataque: 'oportunidade', risco: 'risco', potencial: 'oportunidade', reativacao: 'reativacao', todos: null };
+    var tipoMotivo = colunasMotivo[ESTADO.abaAtiva];
+
+    thead.innerHTML = '<tr>' +
+      '<th data-campo="nome">Cliente</th><th>Vendedor</th><th data-campo="comercial">Score comercial</th>' +
+      '<th data-campo="oportunidade">Oportunidade</th><th data-campo="risco">Risco</th><th>Prioridade</th>' +
+      (ESTADO.abaAtiva === 'reativacao' ? '<th>Reativação</th>' : '') +
+      '<th>Próxima ação</th>' + (tipoMotivo ? '<th>Motivo</th>' : '') + '</tr>';
+    thead.querySelectorAll('th[data-campo]').forEach(function (th) {
+      th.addEventListener('click', function () {
+        var campo = th.dataset.campo;
+        if (ESTADO.ordenacao.campo === campo) ESTADO.ordenacao.dir *= -1;
+        else ESTADO.ordenacao = { campo: campo, dir: -1 };
+        renderAba();
+      });
+    });
+
+    if (!lista.length) {
+      tbody.innerHTML = '';
+      $('ranking-vazio').hidden = false;
+      $('ranking-vazio').textContent = 'Nenhum cliente nesta lista com os dados disponíveis.';
+      return;
+    }
+    $('ranking-vazio').hidden = true;
+
+    tbody.innerHTML = lista.map(function (c) {
+      var s = c.resumo;
+      var motivo = tipoMotivo === 'oportunidade' ? s.principalOportunidade.motivo
+        : tipoMotivo === 'risco' ? s.principalRisco.motivo
+        : tipoMotivo === 'reativacao' ? 'Histórico relevante, ' + (s.reativacao || '').toLowerCase() + ' chance de retomada.'
+        : '';
+      return '<tr data-indice="' + c.bruto.linha + '">' +
+        '<td><strong>' + escapeHtml(s.cliente) + '</strong><br><span class="motivo">' + escapeHtml(s.estado || '') + (s.cidade ? ' · ' + escapeHtml(s.cidade) : '') + '</span></td>' +
+        '<td>' + escapeHtml(s.vendedor || '—') + '</td>' +
+        '<td class="score ' + faixaScorePositivo(s.scoreComercial) + '">' + txt(s.scoreComercial) + '</td>' +
+        '<td class="score ' + faixaScorePositivo(s.scoreOportunidade) + '">' + txt(s.scoreOportunidade) + '</td>' +
+        '<td class="risco-score ' + faixaScoreRisco(s.scoreRisco) + '">' + txt(s.scoreRisco) + '</td>' +
+        '<td><span class="pilula ' + s.prioridade.toLowerCase() + '">' + s.prioridade + '</span></td>' +
+        (ESTADO.abaAtiva === 'reativacao' ? '<td>' + escapeHtml(s.reativacao || '—') + '</td>' : '') +
+        '<td>' + escapeHtml(s.proximaAcao) + '</td>' +
+        (tipoMotivo ? '<td class="motivo">' + escapeHtml(motivo) + '</td>' : '') +
+        '</tr>';
+    }).join('');
+    tbody.querySelectorAll('tr[data-indice]').forEach(function (tr) {
+      tr.addEventListener('click', function () { abrirDetalhe(parseInt(tr.dataset.indice, 10)); });
+    });
+  }
+
+  /* ---------- detalhe do cliente ---------- */
+  function abrirDetalhe(indiceLinha) {
+    var c = ESTADO.resultado.clientes.filter(function (x) { return x.bruto.linha === indiceLinha; })[0];
+    if (!c) return;
+    var s = c.resumo;
+
+    var fundo = document.createElement('div');
+    fundo.className = 'fundo-modal';
+    fundo.innerHTML = '<div class="modal">' +
+      '<button class="fechar" id="fechar-modal">Fechar ✕</button>' +
+      '<h2>' + escapeHtml(s.cliente) + '</h2>' +
+      '<p class="sub">' + escapeHtml([s.codigo, s.vendedor, s.cidade, s.estado].filter(Boolean).join(' · ') || 'Sem identificação adicional') + '</p>' +
+
+      '<div class="bloco-modal"><h3>Perfil</h3>' +
+      s.perfil.map(function (p) { return '<span class="marcador">' + escapeHtml(p) + '</span>'; }).join('') +
+      '<div style="margin-top:8px;">Momento: <strong>' + escapeHtml(s.momento) + '</strong> · Prioridade: <span class="pilula ' + s.prioridade.toLowerCase() + '">' + s.prioridade + '</span></div></div>' +
+
+      '<div class="bloco-modal"><h3>Scores</h3><div class="grade-scores">' +
+      '<div><div class="valor">' + txt(s.scoreComercial) + '</div><div class="rot">Comercial</div></div>' +
+      '<div><div class="valor">' + txt(s.scoreOportunidade) + '</div><div class="rot">Oportunidade</div></div>' +
+      '<div><div class="valor">' + txt(s.scoreRisco) + '</div><div class="rot">Risco</div></div></div></div>' +
+
+      '<div class="bloco-modal"><h3>Principal oportunidade</h3>' +
+      '<strong>' + escapeHtml(s.principalOportunidade.tipo) + '</strong><div class="motivo">' + escapeHtml(s.principalOportunidade.motivo) + '</div></div>' +
+
+      '<div class="bloco-modal"><h3>Principal risco</h3>' +
+      '<strong>' + escapeHtml(s.principalRisco.tipo) + '</strong><div class="motivo">' + escapeHtml(s.principalRisco.motivo) + '</div></div>' +
+
+      '<div class="bloco-modal"><h3>Sensibilidade a preço</h3>' + escapeHtml(s.sensibilidadePreco) + '</div>' +
+
+      (s.alertas.length ? '<div class="bloco-modal"><h3>Alertas</h3><ul class="lista-alertas-modal">' +
+        s.alertas.map(function (a) { return '<li>' + escapeHtml(a) + '</li>'; }).join('') + '</ul></div>' : '') +
+
+      '<div class="bloco-modal"><h3>Mix de produtos</h3>' +
+      '<div><b>Compra hoje:</b> ' + (s.mix.categoriasMaisCompradas.length ? escapeHtml(s.mix.categoriasMaisCompradas.join(', ')) : 'Dados insuficientes') + '</div>' +
+      (s.mix.crossSell.length ? '<div style="margin-top:6px;"><b>Ainda não compra (cross-sell):</b> ' + escapeHtml(s.mix.crossSell.join(', ')) + '</div>' : '') +
+      '</div>' +
+
+      '<div class="bloco-modal"><h3>Próxima ação</h3><strong>' + escapeHtml(s.proximaAcao) + '</strong></div>' +
+
+      '<div class="bloco-modal"><h3>Estratégia de abordagem</h3><div class="caixa-estrategia">' +
+      '<div><b>Objetivo:</b> ' + escapeHtml(s.estrategia.objetivo) + '</div>' +
+      '<div><b>Argumento:</b> ' + escapeHtml(s.estrategia.argumento) + '</div>' +
+      '<div><b>Oferta:</b> ' + escapeHtml(s.estrategia.oferta) + '</div></div></div>' +
+
+      '<div class="bloco-modal" style="border-bottom:none;"><h3>Orientação ao vendedor</h3><div class="orientacao">' + escapeHtml(s.orientacao) + '</div></div>' +
+      '</div>';
+
+    document.body.appendChild(fundo);
+    fundo.addEventListener('click', function (e) { if (e.target === fundo) document.body.removeChild(fundo); });
+    fundo.querySelector('#fechar-modal').addEventListener('click', function () { document.body.removeChild(fundo); });
+  }
+
+  /* ---------- exportar / copiar ---------- */
+  $('btn-nova-base').addEventListener('click', function () {
+    $('tela-painel').hidden = true;
+    $('tela-upload').hidden = false;
+    $('texto-colado').value = '';
+    inputArquivo.value = '';
+  });
+
+  $('btn-exportar-csv').addEventListener('click', function () {
+    var linhas = ESTADO.resultado.clientes.filter(function (c) { return c.bruto.evolucao !== null; });
+    var colunas = ['Cliente', 'Código', 'Vendedor', 'Estado', 'Cidade', 'Momento', 'Score Comercial', 'Score Oportunidade',
+      'Score Risco', 'Prioridade', 'Perfil', 'Principal Oportunidade', 'Principal Risco', 'Sensibilidade a Preço',
+      'Próxima Ação', 'Reativação'];
+    var saida = [colunas.map(aspasCsv).join(';')];
+    linhas.forEach(function (c) {
+      var s = c.resumo;
+      saida.push([s.cliente, s.codigo || '', s.vendedor || '', s.estado || '', s.cidade || '', s.momento,
+        s.scoreComercial === null ? '' : s.scoreComercial, s.scoreOportunidade === null ? '' : s.scoreOportunidade,
+        s.scoreRisco === null ? '' : s.scoreRisco, s.prioridade, s.perfil.join(' / '), s.principalOportunidade.tipo,
+        s.principalRisco.tipo, s.sensibilidadePreco, s.proximaAcao, s.reativacao || ''
+      ].map(aspasCsv).join(';'));
+    });
+    var blob = new Blob(['﻿' + saida.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    download(blob, 'inteligencia-comercial-belenergy.csv');
+    toast('Tabela baixada.');
+  });
+
+  $('btn-copiar-lista').addEventListener('click', function () {
+    var lista = listaDaAba();
+    var linhas = lista.map(function (c, i) {
+      return (i + 1) + '. ' + c.resumo.cliente + ' — ' + c.resumo.prioridade + ' — ' + c.resumo.proximaAcao;
+    });
+    navigator.clipboard.writeText(linhas.join('\n')).then(function () {
+      toast('Lista copiada — cole no WhatsApp ou e-mail.');
+    }, function () {
+      toast('Não foi possível copiar automaticamente.');
+    });
+  });
+
+  /* ---------- carteira de exemplo (embutida, sem depender de fetch/arquivo) ---------- */
+  var EXEMPLO_CABECALHOS = [
+    'Código do Cliente', 'Nome/Razão Social', 'UF', 'Cidade', 'Vendedor',
+    'Data de Cadastro', 'Data da Primeira Compra', 'Data da Última Compra',
+    'Quantidade de Pedidos', 'Faturamento Total', 'Faturamento 30 dias',
+    'Faturamento 90 dias', 'Faturamento 180 dias', 'Ticket Médio',
+    'Frequência Média de Compra', 'Quantidade de Meses Comprando',
+    'Categorias Compradas', 'Produtos Comprados', 'Quantidade de SKUs',
+    'Status do Cliente', 'Histórico de Reativação', 'Descontos Concedidos (%)',
+    'Informações de Concorrência'
+  ];
+  var EXEMPLO_LINHAS = [
+    ['CLI0001', 'SolarMax Distribuidora', 'PA', 'Belém', 'Ana Souza', '10/01/2022', '01/02/2022', '20/08/2026', 42, 1850000, 160000, 470000, 900000, '', '', 55, 'Inversor;Módulo;Estrutura;Cabo;String Box;Bateria', '', 38, 'Ativo', '', 3, ''],
+    ['CLI0002', 'NovaEnergia Integradora', 'TO', 'Palmas', 'Bruno Lima', '', '', '05/09/2026', 9, 210000, 95000, 130000, '', '', '', 7, 'Inversor;Módulo', '', 10, 'Ativo', '', 0, ''],
+    ['CLI0003', 'Engenho Solar Ltda', 'RO', 'Porto Velho', 'Ana Souza', '', '', '25/08/2026', 30, 640000, 8000, 140000, 300000, '', '', 40, 'Inversor;Módulo;Estrutura', '', 20, 'Ativo', '', 5, ''],
+    ['CLI0004', 'Grupo Fotovix', 'AM', 'Manaus', 'Carla Dias', '', '', '01/03/2026', 25, 480000, '', '', '', '', '', 30, 'Inversor;Módulo;Estrutura;Cabo', '', 22, 'Ativo', '', 4, ''],
+    ['CLI0005', 'ClientePequeno ME', 'PA', 'Marabá', 'Bruno Lima', '', '', '01/06/2025', 2, 9000, '', '', '', '', '', 3, 'Cabo', '', 2, 'Ativo', '', '', ''],
+    ['CLI0006', 'Instaladora Rápida EIRELI', 'RR', 'Boa Vista', 'Carla Dias', '', '', '01/08/2026', 2, 15000, '', '', '', '', '', 2, 'Cabo', '', 2, 'Ativo', '', '', ''],
+    ['CLI0007', 'Mega Usina Rural S.A.', 'PA', 'Santarém', 'Ana Souza', '', '', '15/06/2026', 4, 640000, '', '', '', 160000, 95, 12, 'Inversor', '', 5, 'Ativo', '', 1, ''],
+    ['CLI0008', 'Construtora Desconto Fácil', 'AC', 'Rio Branco', 'Bruno Lima', '', '', '01/07/2026', 2, 40000, '', '', '', '', '', 5, 'Módulo', '', 3, 'Ativo', '', 18, ''],
+    ['CLI0009', 'PowerHouse Energia', 'TO', 'Araguaína', 'Carla Dias', '', '', '28/08/2026', 20, 520000, 60000, 170000, '', '', '', 24, 'Módulo', '', 6, 'Ativo', '', 2, ''],
+    ['CLI0010', 'Prospect Novo Ltda', 'PA', 'Belém', 'Ana Souza', '01/09/2026', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+    ['CLI0011', 'Aliança Energia Solar', 'RO', 'Ji-Paraná', 'Bruno Lima', '', '', '10/08/2026', 15, 300000, 20000, 90000, '', '', '', 18, 'Inversor;Estrutura', '', 8, 'Ativo', '', 6, 'Cliente mencionou proposta de concorrente com prazo maior'],
+    ['CLI0012', 'EcoSolar Cancelada ME', 'AP', 'Macapá', 'Carla Dias', '', '', '01/12/2025', 6, 60000, '', '', '', '', '', 10, 'Cabo', '', 3, 'Cancelado', '', 3, ''],
+    ['CLI0013', 'Distribuidora Central de Energia', 'PA', 'Belém', 'Ana Souza', '', '', '01/09/2026', 33, 700000, 55000, 165000, '', '', '', 42, 'Inversor;Módulo;Estrutura;Cabo;String Box', '', 25, 'Ativo', '', 1, ''],
+    ['CLI0014', 'Retomada Solar Ltda', 'TO', 'Gurupi', 'Bruno Lima', '', '', '30/08/2026', 10, 130000, 20000, 35000, '', '', '', 20, 'Inversor;Módulo', '', 7, 'Ativo', 'Sim, retomou compras em agosto/2026', 2, '']
+  ];
+})();
+</script>
+</body>
+</html>
