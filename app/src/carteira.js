@@ -292,12 +292,14 @@ function render(dados) {
     apagarNota: apagarNota,
     agendar: agendar,
     mudarAgenda: mudarAgenda,
-    perguntarIa: perguntarIa
+    perguntarIa: perguntarIa,
+    gerarAbordagem: gerarAbordagem
   });
   Roteiro.agendaMudou(estado.agenda.itens, estado.agenda.avisa);
   ligarSelecao(rodadas);
   ligarMarcas();
   Roteiro.saldoIa();
+  Roteiro.saldoAbordagem();
 
   rodadas.forEach(function (r, i) {
     var idBase = 'r' + i;
@@ -437,6 +439,10 @@ async function apagarNota(cliente, indice) {
 
 async function perguntarIa(acao, pergunta) {
   return chamar('/api/duvida', { acao: acao, pergunta: pergunta });
+}
+
+async function gerarAbordagem(acao, lead) {
+  return chamar('/api/abordagem', { acao: acao, lead: lead });
 }
 
 /* O fuso do aparelho vai junto so para o e-mail mostrar a hora que o

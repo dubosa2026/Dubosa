@@ -782,6 +782,35 @@ tr[data-falei="1"] td:not(.col-falei){color:var(--text-3);}
 @keyframes rtPulsa{0%,100%{opacity:.25;transform:scale(.8);}50%{opacity:1;transform:scale(1);}}
 @media (prefers-reduced-motion:reduce){.rt-ponto{animation:none;opacity:.7;}}
 
+/* ---- gerar abordagem: mesmo acento --ia da pergunta a IA, e o mesmo
+   motivo -- as duas sao a parte do roteiro que o modelo escreve na hora,
+   nao texto fixo. ---- */
+.rt-ab-form{display:flex;flex-direction:column;gap:10px;}
+.rt-ab-rot{
+  font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--text-3);display:block;margin-bottom:4px;
+}
+.rt-ab-campo{
+  width:100%;background:var(--panel);border:1px solid var(--line-2);border-radius:7px;
+  color:var(--text);font-family:inherit;font-size:13.4px;padding:9px 11px;
+}
+.rt-ab-campo:focus{outline:2px solid var(--ia);outline-offset:1px;border-color:var(--ia);}
+.rt-ab-campo::placeholder{color:var(--text-3);}
+.rt-ab-linha2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.rt-ab-tipo{
+  display:inline-block;font-family:var(--mono);font-size:10px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--ia);
+  border:1px solid var(--ia);border-radius:99px;padding:3px 9px;
+}
+.rt-ab-par{border-left:2px solid var(--line-2);padding:8px 0 8px 12px;margin:10px 0;}
+.rt-ab-par-cliente{font-size:12.6px;color:var(--text-2);font-style:italic;margin-bottom:6px;}
+.rt-qbarra{display:flex;align-items:center;gap:8px;font-size:11.5px;margin:4px 0;}
+.rt-qbarra-rot{width:64px;flex:none;color:var(--text-2);}
+.rt-qbarra-trilha{flex:1;height:6px;background:var(--panel-3);border-radius:99px;overflow:hidden;}
+.rt-qbarra-fill{height:100%;background:var(--ia);border-radius:99px;}
+.rt-qbarra-n{width:26px;flex:none;text-align:right;font-family:var(--mono);color:var(--text-3);}
+@media (max-width:480px){.rt-ab-linha2{grid-template-columns:1fr;}}
+
 /* lado a lado nao cabe em tela estreita: o roteiro vai para cima da lista,
    ja com o cliente escolhido em destaque */
 @media (max-width:1080px){

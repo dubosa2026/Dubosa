@@ -790,6 +790,35 @@ tr[data-falei="1"] td:not(.col-falei){color:var(--text-3);}
 @keyframes rtPulsa{0%,100%{opacity:.25;transform:scale(.8);}50%{opacity:1;transform:scale(1);}}
 @media (prefers-reduced-motion:reduce){.rt-ponto{animation:none;opacity:.7;}}
 
+/* ---- gerar abordagem: mesmo acento --ia da pergunta a IA, e o mesmo
+   motivo -- as duas sao a parte do roteiro que o modelo escreve na hora,
+   nao texto fixo. ---- */
+.rt-ab-form{display:flex;flex-direction:column;gap:10px;}
+.rt-ab-rot{
+  font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--text-3);display:block;margin-bottom:4px;
+}
+.rt-ab-campo{
+  width:100%;background:var(--panel);border:1px solid var(--line-2);border-radius:7px;
+  color:var(--text);font-family:inherit;font-size:13.4px;padding:9px 11px;
+}
+.rt-ab-campo:focus{outline:2px solid var(--ia);outline-offset:1px;border-color:var(--ia);}
+.rt-ab-campo::placeholder{color:var(--text-3);}
+.rt-ab-linha2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.rt-ab-tipo{
+  display:inline-block;font-family:var(--mono);font-size:10px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--ia);
+  border:1px solid var(--ia);border-radius:99px;padding:3px 9px;
+}
+.rt-ab-par{border-left:2px solid var(--line-2);padding:8px 0 8px 12px;margin:10px 0;}
+.rt-ab-par-cliente{font-size:12.6px;color:var(--text-2);font-style:italic;margin-bottom:6px;}
+.rt-qbarra{display:flex;align-items:center;gap:8px;font-size:11.5px;margin:4px 0;}
+.rt-qbarra-rot{width:64px;flex:none;color:var(--text-2);}
+.rt-qbarra-trilha{flex:1;height:6px;background:var(--panel-3);border-radius:99px;overflow:hidden;}
+.rt-qbarra-fill{height:100%;background:var(--ia);border-radius:99px;}
+.rt-qbarra-n{width:26px;flex:none;text-align:right;font-family:var(--mono);color:var(--text-3);}
+@media (max-width:480px){.rt-ab-linha2{grid-template-columns:1fr;}}
+
 /* lado a lado nao cabe em tela estreita: o roteiro vai para cima da lista,
    ja com o cliente escolhido em destaque */
 @media (max-width:1080px){
@@ -1303,6 +1332,7 @@ var Roteiro = (function () {
         '<div class="rt-tabs" role="tablist">' +
           '<button class="rt-tab" role="tab" aria-selected="true" data-rtaba="abrir">Como abrir</button>' +
           '<button class="rt-tab" role="tab" aria-selected="false" data-rtaba="obj">Se ele disser que…</button>' +
+          '<button class="rt-tab" role="tab" aria-selected="false" data-rtaba="abordagem">Gerar abordagem</button>' +
           '<button class="rt-tab" role="tab" aria-selected="false" data-rtaba="notas" id="rtTabNotas">Anotações</button>' +
           '<button class="rt-tab" role="tab" aria-selected="false" data-rtaba="agenda" id="rtTabAgenda">Agenda</button>' +
         '</div>' +
@@ -1333,6 +1363,44 @@ var Roteiro = (function () {
             '</div>' +
             '<div id="rtIaSaida"></div>' +
           '</div>' +
+        '</div>' +
+        '<div id="rtAbordagem" hidden>' +
+          '<p class="rt-dica">Descreva o lead — mesmo sem cliente escolhido na lista — e ' +
+            'receba abertura, primeira pergunta, respostas prováveis e a próxima ação.</p>' +
+          '<div class="rt-ab-form">' +
+            '<label class="rt-ab-rot" for="rtAbNome">Cliente / empresa</label>' +
+            '<input class="rt-ab-campo" id="rtAbNome" maxlength="120" placeholder="Nome do integrador ou da empresa">' +
+            '<div class="rt-ab-linha2">' +
+              '<div><label class="rt-ab-rot" for="rtAbCidade">Cidade</label>' +
+                '<input class="rt-ab-campo" id="rtAbCidade" maxlength="120"></div>' +
+              '<div><label class="rt-ab-rot" for="rtAbEstado">Estado</label>' +
+                '<input class="rt-ab-campo" id="rtAbEstado" maxlength="40" placeholder="UF"></div>' +
+            '</div>' +
+            '<div class="rt-ab-linha2">' +
+              '<div><label class="rt-ab-rot" for="rtAbCanal">Canal</label>' +
+                '<select class="rt-ab-campo" id="rtAbCanal">' +
+                  '<option value="">— não informado —</option>' +
+                  '<option value="Telefone">Telefone</option>' +
+                  '<option value="WhatsApp">WhatsApp</option>' +
+                '</select></div>' +
+              '<div><label class="rt-ab-rot" for="rtAbComprou">Já comprou da BelEnergy?</label>' +
+                '<select class="rt-ab-campo" id="rtAbComprou">' +
+                  '<option value="">Não sei</option>' +
+                  '<option value="sim">Sim</option>' +
+                  '<option value="nao">Nunca</option>' +
+                '</select></div>' +
+            '</div>' +
+            '<label class="rt-ab-rot" for="rtAbUltima">Última compra / última interação</label>' +
+            '<input class="rt-ab-campo" id="rtAbUltima" maxlength="120" placeholder="Ex.: 20/08/2026, ou &quot;nunca conversamos&quot;">' +
+            '<label class="rt-ab-rot" for="rtAbObs">O que você já sabe</label>' +
+            '<textarea class="rt-ia-txt" id="rtAbObs" maxlength="800" rows="3" ' +
+              'placeholder="Ex.: apareceu numa busca de integradores da região, atende obra residencial…"></textarea>' +
+          '</div>' +
+          '<div class="btn-row" style="margin-top:10px">' +
+            '<button class="btn btn-sm rt-btn-ia" id="rtAbGerar">Gerar abordagem</button>' +
+            '<span class="rt-ia-conta" id="rtAbConta"></span>' +
+          '</div>' +
+          '<div id="rtAbSaida"></div>' +
         '</div>' +
         '<div id="rtNotas" hidden></div>' +
         '<div id="rtAgenda" hidden></div>' +
@@ -1496,6 +1564,7 @@ var Roteiro = (function () {
     }
     document.getElementById('rtAbrir').hidden = qual !== 'abrir';
     document.getElementById('rtObj').hidden = qual !== 'obj';
+    document.getElementById('rtAbordagem').hidden = qual !== 'abordagem';
     document.getElementById('rtNotas').hidden = qual !== 'notas';
     document.getElementById('rtAgenda').hidden = qual !== 'agenda';
 
@@ -1868,6 +1937,172 @@ var Roteiro = (function () {
     });
   }
 
+  /* ---------- gerar abordagem ----------
+     Diferente das abas "Como abrir"/"Se ele disser que...", que sao roteiro
+     fixo, esta gera um plano sob medida a partir do que o vendedor escreveu
+     -- por isso tem orcamento e trava proprios (mesmo padrao de "pergunta a
+     IA", rota /api/abordagem em vez de /api/duvida). */
+
+  var ABORDAGEM_ROTULO = {
+    fria: 'Prospecção fria', morna: 'Prospecção morna', nunca_comprou: 'Nunca comprou',
+    inativo: 'Inativo', reativacao: 'Reativação', ativo_crescimento: 'Ativo — crescimento',
+    cross_sell: 'Cross-sell', upsell: 'Upsell', recuperacao: 'Recuperação'
+  };
+  var TEMPERATURA_ROTULO = { quente: 'Quente', morno: 'Morno', frio: 'Frio', nao_qualificado: 'Não qualificado' };
+
+  /* O cliente escolhido na lista preenche o que ja se sabe dele; o resto
+     fica em branco para o vendedor completar. Redesenha do zero a cada troca
+     de cliente, igual as outras abas -- e uma escolha deliberada, nao um
+     lead qualquer que se guarda entre cliques. */
+  function preencherFormAbordagem() {
+    var nome = document.getElementById('rtAbNome');
+    if (!nome) return;
+    nome.value = atual ? (atual.nomeCompleto || atual.rotulo || '') : '';
+    document.getElementById('rtAbCidade').value = (atual && atual['{CIDADE}']) || '';
+    document.getElementById('rtAbEstado').value = '';
+    document.getElementById('rtAbCanal').value = '';
+    document.getElementById('rtAbComprou').value = '';
+    var pista = [];
+    if (atual && atual['{ULTIMA}']) pista.push(atual['{ULTIMA}']);
+    if (atual && atual['{DIAS}']) pista.push('parado há ' + atual['{DIAS}']);
+    document.getElementById('rtAbUltima').value = pista.join(' — ');
+    document.getElementById('rtAbObs').value = '';
+    document.getElementById('rtAbSaida').innerHTML = '';
+  }
+
+  function desenharSaldoAbordagem(dados) {
+    var conta = document.getElementById('rtAbConta');
+    var botao = document.getElementById('rtAbGerar');
+    if (!conta || !botao) return;
+    if (!dados || !dados.ligado) { botao.hidden = true; conta.textContent = ''; return; }
+    botao.hidden = false;
+    var restam = Number(dados.restantes) || 0;
+    conta.textContent = restam + ' de ' + dados.limite + ' restantes hoje';
+    conta.setAttribute('data-baixo', restam <= 2 ? '1' : '0');
+    botao.disabled = restam <= 0;
+  }
+
+  function barraQualif(rotulo, valor) {
+    var v = Math.max(0, Math.min(100, Number(valor) || 0));
+    return '<div class="rt-qbarra"><span class="rt-qbarra-rot">' + rtEsc(rotulo) + '</span>' +
+      '<div class="rt-qbarra-trilha"><div class="rt-qbarra-fill" style="width:' + v + '%"></div></div>' +
+      '<span class="rt-qbarra-n">' + v + '</span></div>';
+  }
+
+  function desenharAbordagemResultado(r, restantes) {
+    var saida = document.getElementById('rtAbSaida');
+    saida.innerHTML = '';
+    var cx = el('div', 'rt-ia-resposta');
+
+    cx.appendChild(el('span', 'rt-ab-tipo', rtEsc(ABORDAGEM_ROTULO[r.tipoAbordagem] || r.tipoAbordagem || '—')));
+
+    if (r.perfilProvavel) {
+      cx.appendChild(el('div', 'rt-etapa', 'Perfil provável'));
+      cx.appendChild(el('p', 'rt-portras', rtEsc(r.perfilProvavel)));
+    }
+    if (r.hipoteseComercial) {
+      cx.appendChild(el('div', 'rt-etapa', 'Hipótese comercial'));
+      cx.appendChild(el('p', 'rt-portras', rtEsc(r.hipoteseComercial)));
+    }
+
+    cx.appendChild(el('div', 'rt-etapa', 'Abertura'));
+    cx.appendChild(el('div', 'rt-fala', rtEsc(r.abertura)));
+    var linhaAb = el('div', 'btn-row');
+    var copiarAb = el('button', 'btn btn-sm btn-ghost', 'Copiar abertura');
+    copiarAb.addEventListener('click', function () { copiar(r.abertura, copiarAb); });
+    linhaAb.appendChild(copiarAb);
+    cx.appendChild(linhaAb);
+
+    if (r.pergunta) {
+      cx.appendChild(el('div', 'rt-etapa', 'Primeira pergunta'));
+      cx.appendChild(el('div', 'rt-fala', rtEsc(r.pergunta)));
+    }
+
+    (r.possiveisRespostas || []).forEach(function (par) {
+      var caixa = el('div', 'rt-ab-par');
+      caixa.appendChild(el('div', 'rt-ab-par-cliente', '“' + rtEsc(par.respostaCliente) + '”'));
+      caixa.appendChild(el('div', 'rt-fala', rtEsc(par.respostaVendedor)));
+      cx.appendChild(caixa);
+    });
+
+    if (r.proximoPasso) {
+      cx.appendChild(el('div', 'rt-etapa', 'Próximo passo'));
+      cx.appendChild(el('p', 'rt-porque', rtEsc(r.proximoPasso)));
+    }
+
+    var q = r.qualificacao || {};
+    cx.appendChild(el('div', 'rt-etapa', 'Qualificação — ' + rtEsc(TEMPERATURA_ROTULO[q.temperatura] || q.temperatura || '—')));
+    cx.appendChild(el('div', null,
+      barraQualif('Potencial', q.potencial) + barraQualif('Intenção', q.intencao) + barraQualif('Urgência', q.urgencia)));
+
+    var a = r.proximaAcao || {};
+    if (a.acao) {
+      cx.appendChild(el('div', 'rt-etapa', 'Próxima ação'));
+      cx.appendChild(el('p', 'rt-portras', '<b>' + rtEsc(a.acao) + '</b>' + (a.prazo ? ' — ' + rtEsc(a.prazo) : '')));
+      if (a.objetivo) cx.appendChild(el('p', 'rt-porque', rtEsc(a.objetivo)));
+      if (a.mensagem) {
+        cx.appendChild(el('div', 'rt-fala', rtEsc(a.mensagem)));
+        var linhaAcao = el('div', 'btn-row');
+        var copiarAcao = el('button', 'btn btn-sm btn-ghost', 'Copiar mensagem');
+        copiarAcao.addEventListener('click', function () { copiar(a.mensagem, copiarAcao); });
+        linhaAcao.appendChild(copiarAcao);
+        cx.appendChild(linhaAcao);
+      }
+    }
+
+    cx.appendChild(el('p', 'rt-rodape-ia',
+      'Plano gerado agora, só com o que foi preenchido acima. <strong>Não sabe preço, prazo, ' +
+      'estoque nem condição do mês</strong> — confirme com o gestor antes de prometer isso ao cliente.'));
+
+    if (restantes === 0) {
+      cx.appendChild(el('div', 'rt-cuidado', '<b>Acabaram suas abordagens geradas hoje.</b> Volta amanhã.'));
+    }
+    saida.appendChild(cx);
+  }
+
+  function gerarAbordagem() {
+    var botao = document.getElementById('rtAbGerar');
+    var saida = document.getElementById('rtAbSaida');
+    var lead = {
+      nome: document.getElementById('rtAbNome').value.trim(),
+      cidade: document.getElementById('rtAbCidade').value.trim(),
+      estado: document.getElementById('rtAbEstado').value.trim(),
+      canal: document.getElementById('rtAbCanal').value,
+      ultimaCompra: document.getElementById('rtAbUltima').value.trim(),
+      observacoes: document.getElementById('rtAbObs').value.trim()
+    };
+    var comprou = document.getElementById('rtAbComprou').value;
+    if (comprou === 'sim') lead.jaComprou = true;
+    else if (comprou === 'nao') lead.jaComprou = false;
+
+    if (!lead.nome && !lead.cidade && !lead.observacoes) {
+      saida.innerHTML = '';
+      saida.appendChild(el('div', 'rt-cuidado', 'Preencha ao menos o nome, a cidade ou "o que você já sabe".'));
+      return;
+    }
+
+    botao.disabled = true;
+    saida.innerHTML = '';
+    saida.appendChild(el('div', 'rt-pensando',
+      '<span class="rt-ponto"></span><span class="rt-ponto"></span>' +
+      '<span class="rt-ponto"></span><span>Montando a abordagem…</span>'));
+
+    ponte.gerarAbordagem('gerar', lead).then(function (dados) {
+      botao.disabled = false;
+      desenharAbordagemResultado(dados.resposta, dados.restantes);
+      var conta = document.getElementById('rtAbConta');
+      if (conta && typeof dados.restantes === 'number') {
+        conta.textContent = dados.restantes + ' restantes hoje';
+        conta.setAttribute('data-baixo', dados.restantes <= 2 ? '1' : '0');
+        botao.disabled = dados.restantes <= 0;
+      }
+    }, function (e) {
+      botao.disabled = false;
+      saida.innerHTML = '';
+      saida.appendChild(el('div', 'rt-cuidado', rtEsc((e && e.message) || 'Não consegui gerar agora.')));
+    });
+  }
+
   /* ---------- API ---------- */
 
   return {
@@ -1919,6 +2154,10 @@ var Roteiro = (function () {
       var perguntarBtn = document.getElementById('rtIaPerguntar');
       if (perguntarBtn) perguntarBtn.addEventListener('click', perguntar);
 
+      var gerarBtn = document.getElementById('rtAbGerar');
+      if (gerarBtn) gerarBtn.addEventListener('click', gerarAbordagem);
+      preencherFormAbordagem();
+
       var segs = document.querySelectorAll('[data-rttipo]');
       for (var j = 0; j < segs.length; j++) {
         segs[j].addEventListener('click', function () {
@@ -1957,9 +2196,18 @@ var Roteiro = (function () {
       desenharCards();
       var busca = document.getElementById('rtBusca');
       desenharObjs(busca ? busca.value : '');
+      preencherFormAbordagem();
       desenharNotas();
       contarNotas();
       desenharAgenda();
+    },
+
+    saldoAbordagem: function () {
+      if (!ponte.gerarAbordagem) return;
+      ponte.gerarAbordagem('saldo').then(desenharSaldoAbordagem, function () {
+        var botao = document.getElementById('rtAbGerar');
+        if (botao) botao.hidden = true;
+      });
     }
   };
 })();
@@ -2258,12 +2506,14 @@ function render(dados) {
     apagarNota: apagarNota,
     agendar: agendar,
     mudarAgenda: mudarAgenda,
-    perguntarIa: perguntarIa
+    perguntarIa: perguntarIa,
+    gerarAbordagem: gerarAbordagem
   });
   Roteiro.agendaMudou(estado.agenda.itens, estado.agenda.avisa);
   ligarSelecao(rodadas);
   ligarMarcas();
   Roteiro.saldoIa();
+  Roteiro.saldoAbordagem();
 
   rodadas.forEach(function (r, i) {
     var idBase = 'r' + i;
@@ -2403,6 +2653,10 @@ async function apagarNota(cliente, indice) {
 
 async function perguntarIa(acao, pergunta) {
   return chamar('/api/duvida', { acao: acao, pergunta: pergunta });
+}
+
+async function gerarAbordagem(acao, lead) {
+  return chamar('/api/abordagem', { acao: acao, lead: lead });
 }
 
 /* O fuso do aparelho vai junto so para o e-mail mostrar a hora que o

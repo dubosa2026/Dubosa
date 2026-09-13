@@ -430,8 +430,12 @@ condição de pagamento e nome de prêmio** — quando a pergunta depende disso,
 ele diz que não sabe e manda confirmar com o gestor. Uma resposta incompleta
 custa menos que um número errado dito ao cliente.
 
-O campo só aparece quando a variável `ANTHROPIC_API_KEY` existe no site. Sem
-ela, a página funciona igual, sem o campo.
+O campo só aparece com `ANTHROPIC_API_KEY` **e** `IA_LIGADA=1` no site — as
+duas, não uma só. A chave costuma entrar no site bem antes de a equipe estar
+pronta para o recurso, e quem decide a hora de apresentar é o gestor, não a
+existência da chave. Sem `IA_LIGADA=1` a página funciona igual, sem o campo
+(nem a função aceita a pergunta por fora, direto na API — o desligamento é
+dos dois lados).
 
 **Os tetos de gasto** ficam em variáveis de ambiente, então apertar o
 orçamento não exige mexer em código:
@@ -453,6 +457,41 @@ tentativas de gravar, e só uma passa por vez. O botão desabilitado na tela é
 cortesia — quem recusa a requisição de número 21 é o servidor. O dia vem do
 relógio do servidor, e a conta é presa ao **nome** do vendedor, não ao token:
 pedir link novo não devolve perguntas.
+
+### Gerar abordagem
+
+Aba própria no roteiro, ao lado de "Se ele disser que…". Serve para ANTES do
+primeiro contato (ou logo no início dele), não para uma objeção em
+andamento: o vendedor descreve o lead — nome, cidade, canal, se já comprou,
+o que já sabe — e recebe um plano: tipo de abordagem, perfil provável,
+hipótese comercial, abertura, primeira pergunta, respostas prováveis do
+cliente já com a resposta pronta para cada uma, próximo passo, qualificação
+(quente/morno/frio + potencial/intenção/urgência de 0 a 100) e a próxima
+ação com prazo e mensagem.
+
+Escolher um cliente na lista pré-preenche nome, cidade e há quanto tempo
+está parado — mas o campo funciona também para um lead que não está em
+nenhuma lista, só descrito à mão.
+
+Mesmos princípios do "Pergunta à IA" — e mesma variável-mestra `IA_LIGADA`,
+já que as duas são a parte do roteiro que o modelo escreve na hora, não
+texto fixo revisado pela equipe:
+
+- não inventa preço, frete, prazo, estoque, condição de pagamento nem nome
+  de prêmio;
+- nunca abre oferecendo desconto — a instrução trata isso como algo a
+  justificar pelo contexto, nunca automático;
+- orçamento **próprio**, para não disputar cota com a pergunta à IA:
+
+| Variável | Padrão | O que limita |
+|---|---|---|
+| `IA_ABORDAGEM_POR_VENDEDOR_DIA` | 15 | abordagens geradas por vendedor por dia |
+| `IA_ABORDAGEM_GLOBAL_DIA` | 150 | abordagens geradas pela equipe inteira por dia |
+| `IA_ABORDAGEM_POR_MINUTO` | 5 | rajada de um vendedor só |
+
+Mesmo mecanismo de contador (servidor, escrita condicional, antes de chamar
+o modelo) e mesma trava-mestra `IA_LIGADA` — ligar/desligar uma rota não
+afeta a outra, mas as duas nascem escondidas juntas.
 
 ## Editar o app
 

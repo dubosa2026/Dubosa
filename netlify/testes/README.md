@@ -97,6 +97,23 @@ passaram a valer para a lista inteira. Roda contra o servidor normal:
 python3 netlify/testes/test_chave_cliente.py
 ```
 
+O `test_abordagem.py` cobre `/api/abordagem` (a aba "Gerar abordagem"): a
+trava-mestra `IA_LIGADA`, token inválido, lead vazio recusado antes de
+chamar o modelo, o caminho feliz (formato da resposta e desconto do
+orçamento) e o orçamento do vendedor esgotado. Diferente dos outros, monta
+o **próprio** sandbox em vez de depender de um `SANDBOX` externo, porque
+também precisa trocar o `@anthropic-ai/sdk` real (nunca instalado neste
+checkout) pelo `anthropic_falso.mjs` — o mesmo trato do `@netlify/blobs`
+acima, só que para a Anthropic. `anthropic_falso.mjs` já existia, preparado
+para isso, mas nenhum teste chegava a instalá-lo; este é o primeiro a
+fechar essa ponta, e o stub agora decide qual formato de resposta devolver
+pelo nome de um campo obrigatório do esquema pedido (`tipo_abordagem` ==
+`abordagem.mjs`; caso contrário, `duvida.mjs`). Roda sozinho, sem `SANDBOX`:
+
+```bash
+python3 netlify/testes/test_abordagem.py
+```
+
 Isto exercita a lógica, não a infraestrutura. O comportamento real do
 Netlify Blobs e das funções em produção precisa ser conferido no primeiro
 deploy.
