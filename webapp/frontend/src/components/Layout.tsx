@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { IS_DEMO } from "../lib/api";
 
 const NAV_ITEMS = [
   { to: "/meu-dia", label: "Meu Dia", icon: "☀️" },
@@ -64,6 +65,12 @@ export function Layout() {
             Sair
           </button>
         </header>
+
+        {IS_DEMO && (
+          <div className="bg-warning-50 border-b border-warning-500/30 px-4 py-2 text-xs text-warning-600 text-center">
+            Pré-visualização com dados DEMO congelados — navegação completa, mas alterações não são salvas.
+          </div>
+        )}
 
         <main className="flex-1 p-4 md:p-8 pb-20 md:pb-8 max-w-6xl w-full mx-auto">
           <Outlet />

@@ -26,3 +26,4 @@ webapp/backend/prisma/dev.db
 webapp/backend/prisma/dev.db-journal
 webapp/backend/dist/
 webapp/frontend/dist/
+webapp/frontend/dist-demo/

@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiPost } from "../lib/api";
-import { Button, Card } from "../components/ui";
+import { Button } from "../components/ui";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -67,13 +67,15 @@ export function CentralIA() {
       <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 py-2">
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-            <Card
-              className={`max-w-[85%] md:max-w-[70%] ${
-                m.role === "user" ? "bg-brand-600 text-white border-brand-600" : ""
+            <div
+              className={`max-w-[85%] md:max-w-[70%] rounded-2xl border shadow-sm p-5 text-sm whitespace-pre-wrap ${
+                m.role === "user"
+                  ? "bg-brand-600 border-brand-600 text-white"
+                  : "bg-white border-gray-200 text-gray-800"
               }`}
             >
-              <div className="text-sm whitespace-pre-wrap">{m.content}</div>
-            </Card>
+              {m.content}
+            </div>
           </div>
         ))}
         {askMutation.isPending && <div className="text-xs text-gray-400 px-2">Consultando os dados...</div>}

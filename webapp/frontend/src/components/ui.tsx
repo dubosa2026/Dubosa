@@ -1,9 +1,7 @@
 import type { ReactNode } from "react";
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return (
-    <div className={`bg-white rounded-2xl border border-gray-200 shadow-sm p-5 ${className}`}>{children}</div>
-  );
+  return <div className={`card-surface rounded-2xl shadow-sm p-5 ${className}`}>{children}</div>;
 }
 
 export function KpiCard({

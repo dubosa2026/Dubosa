@@ -24,6 +24,16 @@
   --color-info-600: #2563eb;
 }
 
+/* Superfície padrão dos cards. Fica na camada de componentes (e não como
+   utilitários no próprio Card) para que um utilitário passado pelo chamador
+   — bg-danger-50, border-danger-500 — vença sem precisar de !important. */
+@layer components {
+  .card-surface {
+    background-color: #fff;
+    border: 1px solid var(--color-gray-200);
+  }
+}
+
 :root {
   color-scheme: light;
 }

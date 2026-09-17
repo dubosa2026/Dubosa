@@ -95,6 +95,24 @@ npm install
 npm run dev                # http://localhost:5173, com proxy /api -> :4000
 ```
 
+### Build de pré-visualização (link estático, sem backend)
+
+Para publicar um link navegável do produto (apresentação, validação com o
+time) sem subir servidor nem banco:
+
+```bash
+cd webapp/backend && npx tsx src/index.ts          # precisa estar no ar
+cd webapp/frontend
+node scripts/gerar-snapshot-demo.mjs               # congela as respostas da API
+VITE_DEMO=1 npx vite build --base ./ --outDir dist-demo
+```
+
+O resultado em `dist-demo/` é um site estático: mesmo código de interface,
+respondendo a partir do snapshot em vez da API. A tela exibe um aviso de
+que é pré-visualização e que alterações não são salvas. A condição
+`VITE_DEMO` é resolvida em tempo de build, então o build normal
+(`npm run build`) não carrega nada do snapshot.
+
 ### Testando a Central "Pergunte à IA" com respostas em linguagem natural
 
 Por padrão a IA responde com texto estruturado (sem depender de nenhuma

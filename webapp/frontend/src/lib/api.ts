@@ -1,3 +1,10 @@
+/**
+ * Modo pré-visualização: build estático servido sem backend, respondendo a
+ * partir de um snapshot de respostas reais da API. Como a condição é
+ * resolvida em tempo de build, o build normal descarta o snapshot inteiro.
+ */
+export const IS_DEMO = import.meta.env.VITE_DEMO === "1";
+
 const TOKEN_KEY = "copiloto_token";
 
 export function getToken(): string | null {
@@ -21,6 +28,11 @@ export class ApiError extends Error {
 }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
+  if (IS_DEMO) {
+    const { demoResponse } = await import("./demo");
+    return demoResponse(options.method ?? "GET", path, options.body as string | undefined) as T;
+  }
+
   const token = getToken();
   const res = await fetch(`/api${path}`, {
     ...options,
