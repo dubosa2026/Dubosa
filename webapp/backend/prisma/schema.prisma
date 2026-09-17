@@ -1,0 +1,227 @@
+// Copiloto Gerencial de Vendas com IA — schema relacional do MVP.
+// SQLite em desenvolvimento; os tipos usados (String, Int, Float, DateTime,
+// Boolean, relações 1:N e N:N via tabela) são compatíveis com migração
+// direta para Postgres/MySQL trocando apenas o "provider" abaixo.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// SQLite não suporta enums nativos no Prisma; os valores válidos de cada
+// campo "string enum" abaixo são centralizados e validados em
+// src/constants.ts (Role, TaskStatus, TaskPriority, AlertLevel,
+// HealthStatus, ClientClass). A migração para Postgres pode reintroduzir
+// enums nativos sem mudar a API.
+
+model Region {
+  id     String  @id @default(cuid())
+  name   String  @unique // ex: Norte
+  states State[]
+}
+
+model State {
+  id       String  @id @default(cuid())
+  uf       String  @unique // ex: RO
+  name     String
+  region   Region? @relation(fields: [regionId], references: [id])
+  regionId String?
+  clients  Client[]
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  managerId String?
+  manager   User?    @relation("TeamManager", fields: [managerId], references: [id])
+  members   User[]   @relation("TeamMembers")
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String
+  active       Boolean  @default(true)
+  isDemo       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  managedTeams Team[]   @relation("TeamManager")
+  teamId       String?
+  team         Team?    @relation("TeamMembers", fields: [teamId], references: [id])
+
+  goals        Goal[]
+  clients      Client[]        @relation("VendorClients")
+  orders       Order[]
+  tasksOwned   Task[]          @relation("TaskAssignee")
+  tasksCreated Task[]          @relation("TaskCreator")
+  interactions Interaction[]
+  aiAnalyses   AIAnalysis[]
+  auditLogs    AuditLog[]
+  alerts       Alert[]
+}
+
+model Product {
+  id         String      @id @default(cuid())
+  name       String
+  category   String
+  isDemo     Boolean     @default(true)
+  orderItems OrderItem[]
+}
+
+model Client {
+  id              String       @id @default(cuid())
+  legalName       String
+  cnpj            String       @unique
+  city            String
+  state           State?       @relation(fields: [stateId], references: [id])
+  stateId         String?
+  segment         String
+  classification  String       @default("C")
+  vendor          User         @relation("VendorClients", fields: [vendorId], references: [id])
+  vendorId        String
+  isDemo          Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+
+  orders          Order[]
+  interactions    Interaction[]
+  tasks           Task[]
+  opportunities   Opportunity[]
+  history         ClientHistory[]
+}
+
+model ClientHistory {
+  id           String   @id @default(cuid())
+  client       Client   @relation(fields: [clientId], references: [id])
+  clientId     String
+  field        String   // ex: "vendorId"
+  previousValue String?
+  newValue     String?
+  changedById  String?
+  changedAt    DateTime @default(now())
+}
+
+model Order {
+  id         String      @id @default(cuid())
+  client     Client      @relation(fields: [clientId], references: [id])
+  clientId   String
+  vendor     User        @relation(fields: [vendorId], references: [id])
+  vendorId   String
+  date       DateTime
+  total      Float
+  discount   Float       @default(0)
+  margin     Float       @default(0)
+  freight    Float       @default(0)
+  isDemo     Boolean     @default(true)
+  items      OrderItem[]
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  order     Order   @relation(fields: [orderId], references: [id])
+  orderId   String
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+  quantity  Int
+  unitPrice Float
+}
+
+model Goal {
+  id        String   @id @default(cuid())
+  scope     String   // "VENDEDOR" | "EQUIPE" | "ESTADO" | "REGIAO"
+  period    String   // "DIARIA" | "SEMANAL" | "MENSAL"
+  refDate   DateTime // início do período de referência
+  targetValue Float
+  vendor    User?    @relation(fields: [vendorId], references: [id])
+  vendorId  String?
+  isDemo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  status      String       @default("PENDENTE")
+  priority    String       @default("MEDIA")
+  dueDate     DateTime?
+  assignee    User         @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  assigneeId  String
+  creator     User         @relation("TaskCreator", fields: [creatorId], references: [id])
+  creatorId   String
+  client      Client?      @relation(fields: [clientId], references: [id])
+  clientId    String?
+  originAlertId String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Opportunity {
+  id          String   @id @default(cuid())
+  client      Client   @relation(fields: [clientId], references: [id])
+  clientId    String
+  type        String   // "REATIVACAO" | "AUMENTO_TICKET" | "RISCO"
+  score       Float
+  reason      String
+  createdAt   DateTime @default(now())
+}
+
+model Alert {
+  id          String     @id @default(cuid())
+  level       String
+  title       String
+  message     String
+  evidence    String     // JSON serializado com os indicadores usados
+  targetUser  User?      @relation(fields: [targetUserId], references: [id])
+  targetUserId String?
+  entityType  String?    // "VENDOR" | "CLIENT" | "STATE"
+  entityId    String?
+  createdAt   DateTime   @default(now())
+}
+
+model Interaction {
+  id        String   @id @default(cuid())
+  client    Client   @relation(fields: [clientId], references: [id])
+  clientId  String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  type      String   // "LIGACAO" | "VISITA" | "WHATSAPP" | "EMAIL" | "OUTRO"
+  notes     String
+  createdAt DateTime @default(now())
+}
+
+model AIAnalysis {
+  id         String   @id @default(cuid())
+  subjectType String  // "VENDOR" | "CLIENT" | "GERAL"
+  subjectId  String?
+  question   String?
+  answer     String
+  dataUsed   String   // JSON dos dados/consultas usados para responder
+  requestedBy User    @relation(fields: [requestedById], references: [id])
+  requestedById String
+  createdAt  DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  entity     String
+  entityId   String
+  action     String
+  before     String?
+  after      String?
+  user       User?    @relation(fields: [userId], references: [id])
+  userId     String?
+  createdAt  DateTime @default(now())
+}
+
+model Setting {
+  key   String @id
+  value String // JSON
+}

@@ -19,3 +19,10 @@ node_modules/
 
 # Capturas de tela dos roteiros de teste (podem conter nomes de clientes)
 *.png
+
+# Copiloto Gerencial IA (webapp/)
+webapp/backend/.env
+webapp/backend/prisma/dev.db
+webapp/backend/prisma/dev.db-journal
+webapp/backend/dist/
+webapp/frontend/dist/
