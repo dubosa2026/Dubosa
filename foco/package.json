@@ -1,0 +1,19 @@
+{
+  "name": "foco-workspace",
+  "private": true,
+  "description": "FOCO — Gestao do Tempo Comercial. Suite desktop (vendedor + gerente) para proteger o tempo comercial da equipe de vendas.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "npm run test --workspace packages/core",
+    "build:core": "npm run build --workspace packages/core",
+    "dev:vendedor": "npm run dev --workspace apps/vendedor",
+    "dev:gerente": "npm run dev --workspace apps/gerente",
+    "build:vendedor": "npm run build --workspace apps/vendedor",
+    "build:gerente": "npm run build --workspace apps/gerente",
+    "dist:vendedor": "npm run dist --workspace apps/vendedor",
+    "dist:gerente": "npm run dist --workspace apps/gerente"
+  }
+}

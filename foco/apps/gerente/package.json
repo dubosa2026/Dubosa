@@ -1,0 +1,52 @@
+{
+  "name": "@foco/app-gerente",
+  "productName": "FOCO Gerenciador",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FOCO — proteja o tempo de quem vende. App do gerente (equipe, indicadores, alertas).",
+  "main": "dist-electron/electron/main.js",
+  "scripts": {
+    "rebuild-native": "electron-builder install-app-deps",
+    "dev:renderer": "vite",
+    "dev:electron": "node scripts/dev-electron.mjs",
+    "dev": "npm run build:electron && concurrently -k \"npm:dev:renderer\" \"npm:dev:electron\"",
+    "build:renderer": "vite build",
+    "build:electron": "tsc -p electron/tsconfig.json",
+    "build": "npm run build:renderer && npm run build:electron",
+    "dist": "npm run build && electron-builder --win",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@foco/core": "*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^9.0.1",
+    "electron": "^32.1.2",
+    "electron-builder": "^25.0.5",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.6",
+    "wait-on": "^8.0.0"
+  },
+  "build": {
+    "appId": "br.com.belenus.foco.gerente",
+    "productName": "FOCO Gerenciador",
+    "asarUnpack": ["**/node_modules/better-sqlite3/**"],
+    "files": ["dist/**", "dist-electron/**", "package.json"],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": ["nsis"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "FOCO Gerenciador"
+    }
+  }
+}

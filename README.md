@@ -1,3 +1,17 @@
+# Ferramentas comerciais
+
+Este repositório reúne ferramentas internas independentes. Cada uma vive na
+sua própria pasta, com seu próprio README:
+
+- **[`foco/`](foco/) — FOCO, Gestão do Tempo Comercial.** Suite desktop
+  (Windows) para vendedores e gerentes: protege o tempo comercial da equipe,
+  classificando problemas, medindo autonomia dos integradores e o Índice de
+  Foco Comercial. Veja [`foco/README.md`](foco/README.md).
+- **Assistente Comercial — Distribuição de Clientes por UF** (abaixo):
+  divide a carteira de clientes inativos entre vendedores por estado.
+
+---
+
 # Assistente Comercial — Distribuição de Clientes por UF
 
 Pega a planilha que sua macro já exporta do BI, filtra os clientes ativos há

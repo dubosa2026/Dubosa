@@ -1,0 +1,359 @@
+:root {
+  --bg: #f4f6f8;
+  --card: #ffffff;
+  --text: #1a202c;
+  --muted: #718096;
+  --primary: #1f9d55;
+  --primary-dark: #17753f;
+  --danger: #c53030;
+  --warning: #dd6b20;
+  --border: #e2e8f0;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+input {
+  font-family: inherit;
+  font-size: 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 100%;
+}
+
+label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+label > input {
+  margin-top: 4px;
+  font-weight: normal;
+  color: var(--text);
+}
+
+.btn-link {
+  background: none;
+  color: var(--muted);
+  text-decoration: underline;
+  padding: 4px 8px;
+}
+
+/* Login */
+.login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.login-card {
+  background: var(--card);
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  width: 360px;
+}
+.login-logo {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--primary);
+}
+.login-tagline {
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+.login-erro {
+  color: var(--danger);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.login-hint {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 20px;
+}
+
+/* App shell */
+.app-shell {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px;
+}
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.app-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--primary);
+}
+.app-subtitle {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.tab,
+.tab-active {
+  background: none;
+  border-radius: 8px 8px 0 0;
+  padding: 10px 16px;
+  color: var(--muted);
+}
+.tab-active {
+  background: var(--card);
+  color: var(--primary-dark);
+  font-weight: 700;
+  border: 1px solid var(--border);
+  border-bottom: 1px solid var(--card);
+  margin-bottom: -1px;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.kpi-card {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.kpi-highlight {
+  background: #f0fff4;
+  border: 1px solid #c6f6d5;
+}
+.kpi-value {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--primary);
+}
+.kpi-label {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.panel {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.panel h3 {
+  margin-top: 0;
+}
+
+.empty-hint {
+  color: var(--muted);
+  font-size: 13px;
+}
+.modal-hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: -8px;
+}
+
+.alertas-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.alerta-item {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+.alerta-warn {
+  background: #fffaf0;
+  border: 1px solid #feebc8;
+}
+.alerta-oportunidade {
+  background: #f0fff4;
+  border: 1px solid #c6f6d5;
+}
+
+.equipe-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.equipe-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.equipe-nome {
+  font-weight: 700;
+}
+.equipe-status {
+  color: var(--muted);
+  font-size: 13px;
+}
+.equipe-metricas {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  font-size: 13px;
+}
+.equipe-ajuda {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.mapa-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.mapa-topo {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.mapa-barra-bg {
+  background: #edf2f7;
+  border-radius: 999px;
+  height: 8px;
+  flex: 1;
+  overflow: hidden;
+}
+.mapa-barra-fill {
+  background: var(--warning);
+  height: 100%;
+}
+.mapa-barra-verde {
+  background: var(--primary);
+}
+
+.evolucao-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.evolucao-list li {
+  display: grid;
+  grid-template-columns: 90px 1fr 50px;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.autonomia-geral {
+  font-size: 14px;
+}
+.autonomia-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.autonomia-baixa {
+  background: #fff5f5;
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.autonomia-cliente-topo {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+}
+
+.chamados-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.chamado-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.chamado-topo {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+}
+.chamado-status {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #edf2f7;
+}
+.chamado-cliente {
+  font-weight: 600;
+  margin-top: 4px;
+}
+.chamado-descricao {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 2px;
+}
+.chamado-meta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.chamado-preso {
+  color: var(--danger);
+}
