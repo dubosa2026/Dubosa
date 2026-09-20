@@ -1,67 +1,71 @@
 import type { Database } from "better-sqlite3";
 import { randomUUID } from "node:crypto";
-import { RuleBasedProblemClassifier } from "../classifier";
-import type { IntegratorActionType, ProblemCategory, TimeCategory } from "../types";
+import { ClassificadorPorRegras, TriadorPorRegras } from "../classifier";
+import type { CategoriaTempo, StatusProblema } from "../types";
+import { EventRepository } from "./repositories/eventRepository";
 import { ProblemRepository } from "./repositories/problemRepository";
-import { TimeEntryRepository } from "./repositories/timeEntryRepository";
 import { UserRepository } from "./repositories/userRepository";
 
 const NOMES_VENDEDORES = [
-  "Ana Beatriz",
-  "Bruno Castro",
-  "Carla Dias",
-  "Diego Esteves",
-  "Elaine Farias",
-  "Fábio Gomes",
-  "Giovana Horta",
-  "Henrique Iório",
-  "Isabela Junqueira",
-  "João Klein",
+  "Ana Beatriz", "Bruno Castro", "Carla Dias", "Diego Esteves", "Elaine Farias",
+  "Fábio Gomes", "Giovana Horta", "Henrique Iório", "Isabela Junqueira", "Rafael Klein",
 ];
 
-const CLIENTES_DEMO = [
-  "Solar Pontal Integradora",
-  "Helios Engenharia Solar",
-  "Fotovolt Distribuidora",
-  "Verde Sol Energia",
-  "Norte Solar Instalações",
-  "Amazônia Fotovoltaica",
+const CLIENTES = [
+  "Solar Pontal Integradora", "Helios Engenharia Solar", "Fotovolt Distribuidora",
+  "Verde Sol Energia", "Norte Solar Instalações", "Amazônia Fotovoltaica",
 ];
 
-const DESCRICOES_PROBLEMA_DEMO = [
-  "Cliente está reclamando que o pedido ainda não foi faturado.",
+/**
+ * Descrições de problema reais o bastante para o agrupamento de
+ * recorrência ter o que encontrar: note que vários falam de faturamento
+ * travado, que é justamente o padrão que o insight deve apontar.
+ */
+const PROBLEMAS_DEMO = [
+  "Pedido faturado há três dias e o boleto ainda não chegou para o cliente.",
+  "Cliente reclamando que o pedido ainda não foi faturado, já são dois dias parados.",
+  "Faturamento travado, o pedido não sai do sistema e o cliente está cobrando.",
   "O pedido está atrasado e a transportadora não dá previsão de entrega.",
+  "Entrega extraviada, transportadora não localiza a carga.",
   "Cliente com limite de crédito bloqueado, não consegue fechar o pedido.",
-  "Nota fiscal veio com ICMS calculado errado, preciso de ajuste fiscal urgente.",
   "Cadastro do cliente está com endereço de entrega desatualizado.",
-  "Cliente recebeu um inversor com defeito, precisa de garantia.",
-  "Cliente quer negociar desconto por volume para fechar hoje.",
+  "ICMS calculado errado na nota, preciso de ajuste fiscal urgente.",
 ];
 
-function isoDiasAtras(dias: number, horas = 9, minutos = 0): string {
-  const data = new Date();
-  data.setDate(data.getDate() - dias);
-  data.setHours(horas, minutos, 0, 0);
-  return data.toISOString();
+const ASSUNTOS_EMAIL = [
+  { assunto: "RE: Pendência de faturamento do pedido 88231", remetente: "financeiro@empresa.com.br" },
+  { assunto: "Boleto em aberto — cliente Solar Pontal", remetente: "financeiro@empresa.com.br" },
+  { assunto: "Previsão de entrega pedido 88102", remetente: "logistica@empresa.com.br" },
+  { assunto: "Análise de crédito pendente", remetente: "credito@empresa.com.br" },
+  { assunto: "Newsletter Setembro — Novidades do setor solar", remetente: "marketing@fornecedor.com" },
+  { assunto: "Você está em cópia: alteração cadastral", remetente: "cadastro@empresa.com.br" },
+  { assunto: "Nota fiscal com ICMS divergente", remetente: "fiscal@empresa.com.br" },
+];
+
+function horaDeHoje(hora: number, minuto = 0): Date {
+  const d = new Date();
+  d.setHours(hora, minuto, 0, 0);
+  return d;
 }
 
-function escolher<T>(lista: T[], indice: number): T {
-  return lista[indice % lista.length];
+function escolher<T>(lista: T[], i: number): T {
+  return lista[i % lista.length];
 }
 
 /**
- * Popula o banco com dados de demonstração (gerente, equipe de vendedores,
- * registros de tempo de hoje, chamados classificados e ações de autonomia
- * das últimas semanas) para que as telas do FOCO já nasçam com conteúdo
- * realista para validação e demos.
+ * Popula um cenário de demonstração: uma equipe, um dia de cronômetro
+ * declarado, chamados em vários estágios do ciclo de vida e eventos
+ * identificados de e-mail — inclusive os irrelevantes, para a triagem
+ * ter o que descartar.
  */
 export function seedDemoData(db: Database): void {
   const users = new UserRepository(db);
-  const timeEntries = new TimeEntryRepository(db);
   const problems = new ProblemRepository(db);
-  const classifier = new RuleBasedProblemClassifier();
+  const events = new EventRepository(db);
+  const classificador = new ClassificadorPorRegras();
+  const triador = new TriadorPorRegras();
 
-  if (users.listarTodos().length > 0) return; // já existe dado, não duplica
+  if (users.listarTodos().length > 0) return;
 
   const gerente = users.criar({
     nome: "Marcelo Andrade",
@@ -82,78 +86,105 @@ export function seedDemoData(db: Database): void {
 
   users.criar({ nome: "Admin FOCO", email: "admin@foco.local", senha: "foco123", role: "ADMIN" });
 
-  // Tempo de hoje: cada vendedor recebe uma combinação plausível de blocos.
-  const categoriasHoje: TimeCategory[][] = [
-    ["PROSPECCAO", "NEGOCIACAO", "FOLLOWUP"],
-    ["PROSPECCAO", "PROBLEMA", "COTACAO_OPERACIONAL"],
-    ["PROSPECCAO", "PROSPECCAO", "NEGOCIACAO"],
-    ["FOLLOWUP", "PROBLEMA", "PROBLEMA"],
-    ["PROSPECCAO", "COTACAO_OPERACIONAL", "OUTROS"],
+  const inserirRegistro = db.prepare(
+    "INSERT INTO time_entries (id, user_id, categoria, inicio, fim, problema_id, alteracoes) VALUES (?, ?, ?, ?, ?, ?, '[]')"
+  );
+
+  // Cada vendedor recebe um dia plausível. O quarto padrão é de alguém
+  // соbrado por operação o dia inteiro — é o caso que o gerente precisa ver.
+  const PADROES: CategoriaTempo[][] = [
+    ["COMERCIAL", "ATENDIMENTO", "PAUSA", "COMERCIAL"],
+    ["COMERCIAL", "PROBLEMA_OPERACIONAL", "COMERCIAL", "PAUSA", "ATENDIMENTO"],
+    ["REUNIAO", "COMERCIAL", "PAUSA", "COMERCIAL", "ADMINISTRATIVO"],
+    ["PROBLEMA_OPERACIONAL", "COMERCIAL", "PROBLEMA_OPERACIONAL", "PAUSA", "PROBLEMA_OPERACIONAL"],
+    ["COMERCIAL", "ATENDIMENTO", "ADMINISTRATIVO", "PAUSA", "COMERCIAL"],
   ];
 
+  const DURACOES: Record<CategoriaTempo, number> = {
+    COMERCIAL: 95,
+    ATENDIMENTO: 55,
+    PROBLEMA_OPERACIONAL: 48,
+    REUNIAO: 45,
+    ADMINISTRATIVO: 35,
+    PAUSA: 60,
+  };
+
   vendedores.forEach((vendedor, i) => {
-    const combinacao = escolher(categoriasHoje, i);
-    let horaAtual = 8;
-    for (const categoria of combinacao) {
-      const duracaoMin = 30 + ((i * 13 + categoria.length * 7) % 60);
-      const inicio = new Date();
-      inicio.setHours(horaAtual, 0, 0, 0);
-      const fim = new Date(inicio.getTime() + duracaoMin * 60_000);
-      horaAtual += Math.ceil(duracaoMin / 60) + 1;
+    const padrao = escolher(PADROES, i);
+    let minutoAtual = 8 * 60;
+
+    padrao.forEach((categoria, j) => {
+      const duracao = DURACOES[categoria] + ((i * 7 + j * 11) % 20);
+      const inicio = horaDeHoje(Math.floor(minutoAtual / 60), minutoAtual % 60);
+      const fim = new Date(inicio.getTime() + duracao * 60_000);
+      minutoAtual += duracao + 5;
 
       let problemaId: string | null = null;
-      if (categoria === "PROBLEMA") {
-        const descricao = escolher(DESCRICOES_PROBLEMA_DEMO, i);
-        const classificacao = classifier.classify(descricao);
+      if (categoria === "PROBLEMA_OPERACIONAL") {
+        const descricao = escolher(PROBLEMAS_DEMO, i + j);
+        const c = classificador.classificar(descricao);
         const problema = problems.registrar({
           userId: vendedor.id,
-          cliente: escolher(CLIENTES_DEMO, i),
+          cliente: escolher(CLIENTES, i + j),
           descricao,
-          categoria: classificacao.categoria as ProblemCategory,
-          prioridade: classificacao.prioridade,
-          areaResponsavel: classificacao.areaResponsavel,
+          categoria: c.categoria,
+          prioridade: c.prioridade,
+          areaResponsavel: c.areaResponsavel,
         });
         problemaId = problema.id;
-        if (i === 3) problems.marcarPreso(problema.id); // demonstra um caso "estou preso"
+
+        // Espalha o ciclo de vida para o painel mostrar estágios diferentes.
+        const trilha: StatusProblema[][] = [
+          ["EM_ANALISE", "ENCAMINHADO"],
+          ["ENCAMINHADO", "AGUARDANDO_AREA"],
+          ["EM_ANALISE", "RESOLVIDO"],
+          ["ENCAMINHADO"],
+        ];
+        for (const status of escolher(trilha, i + j)) {
+          problems.mover(problema.id, status, "sistema", "movimentação de demonstração");
+        }
+
+        // Um vendedor preso há bastante tempo, para o alerta crítico disparar.
+        if (i === 3 && j === 0) {
+          problems.marcarPreso(problema.id, {
+            precisaAgora: true,
+            observacao: "Já falei com a área duas vezes e não tive retorno.",
+          });
+        }
       }
 
-      db.prepare(
-        "INSERT INTO time_entries (id, user_id, categoria, inicio, fim, problema_id) VALUES (?, ?, ?, ?, ?, ?)"
-      ).run(randomUUID(), vendedor.id, categoria, inicio.toISOString(), fim.toISOString(), problemaId);
-    }
+      inserirRegistro.run(
+        randomUUID(),
+        vendedor.id,
+        categoria,
+        inicio.toISOString(),
+        fim.toISOString(),
+        problemaId
+      );
+    });
   });
 
-  // Um vendedor com prospecção em andamento agora (para a tela do gerente mostrar "em prospecção").
-  timeEntries.iniciar(vendedores[0].id, "PROSPECCAO");
+  // Eventos identificados de e-mail — passando pela triagem de verdade,
+  // então a newsletter e a cópia sem ação são descartadas ou rebaixadas.
+  const eventos = [];
+  for (let i = 0; i < 24; i++) {
+    const vendedor = escolher(vendedores, i);
+    const { assunto, remetente } = escolher(ASSUNTOS_EMAIL, i);
+    const triagem = triador.triar(assunto, remetente);
+    if (triagem.relevancia === "IGNORAR") continue;
 
-  // Ações de autonomia do integrador nas últimas 4 semanas, evoluindo de ~35% para ~58%.
-  const tipos: IntegratorActionType[] = ["COTACAO", "PEDIDO", "CONSULTA_PRECO", "CONSULTA_ESTOQUE", "CONSULTA_FRETE"];
-  const percentIntegradorPorSemana = [0.35, 0.42, 0.5, 0.58];
-  percentIntegradorPorSemana.forEach((percentIntegrador, semanaIndex) => {
-    const diasAtras = (3 - semanaIndex) * 7;
-    for (let acao = 0; acao < 20; acao++) {
-      const vendedor = escolher(vendedores, acao + semanaIndex);
-      const cliente = escolher(CLIENTES_DEMO, acao);
-      const tipo = escolher(tipos, acao);
-      const origem = acao / 20 < percentIntegrador ? "INTEGRADOR" : "VENDEDOR";
-      const dataAcao = isoDiasAtras(diasAtras + (acao % 6), 9 + (acao % 8));
-      db.prepare(
-        "INSERT INTO integrator_actions (id, user_id, cliente, tipo, origem, criado_em) VALUES (?, ?, ?, ?, ?, ?)"
-      ).run(randomUUID(), vendedor.id, cliente, tipo, origem, dataAcao);
-    }
-  });
-
-  // Cliente propositalmente com baixa autonomia digital, para o alerta 🔴.
-  for (let i = 0; i < 10; i++) {
-    db.prepare(
-      "INSERT INTO integrator_actions (id, user_id, cliente, tipo, origem, criado_em) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run(
-      randomUUID(),
-      vendedores[1].id,
-      "Solar Pontal Integradora",
-      i % 2 === 0 ? "COTACAO" : "PEDIDO",
-      i === 0 ? "INTEGRADOR" : "VENDEDOR",
-      isoDiasAtras(i)
-    );
+    const hora = 8 + (i % 9);
+    eventos.push({
+      id: `email:demo-${i}`,
+      userId: vendedor.id,
+      fonte: "EMAIL" as const,
+      ocorridoEm: horaDeHoje(hora, (i * 7) % 60).toISOString(),
+      assunto,
+      categoria: triagem.categoria,
+      relevancia: triagem.relevancia,
+      cliente: null,
+      problemaId: null,
+    });
   }
+  events.registrarVarios(eventos);
 }

@@ -1,98 +1,182 @@
-import { formatDuracao } from "./focoIndex";
-import type { ConsumoPorArea } from "./operationalTime";
-import type { Problem, TimeEntry } from "./types";
+import type { VisaoEquipe } from "./evidence";
+import { agruparRecorrentes } from "./problems";
+import { formatDuracao } from "./timeTracking";
+import type { Origem } from "./provenance";
+import type { Problema, RegistroTempo, User } from "./types";
 
-export type AlertaTipo = "ALERTA" | "OPORTUNIDADE";
+/**
+ * ALERTAS GERENCIAIS
+ *
+ * O gerente não deve precisar olhar o painel o dia inteiro. Os alertas
+ * existem para puxá-lo quando há algo a fazer — e cada um diz de onde veio
+ * o dado que o disparou, porque um alerta sem origem é um boato.
+ *
+ * Nenhum alerta aqui cobra produtividade de vendedor. Todos apontam para
+ * um obstáculo que o gerente pode remover.
+ */
+
+export type Severidade = "CRITICO" | "ATENCAO" | "POSITIVO";
+
+export const SIMBOLO_SEVERIDADE: Record<Severidade, string> = {
+  CRITICO: "🔴",
+  ATENCAO: "🟠",
+  POSITIVO: "🟢",
+};
 
 export interface Alerta {
-  tipo: AlertaTipo;
+  id: string;
+  severidade: Severidade;
   texto: string;
-}
-
-export interface DadosParaAlertas {
-  entriesHoje: TimeEntry[];
-  problemsHoje: Problem[];
-  mapaConsumo: ConsumoPorArea[];
-  horasRecuperaveisMes: number;
-  agora?: Date;
-}
-
-const LIMIAR_PROBLEMA_SEGUNDOS = 90 * 60; // 90 minutos
-const LIMIAR_CONCENTRACAO_AREA_PERCENT = 30;
-
-function duracaoSegundos(entry: TimeEntry, agora: Date): number {
-  const inicio = new Date(entry.inicio).getTime();
-  const fim = entry.fim ? new Date(entry.fim).getTime() : agora.getTime();
-  return Math.max(0, Math.round((fim - inicio) / 1000));
+  origem: Origem;
+  /** O que sustenta o alerta — mostrado junto, nunca escondido. */
+  evidencia: string;
+  /** Vendedor envolvido, quando o alerta é sobre uma pessoa específica. */
+  userId?: string;
 }
 
 /**
- * Gera os alertas gerenciais descritos na especificação: identifica onde a
- * equipe está perdendo capacidade comercial, sem função de vigilância —
- * o foco é apontar processos internos que "roubam" tempo de venda.
+ * Limiares configuráveis, para o gerente ajustar o volume de notificações.
+ * Um alerta que dispara o tempo todo deixa de ser alerta.
  */
-export function generateManagerAlerts(dados: DadosParaAlertas): Alerta[] {
+export interface ConfigAlertas {
+  minutosPresoEmProblema: number;
+  minutosProblemaOperacionalNoDia: number;
+  vendedoresParaProblemaColetivo: number;
+  percentConcentracaoArea: number;
+  ocorrenciasParaRecorrencia: number;
+  ativos: Record<string, boolean>;
+}
+
+export const CONFIG_ALERTAS_PADRAO: ConfigAlertas = {
+  minutosPresoEmProblema: 45,
+  minutosProblemaOperacionalNoDia: 90,
+  vendedoresParaProblemaColetivo: 3,
+  percentConcentracaoArea: 30,
+  ocorrenciasParaRecorrencia: 3,
+  ativos: {
+    preso: true,
+    tempoEmProblema: true,
+    problemaColetivo: true,
+    concentracaoArea: true,
+    recorrencia: true,
+    resolvidos: true,
+  },
+};
+
+export interface DadosAlertas {
+  visaoEquipe: VisaoEquipe;
+  problemas: Problema[];
+  registros: RegistroTempo[];
+  usuarios: User[];
+  config?: ConfigAlertas;
+  agora?: Date;
+}
+
+function nomeDe(usuarios: User[], userId: string): string {
+  return usuarios.find((u) => u.id === userId)?.nome ?? "Vendedor";
+}
+
+export function gerarAlertas(dados: DadosAlertas): Alerta[] {
+  const config = dados.config ?? CONFIG_ALERTAS_PADRAO;
   const agora = dados.agora ?? new Date();
   const alertas: Alerta[] = [];
 
-  const segundosEmProblemaPorUsuario = new Map<string, number>();
-  for (const entry of dados.entriesHoje) {
-    if (entry.categoria !== "PROBLEMA") continue;
-    const atual = segundosEmProblemaPorUsuario.get(entry.userId) ?? 0;
-    segundosEmProblemaPorUsuario.set(entry.userId, atual + duracaoSegundos(entry, agora));
+  // 🔴 Vendedor preso há tempo demais no mesmo problema.
+  if (config.ativos.preso) {
+    for (const problema of dados.problemas.filter((p) => p.preso && p.status !== "RESOLVIDO" && p.status !== "CANCELADO")) {
+      const blocos = dados.registros.filter((r) => r.problemaId === problema.id);
+      const segundos = blocos.reduce((acc, r) => {
+        const fim = r.fim ? new Date(r.fim).getTime() : agora.getTime();
+        return acc + Math.max(0, Math.round((fim - new Date(r.inicio).getTime()) / 1000));
+      }, 0);
+      if (segundos >= config.minutosPresoEmProblema * 60) {
+        alertas.push({
+          id: `preso:${problema.id}`,
+          severidade: "CRITICO",
+          texto: `${nomeDe(dados.usuarios, problema.userId)} está há ${formatDuracao(segundos)} no problema ${problema.protocolo} e pediu ajuda.`,
+          origem: "DECLARADO",
+          evidencia: `${problema.areaResponsavel} · ${problema.protocolo} · tempo declarado no cronômetro`,
+          userId: problema.userId,
+        });
+      }
+    }
   }
-  const vendedoresComMuitoTempoEmProblemas = Array.from(segundosEmProblemaPorUsuario.values()).filter(
-    (s) => s > LIMIAR_PROBLEMA_SEGUNDOS
-  ).length;
-  if (vendedoresComMuitoTempoEmProblemas > 0) {
+
+  // 🟠 Vendedor com muito tempo declarado em problema operacional no dia.
+  if (config.ativos.tempoEmProblema) {
+    for (const visao of dados.visaoEquipe.porVendedor) {
+      const segundos =
+        visao.tempo.porCategoria.find((c) => c.categoria === "PROBLEMA_OPERACIONAL")?.segundos ?? 0;
+      if (segundos >= config.minutosProblemaOperacionalNoDia * 60) {
+        alertas.push({
+          id: `tempoProblema:${visao.userId}`,
+          severidade: "ATENCAO",
+          texto: `${nomeDe(dados.usuarios, visao.userId)} declarou ${formatDuracao(segundos)} em problemas operacionais no período.`,
+          origem: "DECLARADO",
+          evidencia: `${visao.problemasAbertos} problema(s) aberto(s) · ${visao.interrupcoesDeclaradas} interrupção(ões) declaradas`,
+          userId: visao.userId,
+        });
+      }
+    }
+  }
+
+  // 🔴 Mesmo problema atingindo vários vendedores ao mesmo tempo.
+  if (config.ativos.problemaColetivo) {
+    for (const grupo of agruparRecorrentes(dados.problemas, config.ocorrenciasParaRecorrencia)) {
+      if (grupo.vendedoresImpactados >= config.vendedoresParaProblemaColetivo) {
+        alertas.push({
+          id: `coletivo:${grupo.categoria}`,
+          severidade: "CRITICO",
+          texto: `${grupo.vendedoresImpactados} vendedores foram impactados por problemas de ${grupo.areaResponsavel} no período.`,
+          origem: "DECLARADO",
+          evidencia:
+            `${grupo.ocorrencias} chamados registrados` +
+            (grupo.termosComuns.length ? ` · termos recorrentes: ${grupo.termosComuns.join(", ")}` : ""),
+        });
+      }
+    }
+  }
+
+  // 🟠 Uma área concentrando o tempo operacional da equipe.
+  if (config.ativos.concentracaoArea) {
+    const topo = dados.visaoEquipe.tempoPorAreaDeclarado[0];
+    if (topo && topo.percent >= config.percentConcentracaoArea) {
+      alertas.push({
+        id: `concentracao:${topo.area}`,
+        severidade: "ATENCAO",
+        texto: `${topo.area} concentra ${topo.percent}% do tempo que a equipe declarou em problemas.`,
+        origem: "DECLARADO",
+        evidencia: `${formatDuracao(topo.segundos)} declarados em problemas desta área`,
+      });
+    }
+  }
+
+  // 🟠 Área gerando muitos eventos identificados nas integrações.
+  const topoEventos = dados.visaoEquipe.eventosPorArea[0];
+  if (topoEventos && topoEventos.quantidade >= 5) {
     alertas.push({
-      tipo: "ALERTA",
-      texto: `${vendedoresComMuitoTempoEmProblemas} vendedores passaram mais de 90 minutos em problemas hoje.`,
+      id: `eventos:${topoEventos.categoria}`,
+      severidade: "ATENCAO",
+      texto: `${topoEventos.quantidade} mensagens relacionadas a ${topoEventos.area} chegaram à equipe no período.`,
+      origem: "IDENTIFICADO",
+      evidencia: "eventos identificados nas integrações autorizadas — não representam tempo medido",
     });
   }
 
-  const areaMaisConcentrada = dados.mapaConsumo[0];
-  if (areaMaisConcentrada && areaMaisConcentrada.percent >= LIMIAR_CONCENTRACAO_AREA_PERCENT) {
-    alertas.push({
-      tipo: "ALERTA",
-      texto: `${areaMaisConcentrada.area} concentra grande parte do tempo operacional (${areaMaisConcentrada.percent}%).`,
-    });
+  // 🟢 Problema recorrente que foi resolvido.
+  if (config.ativos.resolvidos) {
+    const resolvidos = dados.problemas.filter((p) => p.status === "RESOLVIDO");
+    if (resolvidos.length > 0) {
+      alertas.push({
+        id: "resolvidos",
+        severidade: "POSITIVO",
+        texto: `${resolvidos.length} problema(s) resolvido(s) no período.`,
+        origem: "DECLARADO",
+        evidencia: "chamados encerrados com status Resolvido no FOCO",
+      });
+    }
   }
 
-  const segundosCotacaoOperacional = dados.entriesHoje
-    .filter((e) => e.categoria === "COTACAO_OPERACIONAL")
-    .reduce((acc, e) => acc + duracaoSegundos(e, agora), 0);
-  if (segundosCotacaoOperacional > 0) {
-    alertas.push({
-      tipo: "ALERTA",
-      texto: `${formatDuracao(segundosCotacaoOperacional)} foram gastos hoje em cotações que poderiam ter sido feitas pelos integradores.`,
-    });
-  }
-
-  const chamadosAbertosNaoComerciais = dados.problemsHoje.filter(
-    (p) => p.status === "ABERTO" && p.categoria !== "COMERCIAL"
-  ).length;
-  if (chamadosAbertosNaoComerciais > 0) {
-    alertas.push({
-      tipo: "OPORTUNIDADE",
-      texto: `${chamadosAbertosNaoComerciais} chamados poderiam ser encaminhados automaticamente para a área responsável.`,
-    });
-  }
-
-  if (dados.horasRecuperaveisMes > 0) {
-    alertas.push({
-      tipo: "OPORTUNIDADE",
-      texto: `Existe potencial de recuperação de ${dados.horasRecuperaveisMes} horas comerciais por mês.`,
-    });
-  }
-
-  const vendedoresPresos = dados.problemsHoje.filter((p) => p.preso).length;
-  if (vendedoresPresos > 0) {
-    alertas.push({
-      tipo: "ALERTA",
-      texto: `${vendedoresPresos} vendedor(es) sinalizaram estar presos em um problema e precisam de ajuda agora.`,
-    });
-  }
-
-  return alertas;
+  const ordem: Record<Severidade, number> = { CRITICO: 0, ATENCAO: 1, POSITIVO: 2 };
+  return alertas.sort((a, b) => ordem[a.severidade] - ordem[b.severidade]);
 }

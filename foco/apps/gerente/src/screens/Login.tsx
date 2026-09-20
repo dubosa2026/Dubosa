@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
-import type { DashboardData } from "../../shared/ipc";
+import type { PainelData } from "../../shared/ipc";
 
-export default function Login({ onLoggedIn }: { onLoggedIn: (data: DashboardData) => void }) {
+export default function Login({ onLoggedIn }: { onLoggedIn: (data: PainelData) => void }) {
   const [email, setEmail] = useState("gerente@foco.local");
   const [senha, setSenha] = useState("foco123");
   const [erro, setErro] = useState<string | null>(null);

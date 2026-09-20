@@ -1,53 +1,52 @@
-import { useState } from "react";
-import type { HomeData } from "../../shared/ipc";
-import { CATEGORIA_COR, CATEGORIA_LABEL, formatDuracao } from "../format";
+import { useEffect, useState } from "react";
+import type { CategoriaTempo, HomeData } from "../../shared/ipc";
+import { CATEGORIAS_ORDEM, CATEGORIA_COR, CATEGORIA_LABEL, formatDuracao } from "../format";
 import RegistrarProblemaModal from "../components/RegistrarProblemaModal";
-import RegistrarAcaoIntegradorModal from "../components/RegistrarAcaoIntegradorModal";
+import EstouPresoModal from "../components/EstouPresoModal";
 import HistoricoChamados from "../components/HistoricoChamados";
-import AutonomiaResumo from "../components/AutonomiaResumo";
+import LinhaDoDia from "../components/LinhaDoDia";
 
 export default function Home({ initialData, onLogout }: { initialData: HomeData; onLogout: () => void }) {
   const [data, setData] = useState<HomeData>(initialData);
-  const [mostrarModalProblema, setMostrarModalProblema] = useState(false);
-  const [mostrarModalIntegrador, setMostrarModalIntegrador] = useState(false);
-  const [carregandoProspeccao, setCarregandoProspeccao] = useState(false);
+  const [modalProblema, setModalProblema] = useState(false);
+  const [modalPreso, setModalPreso] = useState(false);
+  const [, forcarRender] = useState(0);
 
-  const emProspeccao = data.emAndamento?.categoria === "PROSPECCAO";
-  const emProblemaAgora = data.emAndamento?.categoria === "PROBLEMA" ? data.emAndamento : null;
-  const problemaAtualAberto = emProblemaAgora
-    ? data.historicoChamados.find((p) => p.id === emProblemaAgora.problemaId && p.status !== "RESOLVIDO")
-    : null;
+  // O cronômetro corrente é desenhado a partir do horário de início; o
+  // relógio só redesenha a tela, nunca grava nada.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (data.blocoAtivo) forcarRender((n) => n + 1);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [data.blocoAtivo]);
 
-  async function refresh() {
-    const resposta = await window.foco.getHomeData();
-    if (resposta.ok) setData(resposta.data);
+  async function atualizar() {
+    const r = await window.foco.getHome();
+    if (r.ok) setData(r.data);
   }
 
-  async function toggleProspeccao() {
-    setCarregandoProspeccao(true);
-    if (emProspeccao) {
-      await window.foco.stopTime();
-    } else {
-      if (data.emAndamento) await window.foco.stopTime();
-      await window.foco.startTime("PROSPECCAO");
-    }
-    await refresh();
-    setCarregandoProspeccao(false);
+  async function iniciar(categoria: CategoriaTempo) {
+    const r = await window.foco.iniciarBloco(categoria);
+    if (r.ok) setData(r.data);
   }
 
-  async function iniciarBloco(categoria: "NEGOCIACAO" | "FOLLOWUP" | "COTACAO_OPERACIONAL" | "OUTROS") {
-    if (data.emAndamento) await window.foco.stopTime();
-    await window.foco.startTime(categoria);
-    await refresh();
+  async function parar() {
+    const r = await window.foco.pararBloco();
+    if (r.ok) setData(r.data);
   }
 
-  async function handleEstouPreso() {
-    if (!problemaAtualAberto) return;
-    await window.foco.markStuck(problemaAtualAberto.id);
-    await refresh();
-  }
+  const { visao, blocoAtivo } = data;
+  const problemaAtual =
+    blocoAtivo?.categoria === "PROBLEMA_OPERACIONAL" && blocoAtivo.problemaId
+      ? data.chamados.find((p) => p.id === blocoAtivo.problemaId) ?? null
+      : null;
 
-  const { focoComercial } = data;
+  const segundosAtivo = blocoAtivo
+    ? Math.max(0, Math.round((Date.now() - new Date(blocoAtivo.inicio).getTime()) / 1000))
+    : 0;
+
+  const totalDeclarado = visao.tempo.totalDeclarado.valor;
 
   return (
     <div className="app-shell">
@@ -56,89 +55,146 @@ export default function Home({ initialData, onLogout }: { initialData: HomeData;
           <div className="app-title">FOCO</div>
           <div className="app-subtitle">{data.user.nome}</div>
         </div>
-        <button className="btn-link" onClick={onLogout}>
-          Sair
-        </button>
+        <button className="btn-link" onClick={onLogout}>Sair</button>
       </header>
 
-      <section className="foco-card">
-        <div className="foco-percent">{focoComercial.focoComercialPercent}%</div>
-        <div className="foco-label">
-          Índice de Foco Comercial
-          <div className="foco-sublabel">tempo em atividades comerciais / tempo total registrado hoje</div>
+      {/* Cronômetro: o estado atual, em primeiro plano */}
+      <section className="cronometro">
+        <div className="cronometro-estado">
+          <span className="rotulo">Agora</span>
+          <div className="cronometro-categoria">
+            {blocoAtivo ? (
+              <>
+                <span className="ponto" style={{ background: CATEGORIA_COR[blocoAtivo.categoria] }} />
+                {CATEGORIA_LABEL[blocoAtivo.categoria]}
+              </>
+            ) : (
+              <span className="sem-bloco">Nenhuma atividade em andamento</span>
+            )}
+          </div>
+          {blocoAtivo && <div className="cronometro-tempo">{formatDuracao(segundosAtivo)}</div>}
         </div>
-      </section>
 
-      <section className="breakdown">
-        {focoComercial.porCategoria
-          .filter((c) => c.segundos > 0)
-          .map((c) => (
-            <div className="breakdown-row" key={c.categoria}>
-              <span className="breakdown-dot" style={{ background: CATEGORIA_COR[c.categoria] }} />
-              <span className="breakdown-label">{CATEGORIA_LABEL[c.categoria]}</span>
-              <span className="breakdown-time">{formatDuracao(c.segundos)}</span>
-            </div>
+        <div className="cronometro-botoes">
+          {CATEGORIAS_ORDEM.map((c) => (
+            <button
+              key={c}
+              className={blocoAtivo?.categoria === c ? "cat-btn cat-ativa" : "cat-btn"}
+              style={blocoAtivo?.categoria === c ? { borderColor: CATEGORIA_COR[c] } : undefined}
+              onClick={() => iniciar(c)}
+            >
+              <span className="ponto" style={{ background: CATEGORIA_COR[c] }} />
+              {CATEGORIA_LABEL[c]}
+            </button>
           ))}
-        {focoComercial.totalSegundos === 0 && <p className="empty-hint">Nenhum tempo registrado hoje ainda.</p>}
+          {blocoAtivo && (
+            <button className="cat-btn cat-parar" onClick={parar}>■ Parar</button>
+          )}
+        </div>
       </section>
 
-      <section className="actions">
-        <button
-          className={emProspeccao ? "btn-danger btn-big" : "btn-primary btn-big"}
-          onClick={toggleProspeccao}
-          disabled={carregandoProspeccao}
-        >
-          {emProspeccao ? "■ PARAR PROSPECÇÃO" : "▶ INICIAR PROSPECÇÃO"}
+      {/* Tempo do dia — sempre rotulado como DECLARADO */}
+      <section className="painel">
+        <div className="painel-cabeca">
+          <h2>Seu tempo hoje</h2>
+          <span className="selo selo-declarado">tempo declarado</span>
+        </div>
+        <p className="nota-origem">
+          Estes números vêm do seu cronômetro. Eles registram o que você <strong>informou</strong> estar
+          fazendo — não são uma avaliação do seu trabalho.
+        </p>
+
+        <div className="barra">
+          {totalDeclarado === 0 ? (
+            <div className="barra-vazia">Nenhum tempo declarado hoje</div>
+          ) : (
+            visao.tempo.porCategoria
+              .filter((c) => c.segundos > 0)
+              .map((c) => (
+                <i
+                  key={c.categoria}
+                  style={{
+                    width: `${(c.segundos / totalDeclarado) * 100}%`,
+                    background: CATEGORIA_COR[c.categoria],
+                  }}
+                  title={`${CATEGORIA_LABEL[c.categoria]} — ${formatDuracao(c.segundos)}`}
+                />
+              ))
+          )}
+        </div>
+
+        <div className="legenda">
+          {visao.tempo.porCategoria
+            .filter((c) => c.segundos > 0)
+            .map((c) => (
+              <div key={c.categoria}>
+                <span className="ponto" style={{ background: CATEGORIA_COR[c.categoria] }} />
+                <b>{formatDuracao(c.segundos)}</b>
+                <span>{CATEGORIA_LABEL[c.categoria]}</span>
+              </div>
+            ))}
+        </div>
+
+        <div className="resumo-linhas">
+          <div>
+            <span>Comercial + atendimento declarados</span>
+            <b>{formatDuracao(visao.tempo.comercialDeclarado.valor)}</b>
+          </div>
+          <div>
+            <span>Operacional declarado</span>
+            <b>{formatDuracao(visao.tempo.operacionalDeclarado.valor)}</b>
+          </div>
+          <div>
+            <span>Interrupções declaradas</span>
+            <b>{visao.interrupcoesDeclaradas}</b>
+          </div>
+        </div>
+      </section>
+
+      <section className="acoes">
+        <button className="btn-alerta btn-grande" onClick={() => setModalProblema(true)}>
+          🚨 Registrar problema operacional
         </button>
-
-        <div className="actions-row">
-          <button className="btn-secondary" onClick={() => iniciarBloco("NEGOCIACAO")}>
-            Iniciar Negociação
+        {problemaAtual && !problemaAtual.preso && (
+          <button className="btn-sos" onClick={() => setModalPreso(true)}>
+            🆘 Estou preso neste problema
           </button>
-          <button className="btn-secondary" onClick={() => iniciarBloco("FOLLOWUP")}>
-            Iniciar Follow-up
-          </button>
-        </div>
-
-        <div className="actions-row">
-          <button className="btn-warning" onClick={() => setMostrarModalProblema(true)}>
-            🚨 Registrar Problema
-          </button>
-          <button className="btn-outline" onClick={() => setMostrarModalIntegrador(true)}>
-            📋 Registrar cotação/pedido do integrador
-          </button>
-        </div>
-
-        {problemaAtualAberto && (
-          <button
-            className={problemaAtualAberto.preso ? "btn-muted" : "btn-sos"}
-            onClick={handleEstouPreso}
-            disabled={problemaAtualAberto.preso}
-          >
-            {problemaAtualAberto.preso ? "🆘 Ajuda já solicitada" : "🆘 Estou preso neste problema"}
-          </button>
+        )}
+        {problemaAtual?.preso && (
+          <div className="ajuda-enviada">
+            🆘 Ajuda solicitada em {problemaAtual.protocolo}. Seu gerente foi avisado.
+          </div>
         )}
       </section>
 
-      <section className="columns">
-        <HistoricoChamados chamados={data.historicoChamados} />
-        <AutonomiaResumo />
-      </section>
+      <div className="grade-2">
+        <HistoricoChamados chamados={data.chamados} onAtualizar={atualizar} />
+        <LinhaDoDia registros={data.registrosDeHoje} chamados={data.chamados} />
+      </div>
 
-      {mostrarModalProblema && (
+      <p className="rodape">
+        O FOCO não existe para vigiar você. Existe para identificar o que está tirando seu tempo e
+        permitir que isso seja removido.
+      </p>
+
+      {modalProblema && (
         <RegistrarProblemaModal
-          onClose={() => setMostrarModalProblema(false)}
+          onFechar={() => setModalProblema(false)}
           onRegistrado={async () => {
-            setMostrarModalProblema(false);
-            await refresh();
+            setModalProblema(false);
+            await atualizar();
           }}
         />
       )}
 
-      {mostrarModalIntegrador && (
-        <RegistrarAcaoIntegradorModal
-          onClose={() => setMostrarModalIntegrador(false)}
-          onRegistrado={() => setMostrarModalIntegrador(false)}
+      {modalPreso && problemaAtual && (
+        <EstouPresoModal
+          problema={problemaAtual}
+          onFechar={() => setModalPreso(false)}
+          onEnviado={async () => {
+            setModalPreso(false);
+            await atualizar();
+          }}
         />
       )}
     </div>

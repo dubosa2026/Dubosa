@@ -1,10 +1,10 @@
 import { useCallback, useState } from "react";
-import type { DashboardData } from "../shared/ipc";
+import type { PainelData } from "../shared/ipc";
 import Login from "./screens/Login";
 import Dashboard from "./screens/Dashboard";
 
 export default function App() {
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [dashboard, setDashboard] = useState<PainelData | null>(null);
 
   const handleLogout = useCallback(async () => {
     await window.focoGer.logout();

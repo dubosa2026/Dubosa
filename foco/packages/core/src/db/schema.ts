@@ -1,10 +1,8 @@
 /**
- * Esquema SQLite embutido como string (em vez de um arquivo .sql lido em
- * tempo de execução) para não depender de resolução de caminho de arquivo
- * depois de compilado/empacotado pelo electron-builder (asar). V1, local
- * por máquina; desenhado para migrar sem atrito para PostgreSQL numa
- * futura API central: tipos simples, IDs em texto (uuid), timestamps ISO
- * 8601 em texto.
+ * Esquema SQLite embutido como string, para não depender de resolução de
+ * caminho depois de empacotado. V1 local por máquina; desenhado para
+ * migrar sem atrito para PostgreSQL na API central: IDs em texto,
+ * timestamps ISO 8601, JSON em colunas de texto.
  */
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS users (
@@ -17,41 +15,56 @@ CREATE TABLE IF NOT EXISTS users (
   ativo INTEGER NOT NULL DEFAULT 1
 );
 
-CREATE TABLE IF NOT EXISTS time_entries (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id),
-  categoria TEXT NOT NULL CHECK (
-    categoria IN ('PROSPECCAO', 'NEGOCIACAO', 'FOLLOWUP', 'PROBLEMA', 'COTACAO_OPERACIONAL', 'OUTROS')
-  ),
-  inicio TEXT NOT NULL,
-  fim TEXT,
-  problema_id TEXT REFERENCES problems(id)
-);
-
 CREATE TABLE IF NOT EXISTS problems (
   id TEXT PRIMARY KEY,
   protocolo TEXT NOT NULL UNIQUE,
   user_id TEXT NOT NULL REFERENCES users(id),
-  cliente TEXT NOT NULL,
+  cliente TEXT,
   descricao TEXT NOT NULL,
   categoria TEXT NOT NULL,
   prioridade TEXT NOT NULL,
   area_responsavel TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'ABERTO' CHECK (status IN ('ABERTO', 'EM_ANDAMENTO', 'RESOLVIDO')),
+  responsavel TEXT,
+  status TEXT NOT NULL DEFAULT 'NOVO' CHECK (
+    status IN ('NOVO', 'EM_ANALISE', 'ENCAMINHADO', 'AGUARDANDO_AREA',
+               'AGUARDANDO_VENDEDOR', 'RESOLVIDO', 'CANCELADO')
+  ),
+  origem TEXT NOT NULL DEFAULT 'REGISTRO_VENDEDOR' CHECK (
+    origem IN ('REGISTRO_VENDEDOR', 'DETECCAO_EMAIL', 'DETECCAO_WHATSAPP')
+  ),
   preso INTEGER NOT NULL DEFAULT 0,
+  pedido_ajuda TEXT,
   criado_em TEXT NOT NULL,
-  atualizado_em TEXT NOT NULL
+  atualizado_em TEXT NOT NULL,
+  resolvido_em TEXT,
+  historico TEXT NOT NULL DEFAULT '[]'
 );
 
-CREATE TABLE IF NOT EXISTS integrator_actions (
+CREATE TABLE IF NOT EXISTS time_entries (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id),
-  cliente TEXT NOT NULL,
-  tipo TEXT NOT NULL CHECK (
-    tipo IN ('COTACAO', 'PEDIDO', 'CONSULTA_PRECO', 'CONSULTA_ESTOQUE', 'CONSULTA_FRETE')
+  categoria TEXT NOT NULL CHECK (
+    categoria IN ('COMERCIAL', 'ATENDIMENTO', 'PROBLEMA_OPERACIONAL',
+                  'REUNIAO', 'ADMINISTRATIVO', 'PAUSA')
   ),
-  origem TEXT NOT NULL CHECK (origem IN ('INTEGRADOR', 'VENDEDOR')),
-  criado_em TEXT NOT NULL
+  inicio TEXT NOT NULL,
+  fim TEXT,
+  problema_id TEXT REFERENCES problems(id),
+  alteracoes TEXT NOT NULL DEFAULT '[]'
+);
+
+-- Eventos vindos das integrações autorizadas. Guardamos assunto e
+-- classificação, nunca o conteúdo integral da mensagem.
+CREATE TABLE IF NOT EXISTS identified_events (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  fonte TEXT NOT NULL CHECK (fonte IN ('EMAIL', 'WHATSAPP')),
+  ocorrido_em TEXT NOT NULL,
+  assunto TEXT NOT NULL,
+  categoria TEXT NOT NULL,
+  relevancia TEXT NOT NULL CHECK (relevancia IN ('ALTA', 'MEDIA', 'BAIXA', 'IGNORAR')),
+  cliente TEXT,
+  problema_id TEXT REFERENCES problems(id)
 );
 
 CREATE TABLE IF NOT EXISTS counters (
@@ -63,6 +76,7 @@ CREATE INDEX IF NOT EXISTS idx_time_entries_user ON time_entries(user_id);
 CREATE INDEX IF NOT EXISTS idx_time_entries_inicio ON time_entries(inicio);
 CREATE INDEX IF NOT EXISTS idx_problems_user ON problems(user_id);
 CREATE INDEX IF NOT EXISTS idx_problems_status ON problems(status);
-CREATE INDEX IF NOT EXISTS idx_integrator_actions_user ON integrator_actions(user_id);
-CREATE INDEX IF NOT EXISTS idx_integrator_actions_cliente ON integrator_actions(cliente);
+CREATE INDEX IF NOT EXISTS idx_problems_criado ON problems(criado_em);
+CREATE INDEX IF NOT EXISTS idx_events_user ON identified_events(user_id);
+CREATE INDEX IF NOT EXISTS idx_events_ocorrido ON identified_events(ocorrido_em);
 `;

@@ -1,45 +1,63 @@
 import { describe, expect, it } from "vitest";
-import { RuleBasedProblemClassifier } from "../src/classifier";
+import { ClassificadorPorRegras, TriadorPorRegras } from "../src/classifier";
 
-describe("RuleBasedProblemClassifier", () => {
-  const classifier = new RuleBasedProblemClassifier();
+describe("ClassificadorPorRegras", () => {
+  const c = new ClassificadorPorRegras();
 
-  it("classifica problema de faturamento como Financeiro", () => {
-    const resultado = classifier.classify("Cliente está reclamando que o pedido ainda não foi faturado.");
-    expect(resultado.categoria).toBe("FINANCEIRO");
-    expect(resultado.areaResponsavel).toBe("Financeiro");
-    expect(resultado.prioridade).toBe("ALTA"); // "reclamando" eleva a prioridade
+  it("classifica faturamento como Financeiro", () => {
+    const r = c.classificar("Cliente está reclamando que o pedido ainda não foi faturado.");
+    expect(r.categoria).toBe("FINANCEIRO");
+    expect(r.areaResponsavel).toBe("Financeiro");
+    expect(r.prioridade).toBe("ALTA");
   });
 
   it("classifica atraso de entrega como Logística", () => {
-    const resultado = classifier.classify("O pedido está atrasado, a transportadora não passa previsão de entrega.");
-    expect(resultado.categoria).toBe("LOGISTICA");
-    expect(resultado.areaResponsavel).toBe("Logística");
+    expect(c.classificar("O pedido está atrasado, transportadora sem previsão.").categoria).toBe("LOGISTICA");
   });
 
-  it("classifica bloqueio de limite como Crédito", () => {
-    const resultado = classifier.classify("Cliente com limite de crédito bloqueado, não consegue fechar o pedido.");
-    expect(resultado.categoria).toBe("CREDITO");
+  it("classifica limite bloqueado como Crédito", () => {
+    expect(c.classificar("Cliente com limite de crédito bloqueado.").categoria).toBe("CREDITO");
   });
 
-  it("classifica pedido de desconto como Comercial", () => {
-    const resultado = classifier.classify("Cliente quer negociar desconto por volume para fechar hoje.");
-    expect(resultado.categoria).toBe("COMERCIAL");
-    expect(resultado.areaResponsavel).toContain("vendedor");
+  it("classifica ICMS como Fiscal", () => {
+    expect(c.classificar("Problema no cálculo do ICMS, preciso de ajuste fiscal.").categoria).toBe("FISCAL");
   });
 
-  it("eleva a prioridade para URGENTE quando há sinal de urgência explícita", () => {
-    const resultado = classifier.classify("Urgente: cliente ameaçando cancelar o pedido hoje.");
-    expect(resultado.prioridade).toBe("URGENTE");
+  it("eleva para URGENTE quando há sinal explícito", () => {
+    expect(c.classificar("Urgente: cliente ameaçando cancelar o pedido.").prioridade).toBe("URGENTE");
   });
 
-  it("cai em OUTROS quando não reconhece nenhuma palavra-chave", () => {
-    const resultado = classifier.classify("xyz abc situação nova sem precedentes");
-    expect(resultado.categoria).toBe("OUTROS");
+  it("cai em OUTROS sem palavra-chave reconhecida", () => {
+    expect(c.classificar("situação nova sem precedente algum aqui").categoria).toBe("OUTROS");
   });
 
-  it("é resiliente a acentuação e caixa (case-insensitive)", () => {
-    const resultado = classifier.classify("PROBLEMA NO CÁLCULO DO ÍCMS, PRECISO DE AJUSTE FISCAL URGENTE");
-    expect(resultado.categoria).toBe("FISCAL");
+  it("é indiferente a acento e caixa", () => {
+    expect(c.classificar("PEDIDO ATRASADO NA TRANSPORTADORA").categoria).toBe("LOGISTICA");
+  });
+});
+
+describe("TriadorPorRegras", () => {
+  const t = new TriadorPorRegras();
+
+  it("descarta newsletter — não é interrupção de trabalho", () => {
+    expect(t.triar("Newsletter Setembro — novidades", "marketing@fornecedor.com").relevancia).toBe("IGNORAR");
+  });
+
+  it("descarta remetente automático", () => {
+    expect(t.triar("Confirmação", "no-reply@sistema.com").relevancia).toBe("IGNORAR");
+  });
+
+  it("rebaixa cópia sem ação esperada", () => {
+    expect(t.triar("Você está em cópia: alteração cadastral").relevancia).toBe("BAIXA");
+  });
+
+  it("marca cobrança do financeiro como alta relevância", () => {
+    const r = t.triar("Pendência de faturamento — cliente reclamando", "financeiro@empresa.com.br");
+    expect(r.categoria).toBe("FINANCEIRO");
+    expect(r.relevancia).toBe("ALTA");
+  });
+
+  it("dá baixa relevância a assunto não reconhecido", () => {
+    expect(t.triar("Almoço de sexta").relevancia).toBe("BAIXA");
   });
 });

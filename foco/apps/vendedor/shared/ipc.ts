@@ -1,35 +1,32 @@
 /**
- * Contrato de IPC entre o processo principal (Electron/main, com acesso ao
- * banco via @foco/core) e o renderer (React). Mantido num único arquivo
- * para os dois lados não divergirem.
+ * Contrato de IPC entre o processo principal (com acesso ao banco via
+ * @foco/core) e o renderer. Um único arquivo para os dois lados não
+ * divergirem.
  */
 import type {
-  AutonomiaGeral,
-  AutonomiaPorCliente,
-  ClassificationResult,
-  FocoComercialResumo,
-  IntegratorActionType,
-  Problem,
-  ProblemCategory,
-  Priority,
-  TimeCategory,
-  TimeEntry,
+  CategoriaProblema,
+  CategoriaTempo,
+  Prioridade,
+  Problema,
+  RegistroTempo,
+  ResultadoClassificacao,
+  StatusProblema,
   User,
+  VisaoConsolidada,
 } from "@foco/core";
 
 export const IPC = {
   LOGIN: "foco:login",
   LOGOUT: "foco:logout",
-  CURRENT_USER: "foco:current-user",
-  GET_HOME_DATA: "foco:get-home-data",
-  START_TIME: "foco:start-time",
-  STOP_TIME: "foco:stop-time",
-  CLASSIFY_PROBLEM: "foco:classify-problem",
-  REGISTER_PROBLEM: "foco:register-problem",
-  MARK_STUCK: "foco:mark-stuck",
-  REGISTER_INTEGRATOR_ACTION: "foco:register-integrator-action",
-  GET_HISTORICO: "foco:get-historico",
-  GET_AUTONOMIA: "foco:get-autonomia",
+  GET_HOME: "foco:get-home",
+  INICIAR_BLOCO: "foco:iniciar-bloco",
+  PARAR_BLOCO: "foco:parar-bloco",
+  ALTERAR_CATEGORIA: "foco:alterar-categoria",
+  CLASSIFICAR: "foco:classificar",
+  REGISTRAR_PROBLEMA: "foco:registrar-problema",
+  MOVER_PROBLEMA: "foco:mover-problema",
+  ESTOU_PRESO: "foco:estou-preso",
+  GET_HISTORICO_TEMPO: "foco:get-historico-tempo",
 } as const;
 
 export interface LoginInput {
@@ -39,36 +36,37 @@ export interface LoginInput {
 
 export interface HomeData {
   user: User;
-  emAndamento: TimeEntry | null;
-  focoComercial: FocoComercialResumo;
-  historicoChamados: Problem[];
+  blocoAtivo: RegistroTempo | null;
+  /** Visão consolidada do dia: tempo declarado, eventos identificados, estimativas. */
+  visao: VisaoConsolidada;
+  chamados: Problema[];
+  registrosDeHoje: RegistroTempo[];
 }
 
-export interface AutonomiaData {
-  geral: AutonomiaGeral;
-  porCliente: AutonomiaPorCliente[];
-}
-
-export interface RegisterProblemInput {
-  cliente: string;
+export interface RegistrarProblemaInput {
+  cliente?: string | null;
   descricao: string;
-  categoria?: ProblemCategory;
-  prioridade?: Priority;
+  categoria: CategoriaProblema;
+  prioridade: Prioridade;
 }
 
-export interface RegisterIntegratorActionInput {
-  cliente: string;
-  tipo: IntegratorActionType;
-  origem: "INTEGRADOR" | "VENDEDOR";
+/** Respostas das perguntas rápidas do "Estou preso neste problema". */
+export interface EstouPresoInput {
+  problemaId: string;
+  precisaAgora: boolean;
+  observacao?: string;
 }
+
+export type Resposta<T> = { ok: true; data: T } | { ok: false; erro: string };
 
 export type {
-  ClassificationResult,
-  TimeCategory,
-  TimeEntry,
-  Problem,
+  CategoriaProblema,
+  CategoriaTempo,
+  Prioridade,
+  Problema,
+  RegistroTempo,
+  ResultadoClassificacao,
+  StatusProblema,
   User,
-  AutonomiaGeral,
-  AutonomiaPorCliente,
-  IntegratorActionType,
+  VisaoConsolidada,
 };

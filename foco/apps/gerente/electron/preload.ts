@@ -1,14 +1,16 @@
 import { contextBridge, ipcRenderer } from "electron";
-import { IPC, type LoginInput } from "../shared/ipc";
+import { IPC, type ConfigAlertas, type LoginInput } from "../shared/ipc";
 
 const api = {
   login: (input: LoginInput) => ipcRenderer.invoke(IPC.LOGIN, input),
   logout: () => ipcRenderer.invoke(IPC.LOGOUT),
-  getDashboard: () => ipcRenderer.invoke(IPC.GET_DASHBOARD),
-  getEquipe: () => ipcRenderer.invoke(IPC.GET_EQUIPE),
-  getMapaConsumo: () => ipcRenderer.invoke(IPC.GET_MAPA_CONSUMO),
-  getAutonomia: () => ipcRenderer.invoke(IPC.GET_AUTONOMIA),
-  getHistorico: () => ipcRenderer.invoke(IPC.GET_HISTORICO),
+  getPainel: (dias?: number) => ipcRenderer.invoke(IPC.GET_PAINEL, dias),
+  getVendedor: (userId: string) => ipcRenderer.invoke(IPC.GET_VENDEDOR, userId),
+  moverProblema: (problemaId: string, status: string, nota?: string) =>
+    ipcRenderer.invoke(IPC.MOVER_PROBLEMA, { problemaId, status, nota }),
+  atribuir: (problemaId: string, responsavel: string) =>
+    ipcRenderer.invoke(IPC.ATRIBUIR, { problemaId, responsavel }),
+  setConfigAlertas: (config: ConfigAlertas) => ipcRenderer.invoke(IPC.SET_CONFIG_ALERTAS, config),
 };
 
 contextBridge.exposeInMainWorld("focoGer", api);
