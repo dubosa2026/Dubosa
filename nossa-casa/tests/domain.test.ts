@@ -306,3 +306,20 @@ describe('código de conexão para o segundo celular', () => {
     expect(decodeConnection(encodeConnection({ ...info, url: 'https://ção.example' }))!.url).toBe('https://ção.example');
   });
 });
+
+it('login por usuário (sem e-mail)', async () => {
+  const { toLoginEmail, displayUser } = await import('../src/domain/login');
+  expect(toLoginEmail('Eduardo')).toBe('eduardo@nossacasa.app');
+  expect(toLoginEmail('  Jussara Dubosa ')).toBe('jussara.dubosa@nossacasa.app');
+  expect(toLoginEmail('Inaê')).toBe('inae@nossacasa.app');
+  expect(toLoginEmail('jus@gmail.com')).toBe('jus@gmail.com');
+  expect(toLoginEmail('ab')).toBeNull();
+  expect(displayUser('eduardo@nossacasa.app')).toBe('eduardo');
+});
+
+it('acha o convite na mensagem colada', async () => {
+  const { extractInvite, shareMessage } = await import('../src/domain/connection');
+  expect(extractInvite(shareMessage({ url: 'https://x.supabase.co', anonKey: 'k'.repeat(40), invite: 'QWER2345' }))).toBe('QWER2345');
+  expect(extractInvite('o código é abcd2345 ok')).toBe('ABCD2345');
+  expect(extractInvite('nada aqui')).toBeNull();
+});

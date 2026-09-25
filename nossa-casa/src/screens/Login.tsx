@@ -1,18 +1,21 @@
 import { useState } from 'react';
 import { app } from '../data/app';
+import { BUILT_IN } from '../data/config';
+import { toLoginEmail } from '../domain/login';
 import { Banner, Button, Card, Field, Screen, Segmented, T } from '../ui/components';
 
 export function LoginScreen() {
-  const [mode, setMode] = useState<'in' | 'up'>('in');
-  const [email, setEmail] = useState('');
+  const [mode, setMode] = useState<'up' | 'in'>('up');
+  const [user, setUser] = useState('');
   const [password, setPassword] = useState('');
   const [msg, setMsg] = useState<{ kind: 'danger' | 'success'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
     setMsg(null);
-    if (!email.includes('@') || password.length < 6) {
-      setMsg({ kind: 'danger', text: 'Informe um e-mail válido e uma senha com pelo menos 6 caracteres.' });
+    const email = toLoginEmail(user);
+    if (!email || password.length < 6) {
+      setMsg({ kind: 'danger', text: 'Escolha um usuário (pelo menos 3 letras, ex.: eduardo) e uma senha com pelo menos 6 caracteres.' });
       return;
     }
     setBusy(true);
@@ -20,7 +23,7 @@ export function LoginScreen() {
       if (mode === 'in') await app.signIn(email, password);
       else {
         const r = await app.signUp(email, password);
-        if (r === 'confirm') setMsg({ kind: 'success', text: 'Conta criada! Abra o e-mail de confirmação e depois volte aqui para entrar.' });
+        if (r === 'confirm') setMsg({ kind: 'success', text: 'Conta criada! Falta confirmar: no Supabase, desligue "Confirm email" (ou confirme pelo e-mail) e entre de novo.' });
       }
     } catch (e) {
       setMsg({ kind: 'danger', text: (e as Error).message });
@@ -30,16 +33,16 @@ export function LoginScreen() {
   };
 
   return (
-    <Screen title="Nossa Casa ❤️" subtitle="Cada um entra com o próprio login.">
+    <Screen title="Nossa Casa ❤️" subtitle={mode === 'up' ? 'Crie seu usuário — leva 10 segundos.' : 'Entre com seu usuário.'}>
       <Card>
-        <Segmented value={mode} onChange={setMode} options={[{ value: 'in', label: 'Entrar' }, { value: 'up', label: 'Criar conta' }]} />
-        <Field label="E-mail" autoCapitalize="none" autoCorrect={false} keyboardType="email-address" textContentType="emailAddress" value={email} onChangeText={setEmail} />
-        <Field label="Senha" secureTextEntry textContentType={mode === 'in' ? 'password' : 'newPassword'} value={password} onChangeText={setPassword} onSubmitEditing={submit} />
+        <Segmented value={mode} onChange={setMode} options={[{ value: 'up', label: 'Primeira vez' }, { value: 'in', label: 'Já tenho usuário' }]} />
+        <Field label="Usuário" placeholder="ex.: eduardo" autoCapitalize="none" autoCorrect={false} textContentType="username" value={user} onChangeText={setUser} />
+        <Field label="Senha" secureTextEntry textContentType={mode === 'in' ? 'password' : 'newPassword'} value={password} onChangeText={setPassword} onSubmitEditing={submit} hint={mode === 'up' ? 'Pelo menos 6 caracteres. Guarde bem: é com ela que você entra de novo.' : undefined} />
         {msg ? <Banner kind={msg.kind} text={msg.text} /> : null}
-        <Button label={mode === 'in' ? 'Entrar' : 'Criar minha conta'} onPress={submit} loading={busy} />
+        <Button label={mode === 'in' ? 'Entrar' : 'Criar e entrar'} onPress={submit} loading={busy} />
       </Card>
-      <T muted center>Só Eduardo e Jussara terão acesso à casa: depois do login, a casa é criada por um e o outro entra com um código de convite.</T>
-      <Button label="Trocar servidor" kind="ghost" small onPress={() => app.resetServer()} style={{ marginTop: 24 }} />
+      <T muted center>Cada um tem seu próprio usuário. Só Eduardo e Jussara têm acesso à casa.</T>
+      {!BUILT_IN ? <Button label="Trocar servidor" kind="ghost" small onPress={() => app.resetServer()} style={{ marginTop: 24 }} /> : null}
     </Screen>
   );
 }

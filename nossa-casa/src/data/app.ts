@@ -185,6 +185,8 @@ class App {
     const hid = randomId();
     const ids = seedIds(hid);
     const household = seedHousehold(ids, null, new Date().toISOString());
+    // Tudo já vem configurado: dá para usar na hora (a revisão fica em Configurações).
+    household.settings.onboarding_done = true;
     const members = seedMembers(ids, new Date().toISOString());
     const templates = seedTemplates(ids, new Date().toISOString());
     const me = who === 'eduardo' ? ids.eduardo : ids.jussara;
@@ -294,9 +296,9 @@ class App {
 }
 
 function translateAuthError(msg: string) {
-  if (/Invalid login credentials/i.test(msg)) return 'E-mail ou senha incorretos.';
+  if (/Invalid login credentials/i.test(msg)) return 'Usuário ou senha incorretos.';
   if (/Email not confirmed/i.test(msg)) return 'Confirme o e-mail (veja sua caixa de entrada) ou desative a confirmação no Supabase.';
-  if (/already registered/i.test(msg)) return 'Este e-mail já tem cadastro. Use "Entrar".';
+  if (/already registered|already been registered|already exists/i.test(msg)) return 'Esse usuário já existe. Toque em "Já tenho usuário" para entrar.';
   if (/Password should be/i.test(msg)) return 'A senha precisa ter pelo menos 6 caracteres.';
   if (/Signups not allowed/i.test(msg)) return 'Novos cadastros estão desativados neste servidor.';
   return msg;

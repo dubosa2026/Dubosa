@@ -71,11 +71,19 @@ export function shareMessage(c: ConnectionInfo): string {
     'Nossa Casa ❤️ — vamos organizar a casa juntos!',
     '',
     `1) Instale o app: ${APK_URL}`,
-    '2) Abra o app, toque em "Colar código de conexão" e cole esta mensagem inteira.',
-    c.invite ? `3) Crie sua conta e toque em "Entrar com código" (o código ${c.invite} já vem preenchido).` : '3) Entre com sua conta.',
+    '2) Abra, crie seu usuário e senha.',
+    '3) Copie ESTA mensagem inteira e toque em "Colar convite" no app.',
     '',
-    `Toque para conectar: nossacasa://conectar?d=${code}`,
-    '',
-    `Código: ${code}`,
-  ].join('\n');
+    c.invite ? `Convite: ${c.invite}` : '',
+    `Conexão: ${code}`,
+  ].filter((l, i, a) => l !== '' || a[i - 1] !== '').join('\n');
+}
+
+/** Acha o código de convite num texto colado (mensagem inteira, código de conexão ou só o código). */
+export function extractInvite(text: string): string | null {
+  const fromConn = decodeConnection(text)?.invite;
+  if (fromConn) return fromConn;
+  const all = text.toUpperCase().match(/\b[A-HJ-NP-Z2-9]{8}\b/g) ?? [];
+  // Palavras comuns de 8 letras (ex.: MENSAGEM) também casam; prefere o que tem número.
+  return all.find((x) => /\d/.test(x)) ?? all[0] ?? null;
 }

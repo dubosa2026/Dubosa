@@ -3,7 +3,9 @@ import { router } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { Alert, Platform, Pressable, Share, Switch, View } from 'react-native';
 import { app, useNC } from '@/src/data/app';
+import { BUILT_IN } from '@/src/data/config';
 import { sendTestNotification } from '@/src/data/notifications';
+import { displayUser } from '@/src/domain/login';
 import { formatShort, WEEKDAY_SHORT } from '@/src/domain/dates';
 import type { NotificationSettings, Weekday } from '@/src/domain/types';
 import { Avatar, Banner, Button, Card, Chip, Field, H2, Row, Screen, T } from '@/src/ui/components';
@@ -37,7 +39,7 @@ export default function Settings() {
     <Screen title="Configurações">
       <Card>
         <H2>Conta</H2>
-        {cloud ? <T>Conectado como {app.email}</T> : <T>🧪 Modo demonstração (dados só neste celular)</T>}
+        {cloud ? <T>Conectado como {displayUser(app.email)}</T> : <T>🧪 Modo demonstração (dados só neste celular)</T>}
         <T muted>Você é: {adults.find((a) => a.id === meId)?.name ?? '—'} · administrador(a)</T>
         {cloud ? (
           <>
@@ -110,6 +112,7 @@ export default function Settings() {
         <H2>Divisão justa</H2>
         <T muted>Horários de cada um, dias leves, limite do fim de semana, descanso e a meta de divisão.</T>
         <Button kind="secondary" label="Horários e divisão" icon="⚖️" onPress={() => router.push('/disponibilidade')} style={{ marginTop: 8 }} />
+        <Button kind="ghost" small label="Revisar configuração inicial (nomes, crianças, horários…)" onPress={() => app.actions.updateSettings({ onboarding_done: false })} style={{ marginTop: 8 }} />
       </Card>
 
       <Card>
@@ -160,7 +163,7 @@ export default function Settings() {
         <H2>Sobre</H2>
         <T muted size="small">Nossa Casa 1.0 · casa criada em {formatShort(household.created_at.slice(0, 10))}</T>
         <Button kind="danger" label={cloud ? 'Sair (logout)' : 'Sair do modo demonstração'} onPress={() => confirm('Sair', cloud ? 'Os dados continuam salvos no servidor.' : 'Os dados de demonstração deste celular serão apagados.', () => void (cloud ? app.logout() : app.resetServer()))} style={{ marginTop: 12 }} />
-        {cloud ? <Button small kind="ghost" label="Trocar servidor" onPress={() => confirm('Trocar servidor', 'Você sairá da conta neste celular.', () => void app.resetServer())} style={{ marginTop: 8 }} /> : null}
+        {cloud && !BUILT_IN ? <Button small kind="ghost" label="Trocar servidor" onPress={() => confirm('Trocar servidor', 'Você sairá da conta neste celular.', () => void app.resetServer())} style={{ marginTop: 8 }} /> : null}
       </Card>
       <View style={{ height: 1, backgroundColor: c.border }} />
     </Screen>

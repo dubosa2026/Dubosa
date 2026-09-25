@@ -1,7 +1,7 @@
 // HOJE — "O que precisamos fazer hoje?"
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Share, Text, View } from 'react-native';
 import { app, useNC } from '@/src/data/app';
 import { addDays, formatLong, formatShort, isWeekend, weekday } from '@/src/domain/dates';
 import { estimateSuggestions, postponeSuggestions } from '@/src/domain/insights';
@@ -37,6 +37,9 @@ export default function Today() {
   const todayEvents = events.filter((e) => !e.deleted && e.date === today);
   const weekendOuting = events.some((e) => !e.deleted && e.type === 'outing' && isWeekend(e.date) && e.date >= today && e.date <= addDays(today, 7 - weekday(today)));
   const open = (id: string) => router.push({ pathname: '/tarefa/[id]', params: { id } });
+  const inviteCode = useNC((s) => s.household?.invite_code);
+  const pendingAdult = adults.find((a) => a.id !== meId && !a.user_id);
+  const inviteFor = app.backend?.mode === 'cloud' && inviteCode && pendingAdult ? pendingAdult.name : null;
   const order = [...adults].sort((a, b) => (a.id === meId ? -1 : b.id === meId ? 1 : a.sort - b.sort));
 
   return (
@@ -46,6 +49,15 @@ export default function Today() {
         <Stat label="concluídas" value={done} color={c.success} />
         <Stat label="atrasadas" value={late.length} color={c.danger} />
       </Row>
+
+      {inviteFor ? (
+        <Banner kind="info" text={`Falta ${inviteFor} entrar no app. Mande o convite pelo WhatsApp — é só tocar abaixo.`}>
+          <Button label={`Enviar convite para ${inviteFor}`} icon="📤" onPress={() => {
+            const message = app.connectionMessage();
+            if (message) void Share.share({ message });
+          }} />
+        </Banner>
+      ) : null}
 
       {suggestions.map((s) => (
         <Banner key={`${s.kind}:${s.template.id}`} kind="warn" text={s.message}>

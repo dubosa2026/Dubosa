@@ -333,6 +333,10 @@ begin
   if exists (select 1 from public.members where user_id = auth.uid()) then
     raise exception 'Este login já pertence a uma casa.';
   end if;
+  -- Um servidor por família: se a casa já existe, o segundo celular entra pelo convite.
+  if exists (select 1 from public.households) then
+    raise exception 'Já existe uma casa neste servidor. Use o convite para entrar.';
+  end if;
 
   insert into public.households (id, name, invite_code, settings)
   values (hid, coalesce(p->'household'->>'name', 'Nossa Casa'), code, coalesce(p->'household'->'settings', '{}'::jsonb));

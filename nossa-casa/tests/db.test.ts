@@ -72,6 +72,12 @@ d('banco Supabase (RLS, convite, autoria)', () => {
     expect(t.rows[0].n).toBe(seedTemplates(ids).length);
   });
 
+  it('não dá para criar uma segunda casa no mesmo servidor (o outro celular entra pelo convite)', async () => {
+    const other = seedIds(randomId());
+    const payload = { household: seedHousehold(other, null), members: seedMembers(other), templates: [], me: other.jussara };
+    await expect(as(STRANGER, () => db.query('select public.create_household($1::jsonb)', [JSON.stringify(payload)]))).rejects.toThrow(/Já existe uma casa/);
+  });
+
   it('um estranho não vê nada e não consegue entrar sem o código', async () => {
     const r = await as(STRANGER, () => db.query('select count(*)::int as n from task_templates'));
     expect(r.rows[0].n).toBe(0);

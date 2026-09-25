@@ -3,6 +3,7 @@
 // pública (anon) na primeira abertura. Se o APK for gerado com
 // EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY, já vem configurado.
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { FAMILY_SERVER } from './familyServer';
 
 export type AppMode = 'cloud' | 'demo';
 
@@ -17,7 +18,9 @@ const KEY = 'nc:backend';
 export const BUILT_IN: BackendConfig | null =
   process.env.EXPO_PUBLIC_SUPABASE_URL && process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
     ? { mode: 'cloud', url: process.env.EXPO_PUBLIC_SUPABASE_URL, anonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY }
-    : null;
+    : FAMILY_SERVER.url && FAMILY_SERVER.anonKey
+      ? { mode: 'cloud', url: FAMILY_SERVER.url, anonKey: FAMILY_SERVER.anonKey }
+      : null;
 
 export async function loadBackend(): Promise<BackendConfig | null> {
   try {

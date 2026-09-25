@@ -13,8 +13,8 @@
 #   EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY
 #       → o APK já vem conectado ao Supabase da família (sem colar nada no celular).
 #   ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD
-#       → assinatura fixa: novas versões instalam por cima da antiga sem desinstalar.
-#         Sem isso o APK usa uma chave de depuração gerada a cada execução.
+#       → usa a sua chave de assinatura. Sem eles, o workflow gera uma chave na primeira
+#         vez e reaproveita (cache), para as atualizações instalarem por cima.
 name: Nossa Casa — APK Android
 
 on:
@@ -97,18 +97,35 @@ jobs:
       - name: Gerar projeto Android
         run: npx expo prebuild -p android --no-install
 
-      - name: Assinatura fixa (se configurada)
+      # Mesma chave de assinatura em todos os builds: assim cada APK novo instala POR CIMA
+      # do anterior, sem desinstalar. Usa os segredos ANDROID_* se existirem; senão gera
+      # uma chave uma única vez e a guarda no cache do GitHub Actions.
+      - name: Chave de assinatura guardada
+        uses: actions/cache@v4
+        with:
+          path: ~/.nossa-casa-assinatura
+          key: nossa-casa-assinatura-v1
+
+      - name: Assinatura fixa
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -z "$KEYSTORE_B64" ]; then
-            echo "Sem ANDROID_KEYSTORE_BASE64: usando a chave de depuração."
-            exit 0
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > android/app/nossa-casa.keystore
+          else
+            mkdir -p ~/.nossa-casa-assinatura
+            if [ ! -f ~/.nossa-casa-assinatura/nossa-casa.keystore ]; then
+              echo "Gerando a chave de assinatura (só na primeira vez)."
+              keytool -genkeypair -noprompt -keystore ~/.nossa-casa-assinatura/nossa-casa.keystore -alias nossacasa \
+                -keyalg RSA -keysize 2048 -validity 10000 -storepass nossacasa -keypass nossacasa -dname "CN=Nossa Casa, O=Familia, C=BR"
+            fi
+            cp ~/.nossa-casa-assinatura/nossa-casa.keystore android/app/nossa-casa.keystore
+            KEYSTORE_PASSWORD=nossacasa; KEY_ALIAS=nossacasa; KEY_PASSWORD=nossacasa
           fi
-          echo "$KEYSTORE_B64" | base64 -d > android/app/nossa-casa.keystore
+          keytool -list -keystore android/app/nossa-casa.keystore -storepass "$KEYSTORE_PASSWORD" | grep -i "fingerprint" || true
           cat >> android/app/build.gradle <<EOF
 
           android {

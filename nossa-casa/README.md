@@ -6,61 +6,38 @@ tempo real** entre os dois celulares e funcionamento **sem internet**.
 
 ---
 
-## Instalar nos dois celulares (passo a passo)
+## Instalar nos dois celulares
 
-São 3 etapas. A primeira é feita uma única vez, no computador.
+**Uma vez só (preparar o servidor da família, ~10 min):**
+1. <https://supabase.com> → **New project** (região **São Paulo**).
+2. **SQL Editor → New query** → cole todo o arquivo
+   [`supabase/migrations/001_nossa_casa.sql`](supabase/migrations/001_nossa_casa.sql) → **Run**.
+3. **Authentication → Sign In / Providers → Email** → desligue **Confirm email** (o app usa
+   usuário e senha, sem e-mail de verdade).
+4. Coloque a **Project URL** e a chave **anon/publishable** (Project Settings → API) em
+   [`src/data/familyServer.ts`](src/data/familyServer.ts) — ou nos segredos
+   `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` do repositório. O APK
+   seguinte já sai conectado: ninguém cola nada no celular.
 
-### 1. Criar o banco de dados gratuito (Supabase) — ~5 minutos
+**Em cada celular:**
+1. Baixe e instale: `https://github.com/dubosa2026/Dubosa/releases/download/nossa-casa-latest/NossaCasa.apk`
+   (se o navegador do WhatsApp não abrir o arquivo: app **Arquivos → Downloads → NossaCasa.apk**;
+   permita “instalar desta fonte” e, se o Play Protect avisar, “Instalar mesmo assim”).
+2. **Eduardo:** crie usuário e senha → **Sou Eduardo** → pronto, já dá para usar. Na tela
+   Hoje aparece **📤 Enviar convite para Jussara** → mande pelo WhatsApp.
+3. **Jussara:** crie usuário e senha → copie a mensagem do convite (segure o dedo → Copiar)
+   → **Colar convite** → **Sou Jussara** → pronto.
 
-1. Entre em <https://supabase.com>, crie uma conta e clique em **New project**
-   (qualquer nome, ex.: `nossa-casa`; região **South America (São Paulo)**).
-2. Quando o projeto abrir, vá em **SQL Editor → New query**, cole **todo** o conteúdo do
-   arquivo [`supabase/migrations/001_nossa_casa.sql`](supabase/migrations/001_nossa_casa.sql)
-   e clique em **Run**. Deve aparecer “Success”.
-3. Vá em **Authentication → Sign In / Providers → Email** e **desligue “Confirm email”**
-   (assim ninguém precisa confirmar e-mail para entrar).
-4. Vá em **Project Settings → API** e anote:
-   - **Project URL** (ex.: `https://abcd1234.supabase.co`)
-   - **anon / publishable key** (uma chave longa)
+Tudo já vem cadastrado (pessoas, horários, tarefas, regras). Para revisar depois:
+**Configurações → Revisar configuração inicial**. Os APKs novos instalam por cima dos
+antigos (mesma assinatura), sem perder nada.
 
-### 2. Baixar e instalar o APK — em cada celular
+> Segurança: o convite é de uso único e some quando os dois entram; o servidor aceita uma
+> casa só; um estranho que crie usuário não vê nada. Para fechar de vez, depois que os dois
+> entrarem: Supabase → Authentication → desligue “Allow new users to sign up”.
 
-1. No celular Android, abra o link:
-   **`https://github.com/dubosa2026/Dubosa/releases/download/nossa-casa-latest/NossaCasa.apk`**
-   (ou a aba **Releases** do repositório → “Nossa Casa (Android)”).
-2. Toque no arquivo baixado. Se o Android pedir, permita **“Instalar apps desta fonte”**.
-3. Toque em **Instalar** e depois em **Abrir**.
-
-### 3. Primeira abertura
-
-**No celular do Eduardo** (ou de quem começar):
-1. Cole a **Project URL** e a **anon key** → **Conectar**. O app confere na hora se o
-   endereço, a chave e o banco estão certos. Se faltar algo, ele diz o quê (ex.: “o banco
-   ainda não foi preparado: rode o 001_nossa_casa.sql”).
-2. **Criar conta** com e-mail e senha.
-3. Toque em **Sou Eduardo**. A casa é criada já com tudo cadastrado.
-4. Revise os 7 passos (nomes, crianças, horários, dias de trabalho, preferências,
-   tarefas, notificações). No último passo, toque em **📤 Enviar convite para o outro
-   celular** e mande pelo WhatsApp para a Jussara. Depois toque em **Começar ❤️**.
-   (O convite também fica em **Configurações → Acesso da família**.)
-
-**No celular da Jussara:**
-1. Pela mensagem recebida, instale o app (o link vem na mensagem).
-2. Abra o app, **cole a mensagem inteira** em “Código de conexão” e toque em
-   **Colar código de conexão**. Não precisa digitar URL nem chave.
-3. **Criar conta** (e-mail dela) → a tela “Entrar na casa” já vem com o código
-   preenchido → **Continuar** → **Sou Jussara**.
-
-Pronto: o que um fizer aparece para o outro na hora. Quando os dois estão conectados,
-o código de convite deixa de valer e **nenhum outro login consegue ver a casa**.
-
-> Recomendado depois que os dois criarem a conta: no Supabase, **Authentication →
-> Sign In / Providers → desligar “Allow new users to sign up”**. Mesmo sem isso, um
-> estranho que crie conta não vê nada (regras de segurança do banco), mas fica mais fechado.
-
-> Só quer experimentar? Na primeira tela toque em **Testar sem servidor**: funciona
-> offline com todos os dados, mas não sincroniza entre celulares. Em Configurações dá
-> para alternar entre Eduardo e Jussara para simular os dois.
+> Só quer experimentar sem servidor? Se o APK não tiver servidor embutido, a primeira tela
+> oferece **Testar sem servidor** (dados só no celular).
 
 ---
 
