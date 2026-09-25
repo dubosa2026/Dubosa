@@ -5,11 +5,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 import { today as todayISO } from '../domain/dates';
+import { shareMessage, type ConnectionInfo } from '../domain/connection';
 import { randomId } from '../domain/ids';
 import { seedHousehold, seedIds, seedMembers, seedTemplates } from '../domain/seed';
 import type { Household, Member, TaskInstance } from '../domain/types';
 import { Actions } from './actions';
 import { loadBackend, saveBackend, type BackendConfig } from './config';
+import { checkServer } from './serverCheck';
 import { notifyPartnerChange, rescheduleNotifications, setupNotifications } from './notifications';
 import { SupabaseRemote, type Row, type TableName } from './remote';
 import { Store, type KV, type State } from './store';
@@ -31,6 +33,8 @@ class App {
   store: Store = new Store({ kv, namespace: 'none' });
   actions: Actions = new Actions(this.store);
   error: string | null = null;
+  /** Código de convite recebido pelo "código de conexão" (preenche a tela de entrar na casa). */
+  pendingInvite: string | null = null;
   private listeners = new Set<() => void>();
   private storeUnsub: (() => void) | null = null;
   private cleanups: (() => void)[] = [];
@@ -68,10 +72,34 @@ class App {
   }
 
   async configureServer(cfg: BackendConfig) {
+    if (cfg.mode === 'cloud') {
+      const problem = await checkServer(cfg.url, cfg.anonKey);
+      if (problem) throw new Error(problem);
+    }
     await saveBackend(cfg);
     resetSupabase();
     this.setPhase('loading');
     await this.init();
+  }
+
+  /** Aplica um código de conexão vindo do outro celular (colado ou por link). */
+  async applyConnection(info: ConnectionInfo) {
+    if (info.invite) this.pendingInvite = info.invite;
+    const same = this.backend?.mode === 'cloud' && this.backend.url === info.url.trim() && this.backend.anonKey === info.anonKey.trim();
+    if (same) {
+      this.emit();
+      return;
+    }
+    if (this.phase === 'ready' || this.phase === 'onboarding') {
+      throw new Error('Este celular já está conectado. Para trocar de servidor, use Configurações → Trocar servidor.');
+    }
+    await this.configureServer({ mode: 'cloud', url: info.url.trim(), anonKey: info.anonKey.trim() });
+  }
+
+  /** Mensagem pronta para mandar ao outro celular (WhatsApp etc.). */
+  connectionMessage(): string | null {
+    if (this.backend?.mode !== 'cloud') return null;
+    return shareMessage({ url: this.backend.url, anonKey: this.backend.anonKey, invite: this.store.state.household?.invite_code ?? null });
   }
 
   async resetServer() {

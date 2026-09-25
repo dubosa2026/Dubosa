@@ -4,10 +4,10 @@ import { Banner, Button, Card, Field, H2, Screen, T } from '../ui/components';
 
 export function OnboardingScreen() {
   const demo = app.backend?.mode === 'demo';
-  const [step, setStep] = useState<'choose' | 'join'>('choose');
+  const [step, setStep] = useState<'choose' | 'join'>(app.pendingInvite ? 'join' : 'choose');
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(app.error);
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(app.pendingInvite ?? '');
   const [options, setOptions] = useState<{ id: string; name: string }[] | null>(null);
 
   const create = async (who: 'eduardo' | 'jussara') => {

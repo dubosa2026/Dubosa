@@ -1,7 +1,7 @@
 // CONFIGURAÇÕES — nada de regras "presas" ao código: tudo é ajustável aqui.
 import { router } from 'expo-router';
 import { useState, type ReactNode } from 'react';
-import { Alert, Platform, Pressable, Switch, View } from 'react-native';
+import { Alert, Platform, Pressable, Share, Switch, View } from 'react-native';
 import { app, useNC } from '@/src/data/app';
 import { sendTestNotification } from '@/src/data/notifications';
 import { formatShort, WEEKDAY_SHORT } from '@/src/domain/dates';
@@ -71,6 +71,11 @@ export default function Settings() {
           ) : (
             <T muted>Eduardo e Jussara já estão conectados. Nenhum outro login tem acesso à casa.</T>
           )}
+          <Button label="Enviar convite para o outro celular" icon="📤" onPress={() => {
+            const message = app.connectionMessage();
+            if (message) void Share.share({ message });
+          }} style={{ marginTop: 10 }} />
+          <T muted size="small">Manda pelo WhatsApp o link do app, a conexão com o servidor e o código — é só colar no outro celular.</T>
           <Button small kind="ghost" label="Gerar novo código (troca de celular)" onPress={async () => {
             try {
               const code = await app.renewInvite();

@@ -294,3 +294,15 @@ it('reorganizar um plano recém-feito quase não mexe em nada (sem mudanças à 
   const pendingFuture = inst.filter((i) => i.date >= '2026-09-24' && i.kind !== 'mission' && i.kind !== 'coverage').length;
   expect(moved.length).toBeLessThan(pendingFuture * 0.15);
 });
+
+describe('código de conexão para o segundo celular', () => {
+  it('leva servidor, chave e convite numa mensagem só (e sobrevive a ser colado inteiro)', async () => {
+    const { decodeConnection, encodeConnection, shareMessage } = await import('../src/domain/connection');
+    const info = { url: 'https://abcd1234.supabase.co', anonKey: 'eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYW5vbiJ9.x_y-z', invite: 'ABCD2345' };
+    expect(decodeConnection(encodeConnection(info))).toEqual(info);
+    expect(decodeConnection(shareMessage(info))).toEqual(info);
+    expect(decodeConnection(`nossacasa://conectar?d=${encodeConnection({ ...info, invite: null })}`)).toEqual({ ...info, invite: null });
+    expect(decodeConnection('texto qualquer')).toBeNull();
+    expect(decodeConnection(encodeConnection({ ...info, url: 'https://ção.example' }))!.url).toBe('https://ção.example');
+  });
+});

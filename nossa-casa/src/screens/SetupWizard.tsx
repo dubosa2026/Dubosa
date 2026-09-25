@@ -1,6 +1,6 @@
 // Primeira abertura: revisa os dados já pré-cadastrados, em 7 passos curtos.
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Share, View } from 'react-native';
 import { app, useNC } from '../data/app';
 import { setupNotifications } from '../data/notifications';
 import { CATEGORIES } from '../domain/categories';
@@ -82,7 +82,13 @@ export function SetupWizard() {
           <T muted>Lembretes de tarefas, mercado, lição da Inaê, roupas e passeios. Ajuste horários em Configurações.</T>
           <Button label="Permitir notificações" icon="🔔" kind="secondary" onPress={() => void setupNotifications()} style={{ marginTop: 12 }} />
           {household.invite_code ? (
-            <Banner kind="success" text={`Código para o outro celular entrar na casa: ${household.invite_code}`} />
+            <>
+              <Banner kind="success" text={`Código para o outro celular entrar na casa: ${household.invite_code}`} />
+              <Button label="Enviar convite para o outro celular" icon="📤" onPress={() => {
+                const message = app.connectionMessage();
+                if (message) void Share.share({ message });
+              }} />
+            </>
           ) : null}
           {app.backend?.mode === 'demo' ? (
             <Banner kind="info" text={`Modo demonstração: você está como ${adults.find((a) => a.id === meId)?.name}. Em Configurações dá para trocar de pessoa.`} />

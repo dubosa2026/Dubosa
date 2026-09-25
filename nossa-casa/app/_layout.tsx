@@ -1,10 +1,12 @@
 import '@/src/data/polyfills';
+import { useLinkingURL } from 'expo-linking';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { app, useNC, usePhase } from '@/src/data/app';
+import { decodeConnection } from '@/src/domain/connection';
 import { LoginScreen } from '@/src/screens/Login';
 import { OnboardingScreen } from '@/src/screens/Onboarding';
 import { ServerScreen } from '@/src/screens/Server';
@@ -23,6 +25,17 @@ export default function RootLayout() {
       console.warn(e);
     });
   }, []);
+
+  // Link "Toque para conectar" enviado pelo outro celular.
+  const url = useLinkingURL();
+  const handled = useRef<string | null>(null);
+  useEffect(() => {
+    if (!url || handled.current === url || phase === 'loading') return;
+    const info = decodeConnection(url);
+    if (!info) return;
+    handled.current = url;
+    app.applyConnection(info).catch((e) => console.warn(e));
+  }, [url, phase]);
 
   let content;
   if (phase === 'loading') {
@@ -61,6 +74,7 @@ export default function RootLayout() {
         <Stack.Screen name="reorganizar" options={{ title: 'Reorganizar semana', presentation: 'modal' }} />
         <Stack.Screen name="disponibilidade" options={{ title: 'Horários e divisão' }} />
         <Stack.Screen name="membro/[id]" options={{ title: 'Pessoa' }} />
+        <Stack.Screen name="conectar" options={{ headerShown: false }} />
       </Stack>
     );
   }

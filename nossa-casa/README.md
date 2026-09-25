@@ -34,19 +34,25 @@ São 3 etapas. A primeira é feita uma única vez, no computador.
 ### 3. Primeira abertura
 
 **No celular do Eduardo** (ou de quem começar):
-1. Cole a **Project URL** e a **anon key** → **Conectar**.
+1. Cole a **Project URL** e a **anon key** → **Conectar**. O app confere na hora se o
+   endereço, a chave e o banco estão certos. Se faltar algo, ele diz o quê (ex.: “o banco
+   ainda não foi preparado: rode o 001_nossa_casa.sql”).
 2. **Criar conta** com e-mail e senha.
 3. Toque em **Sou Eduardo**. A casa é criada já com tudo cadastrado.
 4. Revise os 7 passos (nomes, crianças, horários, dias de trabalho, preferências,
-   tarefas, notificações) e toque em **Começar ❤️**.
-5. Em **Configurações → Acesso da família** aparece um **código de convite** (8 letras).
+   tarefas, notificações). No último passo, toque em **📤 Enviar convite para o outro
+   celular** e mande pelo WhatsApp para a Jussara. Depois toque em **Começar ❤️**.
+   (O convite também fica em **Configurações → Acesso da família**.)
 
 **No celular da Jussara:**
-1. Cole a mesma URL e chave → **Conectar** → **Criar conta** (e-mail dela).
-2. **Entrar com código** → digite o código → **Sou Jussara**.
+1. Pela mensagem recebida, instale o app (o link vem na mensagem).
+2. Abra o app, **cole a mensagem inteira** em “Código de conexão” e toque em
+   **Colar código de conexão**. Não precisa digitar URL nem chave.
+3. **Criar conta** (e-mail dela) → a tela “Entrar na casa” já vem com o código
+   preenchido → **Continuar** → **Sou Jussara**.
 
 Pronto: o que um fizer aparece para o outro na hora. Quando os dois estão conectados,
-o código deixa de valer e **nenhum outro login consegue ver a casa**.
+o código de convite deixa de valer e **nenhum outro login consegue ver a casa**.
 
 > Recomendado depois que os dois criarem a conta: no Supabase, **Authentication →
 > Sign In / Providers → desligar “Allow new users to sign up”**. Mesmo sem isso, um
@@ -229,6 +235,7 @@ npm ci
 npm run typecheck      # TypeScript
 npm test               # regras, divisão justa, sincronização entre 2 celulares
 npm run test:db        # banco real: RLS, convite, autoria (precisa de um Postgres; ver abaixo)
+# ponta a ponta com a API do Supabase (PostgREST): NC_REST_URL=... NC_JWT_SECRET=... npm test
 npm run web            # abre o app no navegador (modo demonstração)
 ```
 
@@ -243,6 +250,7 @@ Postgres 16 temporário.
 | Eduardo e Jussara acessam (login próprio, mesmo nível) | `tests/db.test.ts` — criação da casa, convite, vínculo |
 | Ninguém mais vê a família | `tests/db.test.ts` — estranho/anônimo não lê nem grava |
 | Alterações sincronizam (tempo real, offline, conflitos) | `tests/sync.test.ts` — dois celulares simulados |
+| Tudo junto de verdade: cliente Supabase + API (PostgREST) + banco | `tests/e2e-api.test.ts` — criar casa, convite, sincronizar, regras, offline, estranho bloqueado, checagem do servidor |
 | Registro de quem criou/alterou/concluiu | `tests/db.test.ts`, `tests/sync.test.ts` |
 | Tarefas recorrentes | `tests/domain.test.ts` — recorrência |
 | Divisão justa / sem sobrecarga / fim de semana leve / quarta leve | `tests/domain.test.ts` — divisão justa |
