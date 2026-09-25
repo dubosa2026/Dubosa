@@ -1,0 +1,143 @@
+# Nossa Casa — gera o APK Android instalável.
+#
+# Roda sozinho a cada mudança em nossa-casa/ (e também pelo botão "Run workflow").
+# Passos: instala, confere tipos, roda todos os testes (inclusive o do banco,
+# num Postgres de verdade), gera o projeto Android e compila o APK.
+#
+# Onde pegar o APK depois que terminar:
+#   * Aba "Releases" do repositório → "Nossa Casa (Android)" → NossaCasa.apk
+#     (link fixo: .../releases/download/nossa-casa-latest/NossaCasa.apk)
+#   * ou na própria execução, em "Artifacts".
+#
+# Opcional (Settings → Secrets and variables → Actions):
+#   EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY
+#       → o APK já vem conectado ao Supabase da família (sem colar nada no celular).
+#   ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD
+#       → assinatura fixa: novas versões instalam por cima da antiga sem desinstalar.
+#         Sem isso o APK usa uma chave de depuração gerada a cada execução.
+name: Nossa Casa — APK Android
+
+on:
+  push:
+    paths:
+      - 'nossa-casa/**'
+      - '.github/workflows/nossa-casa-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nossa-casa-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: nossa-casa
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: nossa-casa/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Conferir tipos
+        run: npx tsc --noEmit
+
+      - name: Testes (regras, divisão, sincronização e banco com RLS)
+        run: npm test
+        env:
+          NC_PG_URL: postgres://postgres:postgres@localhost:5432/postgres
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Gerar projeto Android
+        run: npx expo prebuild -p android --no-install
+
+      - name: Assinatura fixa (se configurada)
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "Sem ANDROID_KEYSTORE_BASE64: usando a chave de depuração."
+            exit 0
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > android/app/nossa-casa.keystore
+          cat >> android/app/build.gradle <<EOF
+
+          android {
+              signingConfigs {
+                  nossaCasa {
+                      storeFile file('nossa-casa.keystore')
+                      storePassword '$KEYSTORE_PASSWORD'
+                      keyAlias '$KEY_ALIAS'
+                      keyPassword '$KEY_PASSWORD'
+                  }
+              }
+              buildTypes { release { signingConfig signingConfigs.nossaCasa } }
+          }
+          EOF
+
+      - name: Cache do Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('nossa-casa/package-lock.json') }}
+
+      - name: Compilar APK
+        working-directory: nossa-casa/android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+
+      - name: Preparar arquivo
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/app-release.apk out/NossaCasa.apk
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NossaCasa-apk
+          path: nossa-casa/out/NossaCasa.apk
+
+      - name: Publicar em Releases (link fixo para baixar no celular)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nossa-casa-latest
+          name: Nossa Casa (Android)
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          make_latest: false
+          files: nossa-casa/out/NossaCasa.apk
+          body: |
+            APK do aplicativo **Nossa Casa** gerado automaticamente a partir do commit ${{ github.sha }} (branch `${{ github.ref_name }}`).
+
+            **Instalar:** abra este link no celular Android, baixe `NossaCasa.apk`, toque no arquivo e permita "instalar apps desta fonte".
+            Instruções completas em `nossa-casa/README.md`.

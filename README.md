@@ -1,5 +1,7 @@
 # Assistente Comercial — Distribuição de Clientes por UF
 
+> **Também neste repositório:** [`nossa-casa/`](nossa-casa/) — aplicativo Android *Nossa Casa* (rotina doméstica e familiar de Eduardo e Jussara). Instruções em [`nossa-casa/README.md`](nossa-casa/README.md).
+
 Pega a planilha que sua macro já exporta do BI, filtra os clientes ativos há
 30 dias (não entram na distribuição) e divide o restante entre os vendedores
 de acordo com o estado (UF) de cada um, o mais justo possível. Gera uma

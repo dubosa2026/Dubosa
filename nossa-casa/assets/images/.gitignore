@@ -1,0 +1,2 @@
+# O .gitignore da raiz ignora *.png (capturas de tela); os ícones do app precisam ir para o repositório.
+!*.png
