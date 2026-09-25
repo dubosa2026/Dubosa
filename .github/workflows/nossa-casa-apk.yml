@@ -89,6 +89,20 @@ jobs:
           NC_REST_URL: http://localhost:3999
           NC_JWT_SECRET: segredo-so-do-ci-com-pelo-menos-32-caracteres
 
+      - name: Conferir o servidor da família (Supabase)
+        continue-on-error: true
+        run: |
+          URL=$(sed -n "s/.*url: '\(.*\)'.*/\1/p" src/data/familyServer.ts)
+          KEY=$(sed -n "s/.*anonKey: '\(.*\)'.*/\1/p" src/data/familyServer.ts)
+          if [ -z "$URL" ]; then echo "Sem servidor embutido."; exit 0; fi
+          echo "Servidor: $URL"
+          echo "--- Banco (espera 401/permission denied = tabelas criadas; 404 = falta rodar o SQL):"
+          curl -s -w "  [HTTP %{http_code}]\n" "$URL/rest/v1/households?select=id&limit=1" -H "apikey: $KEY"
+          echo "--- Função de criar a casa (espera 401 = existe; 404 = falta rodar o SQL):"
+          curl -s -w "  [HTTP %{http_code}]\n" -X POST "$URL/rest/v1/rpc/invite_members" -H "apikey: $KEY" -H "Content-Type: application/json" -d '{"p_code":"TESTE123"}'
+          echo "--- Login (espera disable_signup=false e mailer_autoconfirm=true):"
+          curl -s "$URL/auth/v1/settings" -H "apikey: $KEY" | python3 -c "import sys,json; s=json.load(sys.stdin); print('  disable_signup =', s.get('disable_signup'), '| mailer_autoconfirm (Confirm email DESLIGADO) =', s.get('mailer_autoconfirm'))"
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
