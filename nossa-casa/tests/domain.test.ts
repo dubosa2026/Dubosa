@@ -349,3 +349,14 @@ describe('horário de execução das tarefas', () => {
     }
   });
 });
+
+it('atualização: acha o build mais novo publicado', async () => {
+  const { newestBuild } = await import('../src/domain/release');
+  const assets = [
+    { name: 'NossaCasa.apk', browser_download_url: 'u0', size: 1 },
+    { name: 'NossaCasa-build7.apk', browser_download_url: 'u7', size: 7 },
+    { name: 'NossaCasa-build12.apk', browser_download_url: 'u12', size: 12 },
+  ];
+  expect(newestBuild(assets)).toEqual({ build: 12, url: 'u12', size: 12 });
+  expect(newestBuild([])).toBeNull();
+});

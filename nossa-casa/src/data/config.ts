@@ -3,6 +3,7 @@
 // pública (anon) na primeira abertura. Se o APK for gerado com
 // EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY, já vem configurado.
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { FAMILY_SERVER } from './familyServer';
 
 export type AppMode = 'cloud' | 'demo';
@@ -23,15 +24,18 @@ export const BUILT_IN: BackendConfig | null =
       : null;
 
 export async function loadBackend(): Promise<BackendConfig | null> {
-  // Com o servidor da família embutido, ele sempre vale: nunca pergunta endereço/chave.
-  if (BUILT_IN) return BUILT_IN;
+  let stored: BackendConfig | null = null;
   try {
     const raw = await AsyncStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw) as BackendConfig;
+    if (raw) stored = JSON.parse(raw) as BackendConfig;
   } catch {
     // ignora e usa o padrão
   }
-  return null;
+  // Com o servidor da família embutido, ele sempre vale no celular: nunca pergunta
+  // endereço/chave (nem se o Android restaurar um backup antigo). No navegador, o
+  // modo demonstração continua disponível para testes.
+  if (BUILT_IN) return Platform.OS === 'web' && stored?.mode === 'demo' ? stored : BUILT_IN;
+  return stored;
 }
 
 /** Versão mostrada nas telas (preenchida pelo build do GitHub). */

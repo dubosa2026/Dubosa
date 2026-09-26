@@ -8,6 +8,7 @@ import { estimateSuggestions, postponeSuggestions } from '@/src/domain/insights'
 import { Avatar, Banner, Button, Card, Empty, H2, Progress, Row, Screen, T, TaskRow } from '@/src/ui/components';
 import { byTime, isLate, sortTasks, useAdults, useDayTimes, useKids, useToday, visible } from '@/src/ui/selectors';
 import { SyncBadge } from '@/src/ui/SyncBadge';
+import { UpdateBanner, useUpdate } from '@/src/ui/UpdateBanner';
 import { useColors } from '@/src/ui/theme';
 
 export default function Today() {
@@ -39,6 +40,7 @@ export default function Today() {
   const todayEvents = events.filter((e) => !e.deleted && e.date === today);
   const weekendOuting = events.some((e) => !e.deleted && e.type === 'outing' && isWeekend(e.date) && e.date >= today && e.date <= addDays(today, 7 - weekday(today)));
   const open = (id: string) => router.push({ pathname: '/tarefa/[id]', params: { id } });
+  const update = useUpdate();
   const inviteCode = useNC((s) => s.household?.invite_code);
   const pendingAdult = adults.find((a) => a.id !== meId && !a.user_id);
   const inviteFor = app.backend?.mode === 'cloud' && inviteCode && pendingAdult ? pendingAdult.name : null;
@@ -51,6 +53,8 @@ export default function Today() {
         <Stat label="concluídas" value={done} color={c.success} />
         <Stat label="atrasadas" value={late.length} color={c.danger} />
       </Row>
+
+      {update.info ? <UpdateBanner info={update.info} /> : null}
 
       {inviteFor ? (
         <Banner kind="info" text={`Falta ${inviteFor} entrar no app. Mande o convite pelo WhatsApp — é só tocar abaixo.`}>

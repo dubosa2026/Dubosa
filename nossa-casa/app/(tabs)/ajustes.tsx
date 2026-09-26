@@ -10,6 +10,7 @@ import { formatShort, WEEKDAY_SHORT } from '@/src/domain/dates';
 import type { NotificationSettings, Weekday } from '@/src/domain/types';
 import { Avatar, Banner, Button, Card, Chip, Field, H2, Row, Screen, T } from '@/src/ui/components';
 import { Stepper } from '@/src/ui/ScheduleEditor';
+import { UpdateBanner, useUpdate } from '@/src/ui/UpdateBanner';
 import { useAdults, useKids } from '@/src/ui/selectors';
 import { useColors } from '@/src/ui/theme';
 
@@ -25,6 +26,8 @@ export default function Settings() {
   const cloud = app.backend?.mode === 'cloud';
   const [childName, setChildName] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
+  const [check, setCheck] = useState(0);
+  const update = useUpdate(check);
   const setN = (patch: Partial<NotificationSettings>) => app.actions.updateSettings({ notifications: { ...n, ...patch } });
 
   const confirm = (title: string, text: string, fn: () => void) => {
@@ -162,6 +165,12 @@ export default function Settings() {
       <Card>
         <H2>Sobre</H2>
         <T muted size="small">Nossa Casa {APP_VERSION} · casa criada em {formatShort(household.created_at.slice(0, 10))}</T>
+        {update.info ? <UpdateBanner info={update.info} /> : (
+          <>
+            <T muted size="small">{update.checking ? 'Procurando atualização…' : 'Você está na versão mais nova.'}</T>
+            <Button small kind="ghost" label="Procurar atualização" onPress={() => setCheck((n) => n + 1)} style={{ marginTop: 6 }} />
+          </>
+        )}
         <Button kind="danger" label={cloud ? 'Sair (logout)' : 'Sair do modo demonstração'} onPress={() => confirm('Sair', cloud ? 'Os dados continuam salvos no servidor.' : 'Os dados de demonstração deste celular serão apagados.', () => void (cloud ? app.logout() : app.resetServer()))} style={{ marginTop: 12 }} />
         {cloud && !BUILT_IN ? <Button small kind="ghost" label="Trocar servidor" onPress={() => confirm('Trocar servidor', 'Você sairá da conta neste celular.', () => void app.resetServer())} style={{ marginTop: 8 }} /> : null}
       </Card>

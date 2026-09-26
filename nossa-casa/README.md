@@ -20,9 +20,11 @@ tempo real** entre os dois celulares e funcionamento **sem internet**.
    seguinte já sai conectado: ninguém cola nada no celular.
 
 **Em cada celular:**
-1. Baixe e instale: `https://github.com/dubosa2026/Dubosa/releases/download/nossa-casa-latest/NossaCasa.apk`
-   (se o navegador do WhatsApp não abrir o arquivo: app **Arquivos → Downloads → NossaCasa.apk**;
-   permita “instalar desta fonte” e, se o Play Protect avisar, “Instalar mesmo assim”).
+1. Baixe no Chrome: `https://github.com/dubosa2026/Dubosa/releases/download/nossa-casa-latest/NossaCasa.apk`
+   e **espere o download terminar** (≈ 57 MB). Abra pelo app **Meus Arquivos → Downloads →
+   NossaCasa.apk → Instalar** (abrir direto pelo Chrome às vezes dá “problema ao analisar o
+   pacote”). Permita “instalar desta fonte” e, se o Play Protect avisar, “Instalar mesmo assim”.
+   Depois disso, as atualizações aparecem **dentro do app** (“Atualizar agora”), sem navegador.
 2. **Eduardo:** crie usuário e senha → **Sou Eduardo** → pronto, já dá para usar. Na tela
    Hoje aparece **📤 Enviar convite para Jussara** → mande pelo WhatsApp.
 3. **Jussara:** crie usuário e senha → copie a mensagem do convite (segure o dedo → Copiar)
