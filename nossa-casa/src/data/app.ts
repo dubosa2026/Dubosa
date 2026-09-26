@@ -300,7 +300,9 @@ function translateAuthError(msg: string) {
   if (/Email not confirmed/i.test(msg)) return 'Confirme o e-mail (veja sua caixa de entrada) ou desative a confirmação no Supabase.';
   if (/already registered|already been registered|already exists/i.test(msg)) return 'Esse usuário já existe. Toque em "Já tenho usuário" para entrar.';
   if (/Password should be/i.test(msg)) return 'A senha precisa ter pelo menos 6 caracteres.';
-  if (/Signups not allowed/i.test(msg)) return 'Novos cadastros estão desativados neste servidor.';
+  if (/Signups not allowed|signups are disabled|Signups? (are )?disabled/i.test(msg)) {
+    return 'O servidor está recusando cadastros. No Supabase: Authentication → Sign In / Providers → Email: deixe "Enable Email provider" LIGADO e só "Confirm email" DESLIGADO; e "Allow new users to sign up" LIGADO.';
+  }
   return msg;
 }
 
