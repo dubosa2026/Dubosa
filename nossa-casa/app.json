@@ -12,7 +12,7 @@
       "bundleIdentifier": "br.com.nossacasa.app"
     },
     "android": {
-      "package": "br.com.nossacasa.app",
+      "package": "br.com.dubosa.nossacasa",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#D8664F",
