@@ -115,7 +115,7 @@ export function seedMembers(ids: SeedIds, now = SEED_EPOCH): Member[] {
       schedule: null, preferences: {}, age: 6, sort: 3,
     },
     {
-      ...base, id: ids.child2, name: 'Caçula', kind: 'child', role: 'child', color: '#4FB286', emoji: '🧒',
+      ...base, id: ids.child2, name: 'Ian', kind: 'child', role: 'child', color: '#4FB286', emoji: '👦',
       schedule: null, preferences: {}, age: 3, sort: 4,
     },
   ];

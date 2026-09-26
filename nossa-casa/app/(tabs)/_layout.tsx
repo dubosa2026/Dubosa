@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Text, type ColorValue } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/src/ui/theme';
 
 const icon = (emoji: string) =>
@@ -19,6 +20,8 @@ const label = (text: string) =>
 
 export default function TabLayout() {
   const c = useColors();
+  // Deixa espaço para a barra de navegação do Android (botões ◁ ○ ▢ ou gestos).
+  const insets = useSafeAreaInsets();
   const tab = (title: string, emoji: string) => ({ title, tabBarIcon: icon(emoji), tabBarLabel: label(title) });
   return (
     <Tabs
@@ -26,7 +29,7 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: c.primary,
         tabBarInactiveTintColor: c.muted,
-        tabBarStyle: { backgroundColor: c.card, borderTopColor: c.border, height: 64, paddingBottom: 8, paddingTop: 6 },
+        tabBarStyle: { backgroundColor: c.card, borderTopColor: c.border, height: 60 + insets.bottom, paddingBottom: 6 + insets.bottom, paddingTop: 6 },
         tabBarItemStyle: { paddingHorizontal: 0 },
       }}
     >

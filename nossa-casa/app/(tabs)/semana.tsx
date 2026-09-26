@@ -8,7 +8,7 @@ import {
   addDays, formatLong, formatMinutes, formatShort, fromISO, MONTH_NAMES, monthDates, weekDates, weekStart, weekday, WEEKDAY_SHORT,
 } from '@/src/domain/dates';
 import { Avatar, Banner, Button, Card, Chip, Empty, H2, Progress, Row, Screen, Segmented, T, TaskRow } from '@/src/ui/components';
-import { sortTasks, useAdults, useKids, useToday, visible } from '@/src/ui/selectors';
+import { byTime, sortTasks, useAdults, useDayTimes, useKids, useTimes, useToday, visible } from '@/src/ui/selectors';
 import { useColors } from '@/src/ui/theme';
 
 type View_ = 'day' | 'week' | 'month';
@@ -30,6 +30,7 @@ export default function Week() {
   const filter = (i: (typeof live)[number]) =>
     who === 'all' ? true : who === 'kids' ? i.kind === 'mission' : i.assignee_ids.includes(who) && i.kind !== 'mission';
   const ws = weekStart(date);
+  const weekTimes = useTimes(weekDates(ws));
   const balance = useMemo(() => weekBalance(instances, members, household, ws), [instances, members, household, ws]);
   const open = (id: string) => router.push({ pathname: '/tarefa/[id]', params: { id } });
   const shift = (n: number) => setDate(mode === 'month' ? toISOAddMonths(date, n) : addDays(date, mode === 'day' ? n : 7 * n));
@@ -76,7 +77,7 @@ export default function Week() {
         <DayView date={date} />
       ) : mode === 'week' ? (
         weekDates(ws).map((d) => {
-          const list = live.filter((i) => i.date === d && filter(i) && (who !== 'all' || i.kind !== 'mission')).sort(sortTasks);
+          const list = live.filter((i) => i.date === d && filter(i) && (who !== 'all' || i.kind !== 'mission')).sort(byTime(weekTimes));
           const ev = dayEvents(d);
           const missions = live.filter((i) => i.date === d && i.kind === 'mission');
           return (
@@ -87,7 +88,7 @@ export default function Week() {
                 </H2>
               </Pressable>
               {ev.map((e) => <T key={e.id}>{e.type === 'outing' ? '❤️' : '📅'} {e.title}{e.time ? ` · ${e.time}` : ''}</T>)}
-              {list.map((i) => <TaskRow key={i.id} task={i} members={members} showWho={who === 'all' || who === 'kids'} compact onToggle={() => app.actions.toggle(i.id)} onPress={() => open(i.id)} />)}
+              {list.map((i) => <TaskRow key={i.id} task={i} members={members} time={weekTimes.get(i.id)} showWho={who === 'all' || who === 'kids'} compact onToggle={() => app.actions.toggle(i.id)} onPress={() => open(i.id)} />)}
               {who === 'all' && missions.length ? <T muted size="small">🧸 {missions.filter((i) => i.status === 'done').length}/{missions.length} missões das crianças</T> : null}
               {!list.length && !ev.length ? <T muted>Livre 🌿</T> : null}
             </Card>
@@ -96,7 +97,6 @@ export default function Week() {
       ) : (
         <MonthView date={date} onPick={(d) => { setDate(d); setMode('day'); }} filter={filter} />
       )}
-      {kids.length ? null : null}
     </Screen>
   );
 }
@@ -108,6 +108,7 @@ function DayView({ date }: { date: string }) {
   const adults = useAdults();
   const kids = useKids();
   const list = instances.filter((i) => visible(i) && i.date === date);
+  const times = useDayTimes(date);
   const open = (id: string) => router.push({ pathname: '/tarefa/[id]', params: { id } });
   return (
     <>
@@ -115,12 +116,12 @@ function DayView({ date }: { date: string }) {
         <Card key={e.id}><T bold>{e.type === 'outing' ? '❤️' : '📅'} {e.title}{e.time ? ` · ${e.time}` : ''}</T></Card>
       ))}
       {[...adults, ...kids].map((m) => {
-        const mine = list.filter((i) => i.assignee_ids.includes(m.id)).sort(sortTasks);
+        const mine = list.filter((i) => i.assignee_ids.includes(m.id)).sort(byTime(times));
         if (!mine.length) return null;
         return (
           <Card key={m.id}>
             <Row><Avatar member={m} size={30} /><T bold size="title">{m.name}</T></Row>
-            {mine.map((i) => <TaskRow key={i.id} task={i} members={members} onToggle={() => app.actions.toggle(i.id)} onPress={() => open(i.id)} />)}
+            {mine.map((i) => <TaskRow key={i.id} task={i} members={members} time={times.get(i.id)} onToggle={() => app.actions.toggle(i.id)} onPress={() => open(i.id)} />)}
           </Card>
         );
       })}

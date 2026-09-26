@@ -37,7 +37,7 @@ export function SetupWizard() {
       {step === 1 ? (
         <Card>
           <H2>2. Nome das crianças</H2>
-          <T muted>A segunda criança está como “Caçula” — troque pelo nome dela.</T>
+          <T muted>Inaê e Ian já estão cadastrados — dá para trocar nomes e idades.</T>
           {kids.map((m) => <NameField key={m.id} member={m} withAge />)}
         </Card>
       ) : null}

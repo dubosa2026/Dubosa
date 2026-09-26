@@ -2,6 +2,7 @@
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
 import { ScrollView, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { app } from '@/src/data/app';
 import { answerLocally, type AssistantAnswer } from '@/src/domain/assistant';
 import { today } from '@/src/domain/dates';
@@ -23,6 +24,7 @@ interface Msg { from: 'me' | 'ai'; text: string; action?: AssistantAnswer['actio
 
 export default function Assistant() {
   const c = useColors();
+  const insets = useSafeAreaInsets();
   const [msgs, setMsgs] = useState<Msg[]>([{ from: 'ai', text: 'Olá! Sou a Nossa Casa IA. Pergunte sobre as tarefas, a semana, as compras… Eu olho os dados reais da casa. 🏡' }]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -62,7 +64,7 @@ export default function Assistant() {
         {busy ? <T muted>Pensando…</T> : null}
         <Row wrap style={{ marginTop: 8 }}>{QUICK.map((q) => <Chip key={q} label={q} onPress={() => void ask(q)} />)}</Row>
       </ScrollView>
-      <Row style={{ padding: 12, borderTopWidth: 1, borderColor: c.border, backgroundColor: c.card }}>
+      <Row style={{ padding: 12, paddingBottom: 12 + insets.bottom, borderTopWidth: 1, borderColor: c.border, backgroundColor: c.card }}>
         <TextInput
           value={text}
           onChangeText={setText}

@@ -6,13 +6,15 @@ import { app, useNC } from '@/src/data/app';
 import { addDays, formatLong, formatShort, isWeekend, weekday } from '@/src/domain/dates';
 import { estimateSuggestions, postponeSuggestions } from '@/src/domain/insights';
 import { Avatar, Banner, Button, Card, Empty, H2, Progress, Row, Screen, T, TaskRow } from '@/src/ui/components';
-import { isLate, sortTasks, useAdults, useKids, useToday, visible } from '@/src/ui/selectors';
+import { byTime, isLate, sortTasks, useAdults, useDayTimes, useKids, useToday, visible } from '@/src/ui/selectors';
 import { SyncBadge } from '@/src/ui/SyncBadge';
 import { useColors } from '@/src/ui/theme';
 
 export default function Today() {
   const c = useColors();
   const today = useToday();
+  const times = useDayTimes(today);
+  const timesTomorrow = useDayTimes(addDays(today, 1));
   const instances = useNC((s) => s.instances);
   const templates = useNC((s) => s.templates);
   const logs = useNC((s) => s.logs);
@@ -76,7 +78,7 @@ export default function Today() {
       ))}
 
       {order.map((a) => {
-        const mine = adultTasks.filter((i) => i.assignee_ids.includes(a.id)).sort(sortTasks);
+        const mine = adultTasks.filter((i) => i.assignee_ids.includes(a.id)).sort(byTime(times));
         const d = mine.filter((i) => i.status === 'done').length;
         return (
           <Card key={a.id}>
@@ -88,7 +90,7 @@ export default function Today() {
               </View>
             </Row>
             {mine.length ? <Progress value={d / mine.length} color={a.color} /> : null}
-            {mine.map((i) => <TaskRow key={i.id} task={i} members={members} onToggle={() => app.actions.toggle(i.id)} onPress={() => open(i.id)} />)}
+            {mine.map((i) => <TaskRow key={i.id} task={i} members={members} time={times.get(i.id)} onToggle={() => app.actions.toggle(i.id)} onPress={() => open(i.id)} />)}
             {!mine.length ? <Empty emoji="🌿" text="Nada para hoje. Aproveite para descansar." /> : null}
           </Card>
         );
@@ -148,8 +150,8 @@ export default function Today() {
       {tomorrow.length ? (
         <Card>
           <H2>Próximas · {formatShort(addDays(today, 1))}</H2>
-          {tomorrow.sort(sortTasks).slice(0, 6).map((i) => (
-            <TaskRow key={i.id} task={i} members={members} showWho onToggle={() => app.actions.toggle(i.id)} onPress={() => open(i.id)} />
+          {tomorrow.sort(byTime(timesTomorrow)).slice(0, 6).map((i) => (
+            <TaskRow key={i.id} task={i} members={members} showWho time={timesTomorrow.get(i.id)} onToggle={() => app.actions.toggle(i.id)} onPress={() => open(i.id)} />
           ))}
           {tomorrow.length > 6 ? <T muted size="small">+ {tomorrow.length - 6} tarefas — veja na aba Semana</T> : null}
         </Card>

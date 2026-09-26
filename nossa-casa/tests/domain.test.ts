@@ -58,7 +58,7 @@ describe('dados iniciais', () => {
   it('cadastra Eduardo e Jussara como administradores e as duas crianças', () => {
     const adults = members.filter((m) => m.kind === 'adult');
     expect(adults.map((m) => [m.name, m.role])).toEqual([['Eduardo', 'admin'], ['Jussara', 'admin']]);
-    expect(members.filter((m) => m.kind === 'child').map((m) => m.name)).toEqual(['Inaê', 'Caçula']);
+    expect(members.filter((m) => m.kind === 'child').map((m) => m.name)).toEqual(['Inaê', 'Ian']);
   });
 
   it('cadastra todas as tarefas pedidas', () => {
@@ -322,4 +322,30 @@ it('acha o convite na mensagem colada', async () => {
   expect(extractInvite(shareMessage({ url: 'https://x.supabase.co', anonKey: 'k'.repeat(40), invite: 'QWER2345' }))).toBe('QWER2345');
   expect(extractInvite('o código é abcd2345 ok')).toBe('ABCD2345');
   expect(extractInvite('nada aqui')).toBeNull();
+});
+
+describe('horário de execução das tarefas', () => {
+  it('toda tarefa do dia ganha horário, dentro de quando a pessoa está em casa e sem sobreposição', async () => {
+    const { suggestTimes } = await import('../src/domain/timeline');
+    const { timeToMinutes } = await import('../src/domain/dates');
+    for (const d of ['2026-09-21', '2026-09-23', '2026-09-26']) {
+      for (const m of members.filter((x) => x.kind === 'adult')) {
+        const mine = dayOf(d).filter((i) => i.assignee_ids.includes(m.id) && i.kind !== 'coverage' && i.kind !== 'mission');
+        const times = suggestTimes(m, d, mine);
+        expect(mine.every((i) => times.has(i.id))).toBe(true);
+        // Quem tem horário marcado mantém o horário.
+        for (const i of mine.filter((x) => x.due_time)) expect(times.get(i.id)!.time).toBe(i.due_time);
+        // Sugestões de Eduardo em dia útil ficam fora do horário de trabalho (07:00–20:00).
+        if (m.id === ids.eduardo && d === '2026-09-21') {
+          for (const i of mine.filter((x) => !x.due_time)) {
+            const t = timeToMinutes(times.get(i.id)!.time);
+            expect(t < 7 * 60 || t >= 20 * 60).toBe(true);
+          }
+        }
+        // Sugestões não se sobrepõem.
+        const spans = mine.filter((x) => !x.due_time).map((i) => [timeToMinutes(times.get(i.id)!.time), timeToMinutes(times.get(i.id)!.time) + Math.max(5, i.minutes)]).sort((a, b) => a[0] - b[0]);
+        for (let k = 1; k < spans.length; k++) expect(spans[k][0]).toBeGreaterThanOrEqual(spans[k - 1][1]);
+      }
+    }
+  });
 });

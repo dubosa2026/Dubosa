@@ -5,9 +5,9 @@ import { View } from 'react-native';
 import { app, useNC } from '@/src/data/app';
 import { category, EFFORT_INFO, PRIORITY_INFO } from '@/src/domain/categories';
 import { addDays, formatLong, formatMinutes, formatShort } from '@/src/domain/dates';
-import { Banner, Button, Card, Chip, Empty, H2, Row, Screen, T } from '@/src/ui/components';
+import { Banner, Button, Card, Chip, Empty, Field, H2, Row, Screen, T } from '@/src/ui/components';
 import { ACTION } from '@/src/ui/labels';
-import { useAdults, useToday } from '@/src/ui/selectors';
+import { useAdults, useDayTimes, useToday } from '@/src/ui/selectors';
 import { useColors } from '@/src/ui/theme';
 
 export default function TaskDetail() {
@@ -99,6 +99,8 @@ export default function TaskDetail() {
         </Card>
       ) : null}
 
+      {!isMission && !done ? <TimeCard id={task.id} date={task.date} dueTime={task.due_time} /> : null}
+
       {!isMission ? (
         <Card style={{ marginTop: 12 }}>
           <H2>Responsável</H2>
@@ -145,5 +147,27 @@ export default function TaskDetail() {
       </View>
       <View style={{ height: 1, backgroundColor: c.border, marginTop: 16 }} />
     </Screen>
+  );
+}
+
+function TimeCard({ id, date, dueTime }: { id: string; date: string; dueTime: string | null }) {
+  const times = useDayTimes(date);
+  const current = times.get(id);
+  const [text, setText] = useState(dueTime ?? '');
+  const valid = /^([01]\d|2[0-3]):[0-5]\d$/.test(text);
+  return (
+    <Card style={{ marginTop: 12 }}>
+      <H2>Horário</H2>
+      <T muted size="small">
+        {dueTime ? `Marcado para ${dueTime}.` : current ? `Sugerido: ${current.time} (encaixado quando você está em casa). Marque um horário para receber lembrete.` : 'Sem horário.'}
+      </T>
+      <Row style={{ marginTop: 8 }}>
+        <View style={{ flex: 1 }}>
+          <Field label="Horário (HH:MM)" value={text} onChangeText={setText} placeholder={current?.time ?? '19:30'} keyboardType="numbers-and-punctuation" />
+        </View>
+        <Button small label="Salvar" disabled={!valid || text === dueTime} onPress={() => app.actions.updateInstance(id, { due_time: text })} />
+      </Row>
+      {dueTime ? <Button small kind="ghost" label="Voltar para horário sugerido" onPress={() => { setText(''); app.actions.updateInstance(id, { due_time: null }); }} /> : null}
+    </Card>
   );
 }

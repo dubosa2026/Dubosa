@@ -66,7 +66,7 @@ d('banco Supabase (RLS, convite, autoria)', () => {
     invite = r.rows[0].r.invite_code;
     expect(invite).toMatch(/^[A-Z2-9]{8}$/);
     const m = await as(EDU_USER, () => db.query('select name, user_id from members order by sort'));
-    expect(m.rows.map((x) => x.name)).toEqual(['Eduardo', 'Jussara', 'Inaê', 'Caçula']);
+    expect(m.rows.map((x) => x.name)).toEqual(['Eduardo', 'Jussara', 'Inaê', 'Ian']);
     expect(m.rows[0].user_id).toBe(EDU_USER);
     const t = await as(EDU_USER, () => db.query('select count(*)::int as n from task_templates'));
     expect(t.rows[0].n).toBe(seedTemplates(ids).length);

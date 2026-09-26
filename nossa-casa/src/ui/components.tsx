@@ -22,7 +22,7 @@ export function Screen({ children, title, subtitle, right, scroll = true, padded
       {right}
     </View>
   ) : <View style={{ height: insets.top }} />;
-  const body = padded ? { padding: space.l, paddingBottom: 48 } : undefined;
+  const body = padded ? { padding: space.l, paddingBottom: 48 + insets.bottom } : undefined;
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       {header}
@@ -149,15 +149,17 @@ export function Avatar({ member, size = 36 }: { member?: Member; size?: number }
   );
 }
 
-export function TaskRow({ task, members, onToggle, onPress, showWho, late, compact }: {
+export function TaskRow({ task, members, onToggle, onPress, showWho, late, compact, time }: {
   task: TaskInstance; members: Member[]; onToggle: () => void; onPress?: () => void; showWho?: boolean; late?: boolean; compact?: boolean;
+  time?: { time: string; suggested: boolean };
 }) {
   const c = useColors();
   const done = task.status === 'done';
   const cat = category(task.category);
   const who = task.assignee_ids.map((id) => members.find((m) => m.id === id)?.name).filter(Boolean).join(' + ');
   const meta: string[] = [];
-  if (task.due_time) meta.push(`⏰ ${task.due_time}`);
+  if (time) meta.push(time.suggested ? `🕘 ${time.time}` : `⏰ ${time.time}`);
+  else if (task.due_time) meta.push(`⏰ ${task.due_time}`);
   if (!compact) meta.push(formatMinutes(task.minutes));
   if (task.assignee_ids.length > 1) meta.push('👥 juntos');
   if (task.kind === 'coverage') meta.push('🤝 simultânea');

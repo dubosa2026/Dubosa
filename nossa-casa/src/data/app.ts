@@ -255,8 +255,17 @@ class App {
 
   async refresh() {
     await this.store.syncNow();
+    this.fixFamilyNames();
     this.actions.ensurePlanned(todayISO());
     await this.store.flush();
+  }
+
+  /** Casas criadas antes de sabermos o nome do caçula: "Caçula" vira "Ian". */
+  private fixFamilyNames() {
+    const s = this.store.state;
+    if (!s.household) return;
+    const child2 = s.members.find((m) => m.id === seedIds(s.household!.id).child2);
+    if (child2 && child2.name === 'Caçula') this.actions.updateMember(child2.id, { name: 'Ian', emoji: '👦' });
   }
 
   private teardown() {
