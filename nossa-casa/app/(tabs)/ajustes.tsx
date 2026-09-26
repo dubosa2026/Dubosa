@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { Alert, Platform, Pressable, Share, Switch, View } from 'react-native';
 import { app, useNC } from '@/src/data/app';
-import { BUILT_IN } from '@/src/data/config';
+import { APP_VERSION, BUILT_IN } from '@/src/data/config';
 import { sendTestNotification } from '@/src/data/notifications';
 import { displayUser } from '@/src/domain/login';
 import { formatShort, WEEKDAY_SHORT } from '@/src/domain/dates';
@@ -161,7 +161,7 @@ export default function Settings() {
 
       <Card>
         <H2>Sobre</H2>
-        <T muted size="small">Nossa Casa 1.0 · casa criada em {formatShort(household.created_at.slice(0, 10))}</T>
+        <T muted size="small">Nossa Casa {APP_VERSION} · casa criada em {formatShort(household.created_at.slice(0, 10))}</T>
         <Button kind="danger" label={cloud ? 'Sair (logout)' : 'Sair do modo demonstração'} onPress={() => confirm('Sair', cloud ? 'Os dados continuam salvos no servidor.' : 'Os dados de demonstração deste celular serão apagados.', () => void (cloud ? app.logout() : app.resetServer()))} style={{ marginTop: 12 }} />
         {cloud && !BUILT_IN ? <Button small kind="ghost" label="Trocar servidor" onPress={() => confirm('Trocar servidor', 'Você sairá da conta neste celular.', () => void app.resetServer())} style={{ marginTop: 8 }} /> : null}
       </Card>

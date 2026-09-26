@@ -47,6 +47,7 @@ jobs:
         options: >-
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 20
     env:
+      EXPO_PUBLIC_BUILD_NUMBER: ${{ github.run_number }}
       EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
       EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
     steps:
@@ -109,7 +110,12 @@ jobs:
           java-version: 17
 
       - name: Gerar projeto Android
-        run: npx expo prebuild -p android --no-install
+        run: |
+          echo "EXPO_PUBLIC_BUILD_DATE=$(TZ=America/Sao_Paulo date +'%d/%m %H:%M')" >> "$GITHUB_ENV"
+          npx expo prebuild -p android --no-install
+          # Cada build tem um número maior: o Android sempre aceita instalar por cima.
+          sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          grep -n "versionCode" android/app/build.gradle
 
       # Mesma chave de assinatura em todos os builds: assim cada APK novo instala POR CIMA
       # do anterior, sem desinstalar. Usa os segredos ANDROID_* se existirem; senão gera

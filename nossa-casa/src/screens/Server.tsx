@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { app } from '../data/app';
-import { validateBackend } from '../data/config';
+import { APP_VERSION, validateBackend } from '../data/config';
 import { decodeConnection } from '../domain/connection';
 import { Banner, Button, Card, Field, H2, Screen, T } from '../ui/components';
 
@@ -45,6 +45,7 @@ export function ServerScreen() {
   return (
     <Screen title="Bem-vindos ao Nossa Casa ❤️" subtitle="Organização da casa, das crianças e do tempo em família.">
       {err ? <Banner kind="danger" text={err} /> : null}
+      <T muted size="small">Nossa Casa {APP_VERSION}</T>
       <Card>
         <H2>Recebeu um código do outro celular?</H2>
         <T muted>Cole aqui a mensagem que chegou (pode colar ela inteira).</T>

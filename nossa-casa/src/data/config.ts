@@ -23,14 +23,19 @@ export const BUILT_IN: BackendConfig | null =
       : null;
 
 export async function loadBackend(): Promise<BackendConfig | null> {
+  // Com o servidor da família embutido, ele sempre vale: nunca pergunta endereço/chave.
+  if (BUILT_IN) return BUILT_IN;
   try {
     const raw = await AsyncStorage.getItem(KEY);
     if (raw) return JSON.parse(raw) as BackendConfig;
   } catch {
     // ignora e usa o padrão
   }
-  return BUILT_IN;
+  return null;
 }
+
+/** Versão mostrada nas telas (preenchida pelo build do GitHub). */
+export const APP_VERSION = `1.0 · build ${process.env.EXPO_PUBLIC_BUILD_NUMBER || 'local'}${process.env.EXPO_PUBLIC_BUILD_DATE ? ` · ${process.env.EXPO_PUBLIC_BUILD_DATE}` : ''}`;
 
 export async function saveBackend(cfg: BackendConfig | null) {
   if (cfg) await AsyncStorage.setItem(KEY, JSON.stringify(cfg));

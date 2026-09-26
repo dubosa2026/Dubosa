@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { app } from '../data/app';
-import { BUILT_IN } from '../data/config';
+import { APP_VERSION, BUILT_IN } from '../data/config';
 import { toLoginEmail } from '../domain/login';
 import { Banner, Button, Card, Field, Screen, Segmented, T } from '../ui/components';
 
@@ -42,6 +42,7 @@ export function LoginScreen() {
         <Button label={mode === 'in' ? 'Entrar' : 'Criar e entrar'} onPress={submit} loading={busy} />
       </Card>
       <T muted center>Cada um tem seu próprio usuário. Só Eduardo e Jussara têm acesso à casa.</T>
+      <T muted center size="small" style={{ marginTop: 16 }}>Nossa Casa {APP_VERSION}</T>
       {!BUILT_IN ? <Button label="Trocar servidor" kind="ghost" small onPress={() => app.resetServer()} style={{ marginTop: 24 }} /> : null}
     </Screen>
   );
